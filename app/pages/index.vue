@@ -196,13 +196,13 @@ const balanceOverTimeOption: ECOption = {
       showSymbol: false,
       lineStyle: {
         width: 5,
-        color: "#3b82f6",
+        color: "#22c55e",
         shadowBlur: 10,
-        shadowColor: "rgba(59, 130, 246, 0.6)",
+        shadowColor: "rgba(34, 197, 94, 0.6)",
         shadowOffsetX: 0,
         shadowOffsetY: 0
       },
-      itemStyle: { color: "#3b82f6" },
+      itemStyle: { color: "#22c55e" },
       areaStyle: {
         color: {
           type: "linear",
@@ -211,8 +211,8 @@ const balanceOverTimeOption: ECOption = {
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: "rgba(59, 130, 246, 0.35)" },
-            { offset: 1, color: "rgba(59, 130, 246, 0)" }
+            { offset: 0, color: "rgba(34, 197, 94, 0.35)" },
+            { offset: 1, color: "rgba(34, 197, 94, 0)" }
           ]
         }
       },
@@ -220,7 +220,7 @@ const balanceOverTimeOption: ECOption = {
         focus: "series",
         lineStyle: {
           shadowBlur: 14,
-          shadowColor: "rgba(59, 130, 246, 0.85)"
+          shadowColor: "rgba(34, 197, 94, 0.85)"
         }
       }
     }
