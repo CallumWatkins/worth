@@ -3,8 +3,7 @@
     mode="slideover"
     :ui="{
       left: 'lg:flex-none pr-4',
-      center: 'h-full',
-      container: 'px-4!'
+      center: 'h-full'
     }"
   >
     <template #left>
