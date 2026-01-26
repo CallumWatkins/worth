@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "tamasfe.even-better-toml",
+    "rust-lang.rust-analyzer",
+    "vue.volar"
+  ]
+}
