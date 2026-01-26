@@ -15,6 +15,13 @@
 	--breakpoint-lg: 50rem;
 }
 
+/* Allow smooth interpolation of glow strength across breakpoint changes */
+@property --glow-strength {
+	syntax: "<number>";
+	inherits: true;
+	initial-value: 3;
+}
+
 @layer base {
 	html,
 	body {
@@ -30,10 +37,41 @@
 		margin-right: calc(100% - 100vw);
 	}
 
+	/* Background glow */
+	body::before {
+		content: "";
+		position: fixed;
+		inset: 0;
+		pointer-events: none;
+		background-repeat: no-repeat;
+		background-image:
+			radial-gradient(1400px circle at 20% 10%, color-mix(in oklab, var(--color-primary) calc(var(--glow-strength) * 1%), transparent), transparent 65%),
+			radial-gradient(1200px circle at 80% 0%, color-mix(in oklab, var(--color-primary) calc(var(--glow-strength) * 1%), transparent), transparent 70%),
+			radial-gradient(1300px circle at 50% 110%, color-mix(in oklab, var(--color-primary) calc(var(--glow-strength) * 1%), transparent), transparent 72%),
+			linear-gradient(180deg, rgb(255 255 255 / 0.02), transparent 40%);
+	}
+
 	/* Thin scrollbars (Firefox + Chromium/WebKit) */
 	:root {
+		/* Background glow strength (used in body::before) */
+		--glow-strength: 3;
+		transition: --glow-strength 250ms ease;
+		--ui-bg: var(--color-neutral-950);
 		scrollbar-width: thin; /* Firefox */
 		scrollbar-color: rgb(148 163 184 / 0.65) transparent; /* slate-400-ish */
+	}
+
+	/* Weaken glow as viewport gets smaller */
+	@media (width < 1600px) {
+		:root {
+			--glow-strength: 2.5;
+		}
+	}
+
+	@media (width < 1000px) {
+		:root {
+			--glow-strength: 2;
+		}
 	}
 
 	*::-webkit-scrollbar {
