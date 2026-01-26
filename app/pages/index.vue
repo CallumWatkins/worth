@@ -13,10 +13,12 @@
       <UPageCard
         title="Total Current Balance"
         orientation="horizontal"
-        variant="subtle"
+        variant="outline"
+        spotlight
         :ui="{
           container: 'lg:grid-cols-[1fr_auto]',
-          title: 'uppercase text-muted text-xs'
+          title: 'uppercase text-muted text-xs',
+          spotlight: 'bg-default/95'
         }"
       >
         <template #description>
@@ -54,8 +56,10 @@
         <UPageCard
           title="Balance by Account Type"
           description="Portfolio allocation"
+          spotlight
           :ui="{
-            body: 'w-full'
+            body: 'w-full',
+            spotlight: 'bg-default/95'
           }"
         >
           <VChart
@@ -67,8 +71,10 @@
         </UPageCard>
         <UPageCard
           class="col-span-2"
+          spotlight
           :ui="{
-            body: 'w-full'
+            body: 'w-full',
+            spotlight: 'bg-default/95'
           }"
         >
           <template #body>
