@@ -16,6 +16,46 @@
 }
 
 @layer base {
+	html,
+	body {
+		/*
+		 * Overlay-style scrollbar behavior (no reserved gutter):
+		 * When a vertical scrollbar appears, expand the layout width by the
+		 * scrollbar width so content can sit "under" it instead of shrinking.
+		 */
+		scrollbar-gutter: auto;
+	}
+
+	body {
+		margin-right: calc(100% - 100vw);
+	}
+
+	/* Thin scrollbars (Firefox + Chromium/WebKit) */
+	:root {
+		scrollbar-width: thin; /* Firefox */
+		scrollbar-color: rgb(148 163 184 / 0.65) transparent; /* slate-400-ish */
+	}
+
+	*::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	*::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	*::-webkit-scrollbar-thumb {
+		background-color: rgb(148 163 184 / 0.55);
+		border-radius: 9999px;
+		border: 3px solid transparent; /* creates a thinner-looking thumb */
+		background-clip: content-box;
+	}
+
+	*::-webkit-scrollbar-thumb:hover {
+		background-color: rgb(148 163 184 / 0.75);
+	}
+
 	* {
 		-webkit-tap-highlight-color: transparent;
 	}
