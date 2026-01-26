@@ -3,7 +3,8 @@ export default defineNuxtConfig({
     "@vueuse/nuxt",
     "@nuxt/ui",
     "reka-ui/nuxt",
-    "@nuxt/eslint"
+    "@nuxt/eslint",
+    "nuxt-echarts"
   ],
   app: {
     head: {
@@ -27,6 +28,23 @@ export default defineNuxtConfig({
   dir: {
     modules: "app/modules"
   },
+  echarts: {
+    renderer: ["canvas", "svg"],
+    charts: [
+      "LineChart",
+      "PieChart"
+    ],
+    components: [
+      "DatasetComponent",
+      "GridComponent",
+      "LegendComponent",
+      "GraphicComponent",
+      "TooltipComponent"
+    ]
+  },
+  build: {
+    transpile: ["echarts-liquidfill"]
+  },
   vite: {
     clearScreen: false,
     envPrefix: ["VITE_", "TAURI_"],
@@ -37,6 +55,9 @@ export default defineNuxtConfig({
         host: "0.0.0.0",
         port: 3001
       }
+    },
+    resolve: {
+      alias: { "echarts/lib/util/number": "echarts/lib/util/number.js" }
     }
   },
   ignore: ["**/src-tauri/**"],
