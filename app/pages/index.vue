@@ -142,6 +142,14 @@ const formatShortGBP = (value: number) => {
   return `${sign}£${Math.round(abs)}`;
 };
 
+const darkTooltipBase = {
+  backgroundColor: "rgba(10, 10, 10, 0.95)",
+  borderColor: "rgba(82, 82, 91, 0.6)",
+  borderWidth: 1,
+  textStyle: { color: "#f5f5f5" },
+  extraCssText: "border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); padding: 10px 12px;"
+} as const;
+
 // Daily data for ~6 months (deterministic placeholder)
 const days = 183;
 const today = new Date();
@@ -162,8 +170,12 @@ for (let i = days - 1; i >= 0; i--) {
 const balanceOverTimeOption: ECOption = {
   backgroundColor: "transparent",
   tooltip: {
+    ...darkTooltipBase,
     trigger: "axis",
-    axisPointer: { type: "line" }
+    axisPointer: {
+      type: "line",
+      lineStyle: { color: "rgba(244, 244, 245, 0.25)" }
+    }
   },
   grid: {
     left: 0,
@@ -266,6 +278,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>): ECOpti
   return {
     backgroundColor: "transparent",
     tooltip: {
+      ...darkTooltipBase,
       trigger: "item",
       valueFormatter: (value: unknown) => {
         const n = typeof value === "number" ? value : Number(value);
