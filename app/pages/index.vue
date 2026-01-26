@@ -3,7 +3,6 @@
     <UPageHeader
       title="Balance Overview"
       description="A summary of your balances across all accounts"
-      :links="links"
       :ui="{
         root: 'pb-0 border-none',
         description: 'mt-1'
@@ -42,6 +41,7 @@
             }"
           />
           <UPageCard
+            to="/accounts"
             title="Active Accounts"
             description="12"
             variant="subtle"
@@ -112,24 +112,6 @@
 </template>
 
 <script lang="ts" setup>
-import type { ButtonProps } from "@nuxt/ui";
-
-const links = ref<ButtonProps[]>([
-  {
-    label: "Export Data",
-    icon: "i-lucide-download",
-    to: "/data/export",
-    variant: "subtle"
-  },
-  {
-    label: "Add New Account",
-    icon: "i-lucide-plus",
-    to: "/accounts/new",
-    color: "primary",
-    variant: "solid"
-  }
-]);
-
 const formatIsoDate = (d: Date) => d.toISOString().slice(0, 10);
 const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
