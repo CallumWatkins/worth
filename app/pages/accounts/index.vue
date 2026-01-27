@@ -3,41 +3,80 @@
     <UPageHeader
       title="Accounts"
       description="Manage your accounts and their balances"
-      :links="links"
       :ui="{
         root: 'pb-0 border-none',
         description: 'mt-1'
       }"
-    />
+    >
+      <template #links>
+        <UPopover
+          arrow
+          :content="{ align: 'end', side: 'bottom', sideOffset: 8 }"
+          :ui="{ content: 'p-4 w-80' }"
+        >
+          <UButton
+            label="View options"
+            icon="i-lucide-sliders-horizontal"
+            color="neutral"
+            variant="subtle"
+          />
+
+          <template #content="{ close }">
+            <div class="flex items-center justify-between gap-4 mb-4">
+              <div class="font-semibold text-highlighted">
+                View options
+              </div>
+              <UButton
+                icon="i-lucide-x"
+                color="neutral"
+                variant="ghost"
+                @click="close"
+              />
+            </div>
+
+            <div class="space-y-4">
+              <UFormField name="groupBy" label="Group accounts by">
+                <USelect
+                  v-model="groupBy"
+                  :items="groupByItems"
+                  class="w-full"
+                  color="neutral"
+                  variant="subtle"
+                />
+              </UFormField>
+
+              <UFormField name="activityPeriod" label="Activity period">
+                <USelect
+                  v-model="activityPeriod"
+                  :items="activityPeriodItems"
+                  class="w-full"
+                  color="neutral"
+                  variant="subtle"
+                />
+              </UFormField>
+
+              <UFormField
+                name="showEmpty"
+                label="Show empty accounts"
+                orientation="horizontal"
+                class="items-center"
+              >
+                <UCheckbox v-model="showEmpty" color="neutral" />
+              </UFormField>
+            </div>
+          </template>
+        </UPopover>
+
+        <UButton
+          label="Add New Account"
+          icon="i-lucide-plus"
+          to="/accounts/new"
+          color="primary"
+          variant="solid"
+        />
+      </template>
+    </UPageHeader>
     <UPageBody class="space-y-6">
-      <div class="flex gap-4 flex-row items-end justify-between">
-        <div class="flex gap-4 flex-row items-end">
-          <div class="flex flex-col gap-1">
-            <span class="text-xs font-medium text-muted">Group accounts by</span>
-            <USelect
-              v-model="groupBy"
-              :items="groupByItems"
-              class="w-56"
-              color="neutral"
-              variant="subtle"
-            />
-          </div>
-
-          <div class="flex flex-col gap-1">
-            <span class="text-xs font-medium text-muted">Activity period</span>
-            <USelect
-              v-model="activityPeriod"
-              :items="activityPeriodItems"
-              class="w-40"
-              color="neutral"
-              variant="subtle"
-            />
-          </div>
-        </div>
-
-        <UCheckbox v-model="showEmpty" label="Show empty accounts" color="neutral" />
-      </div>
-
       <UTable
         v-model:sorting="sorting"
         v-model:column-visibility="columnVisibility"
@@ -174,7 +213,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ButtonProps, SelectItem, TableColumn, TableRow } from "@nuxt/ui";
+import type { SelectItem, TableColumn, TableRow } from "@nuxt/ui";
 import type { GroupingOptions } from "@tanstack/vue-table";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 import { h, resolveComponent } from "vue";
@@ -200,22 +239,6 @@ interface Account {
   currentBalance: number
   lastBalanceChangeDate: string // YYYY-MM-DD
 }
-
-const links = ref<ButtonProps[]>([
-  {
-    label: "Export Data",
-    icon: "i-lucide-download",
-    to: "/data/export",
-    variant: "subtle"
-  },
-  {
-    label: "Add New Account",
-    icon: "i-lucide-plus",
-    to: "/accounts/new",
-    color: "primary",
-    variant: "solid"
-  }
-]);
 
 const UButton = resolveComponent("UButton");
 
