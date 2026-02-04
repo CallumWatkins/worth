@@ -14,6 +14,8 @@
     "postinstall": "nuxt prepare",
     "lint": "eslint . --fix",
     "bump": "bumpp",
+    "db:seed": "cargo run --manifest-path src-tauri/Cargo.toml --bin seed --",
+    "db:clear": "cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- --clear",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",

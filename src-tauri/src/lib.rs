@@ -14,7 +14,7 @@ pub fn run() {
             let handle = app.handle().clone();
             tauri::async_runtime::block_on(async move {
                 let pool = db::init_pool(&handle).await?;
-                sqlx::migrate!("./migrations")
+                sqlx::migrate!("./db/migrations")
                     .run(&pool)
                     .await
                     .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!(e)))?;
