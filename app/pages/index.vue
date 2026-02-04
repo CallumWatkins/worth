@@ -107,11 +107,47 @@
           />
         </UPageCard>
       </UPageGrid>
+
+      <UPageCard
+        title="Hello world"
+        description="Tauri command test"
+        variant="outline"
+      >
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <UFormField label="Name" name="helloName" class="flex-1">
+              <UInput v-model="helloName" />
+            </UFormField>
+
+            <UButton
+              label="Say hello"
+              color="primary"
+              variant="solid"
+              :loading="helloMutation.isPending"
+              @click="sayHello"
+            />
+          </div>
+
+          <div v-if="helloMutation.data" class="font-medium text-highlighted">
+            {{ helloMutation.data }}
+          </div>
+
+          <UAlert
+            v-else-if="helloMutation.isError"
+            color="error"
+            variant="subtle"
+            :title="helloMutation.error!.message ?? 'Something went wrong'"
+          />
+        </div>
+      </UPageCard>
     </UPageBody>
   </UContainer>
 </template>
 
 <script lang="ts" setup>
+import { useMutation } from "@tanstack/vue-query";
+import { proxyRefs } from "vue";
+
 const formatIsoDate = (d: Date) => d.toISOString().slice(0, 10);
 const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
@@ -336,5 +372,18 @@ const onAllocationLegendSelectChanged = (params: { selected?: Record<string, boo
     Stocks: selected.Stocks !== false
   };
   balanceAllocationOption.value = buildBalanceAllocationOption(allocationSelected.value);
+};
+
+const api = useApi();
+
+const helloName = ref("");
+
+const helloMutation = proxyRefs(useMutation({
+  mutationFn: api.hello.say
+}));
+
+const sayHello = () => {
+  helloMutation.reset();
+  helloMutation.mutate(helloName.value);
 };
 </script>

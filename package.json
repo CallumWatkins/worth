@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@nuxt/ui": "^4.3.0",
+    "@tanstack/vue-query": "^5.92.9",
     "@tauri-apps/api": "^2.9.1",
     "echarts": "^6.0.0",
     "nuxt": "^4.2.2",

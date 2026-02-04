@@ -6,6 +6,7 @@ description = "A balance tracking desktop app"
 authors = [ "Callum Watkins <callum@callumwatkins.com>" ]
 license = "AGPL-3.0-only"
 edition = "2021"
+default-run = "worth"
 
 [lib]
 name = "worth_lib"
@@ -22,3 +23,19 @@ tauri-build = { version = "2.5.3", features = [] }
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
 tauri = { version = "2.9.4", features = [] }
+thiserror = "1"
+anyhow = "1"
+sqlx = { version = "0.8", features = [
+  "runtime-tokio-rustls",
+  "sqlite",
+  "macros",
+  "migrate",
+  "chrono"
+] }
+tokio = { version = "1", features = [
+  "macros",
+  "rt-multi-thread"
+] }
+specta = { version = "=2.0.0-rc.22", features = [ "serde" ] }
+tauri-specta = { version = "=2.0.0-rc.21", features = [ "typescript" ] }
+specta-typescript = "=0.0.9"
