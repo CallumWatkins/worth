@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
+use clap::{Args, Parser, Subcommand};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     SqlitePool,
@@ -10,40 +11,65 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const DB_FILENAME: &str = "worth.sqlite";
 
+#[derive(Debug, Parser)]
+#[command(
+    name = "db",
+    about = "Database dev operations",
+    arg_required_else_help = true
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Backup, clear, and seed the database
+    Seed(SeedArgs),
+    /// Backup and clear the database
+    Clear(ConfirmArgs),
+    /// Delete database backup files
+    Clean(ConfirmArgs),
+}
+
+#[derive(Debug, Args)]
+struct SeedArgs {
+    /// Seed name (from src-tauri/db/seeds) or a .sql file path
+    #[arg(value_name = "NAME|PATH")]
+    name_or_path: Option<String>,
+
+    /// List available seeds and exit
+    #[arg(long)]
+    list: bool,
+}
+
+#[derive(Debug, Args)]
+struct ConfirmArgs {
+    /// Skip confirmation prompt
+    #[arg(short = 'y', long = "yes")]
+    yes: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut args = std::env::args().skip(1);
+    let cli = Cli::parse();
 
-    let seed_arg = match args.next() {
-        Some(arg) if arg == "-h" || arg == "--help" => {
-            print_usage_and_seeds();
-            return Ok(());
-        }
-        Some(arg) if arg == "--list" => {
-            print_available_seeds();
-            return Ok(());
-        }
-        Some(arg) if arg == "--clear" => {
-            clear_db()?;
-            return Ok(());
-        }
-        Some(arg) if arg == "--clean" => {
-            let mut assume_yes = false;
-            for extra in args {
-                match extra.as_str() {
-                    "-y" => assume_yes = true,
-                    other => bail!("unknown argument for --clean: {other}"),
-                }
-            }
+    match cli.command {
+        Command::Seed(args) => seed_command(args).await,
+        Command::Clear(args) => clear_db(args.yes),
+        Command::Clean(args) => clean_db_backups(args.yes),
+    }
+}
 
-            clean_db_backups(assume_yes)?;
-            return Ok(());
-        }
-        Some(arg) => arg,
-        None => {
-            print_usage_and_seeds();
-            bail!("missing seed name (or path)")
-        }
+async fn seed_command(args: SeedArgs) -> Result<()> {
+    if args.list {
+        print_available_seeds();
+        return Ok(());
+    }
+
+    let Some(seed_arg) = args.name_or_path else {
+        print_available_seeds();
+        bail!("missing seed name (or path)")
     };
 
     let seed_path = resolve_seed_path(&seed_arg)?;
@@ -71,25 +97,6 @@ async fn main() -> Result<()> {
     println!("Seed file: {}", seed_path.display());
 
     Ok(())
-}
-
-fn print_usage_and_seeds() {
-    eprintln!(
-        r"Usage:
-  cargo run --manifest-path src-tauri/Cargo.toml --bin db -- <seed-name|path>
-  cargo run --manifest-path src-tauri/Cargo.toml --bin db -- --clear
-  cargo run --manifest-path src-tauri/Cargo.toml --bin db -- --clean [-y]
-
-Examples:
-  bun run db:seed dev
-  bun run db:seed path/to/file.sql
-  bun run db:seed --list
-  bun run db:clear
-  bun run db:clean
-  bun run db:clean --y
-"
-    );
-    print_available_seeds();
 }
 
 fn print_available_seeds() {
@@ -212,8 +219,20 @@ fn user_local_data_dir() -> Result<PathBuf> {
     }
 }
 
-fn clear_db() -> Result<()> {
+fn clear_db(assume_yes: bool) -> Result<()> {
     let db_path = resolve_db_path()?;
+
+    if !assume_yes {
+        println!("Database: {}", db_path.display());
+        println!("This will move any existing database files to timestamped .bak backups.");
+        println!();
+
+        if !confirm_default_yes("Clear the database?")? {
+            println!("Aborted; database was not cleared.");
+            return Ok(());
+        }
+    }
+
     let ts = timestamp_ms();
     backup_db_files(&db_path, &ts)?;
     Ok(())
@@ -269,15 +288,7 @@ fn clean_db_backups(assume_yes: bool) -> Result<()> {
 
     if !assume_yes {
         println!();
-        print!("Delete these backup files? [Y/n] ");
-        io::stdout().flush().context("flush stdout")?;
-
-        let mut input = String::new();
-        io::stdin()
-            .read_line(&mut input)
-            .context("read confirmation from stdin")?;
-        let input = input.trim().to_ascii_lowercase();
-        if !input.is_empty() && input != "y" {
+        if !confirm_default_yes("Delete these backup files?")? {
             println!("Aborted; no files were deleted.");
             return Ok(());
         }
@@ -351,6 +362,22 @@ fn with_os_suffix(path: &Path, suffix: &str) -> PathBuf {
     let mut s: OsString = path.as_os_str().to_os_string();
     s.push(suffix);
     PathBuf::from(s)
+}
+
+fn confirm_default_yes(question: &str) -> Result<bool> {
+    print!("{question} [Y/n] ");
+    io::stdout().flush().context("flush stdout")?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .context("read confirmation from stdin")?;
+    let input = input.trim().to_ascii_lowercase();
+
+    match input.as_str() {
+        "" | "y" | "yes" => Ok(true),
+        _ => Ok(false),
+    }
 }
 
 async fn connect_pool(db_path: &Path) -> Result<SqlitePool> {
