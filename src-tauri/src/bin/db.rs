@@ -76,9 +76,9 @@ async fn main() -> Result<()> {
 fn print_usage_and_seeds() {
     eprintln!(
         r"Usage:
-  cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- <seed-name|path>
-  cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- --clear
-  cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- --clean [-y]
+  cargo run --manifest-path src-tauri/Cargo.toml --bin db -- <seed-name|path>
+  cargo run --manifest-path src-tauri/Cargo.toml --bin db -- --clear
+  cargo run --manifest-path src-tauri/Cargo.toml --bin db -- --clean [-y]
 
 Examples:
   bun run db:seed dev
