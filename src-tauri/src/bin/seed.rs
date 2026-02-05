@@ -4,6 +4,7 @@ use sqlx::{
     SqlitePool,
 };
 use std::ffi::OsString;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -24,6 +25,18 @@ async fn main() -> Result<()> {
         }
         Some(arg) if arg == "--clear" => {
             clear_db()?;
+            return Ok(());
+        }
+        Some(arg) if arg == "--clean" => {
+            let mut assume_yes = false;
+            for extra in args {
+                match extra.as_str() {
+                    "-y" => assume_yes = true,
+                    other => bail!("unknown argument for --clean: {other}"),
+                }
+            }
+
+            clean_db_backups(assume_yes)?;
             return Ok(());
         }
         Some(arg) => arg,
@@ -65,12 +78,15 @@ fn print_usage_and_seeds() {
         r"Usage:
   cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- <seed-name|path>
   cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- --clear
+  cargo run --manifest-path src-tauri/Cargo.toml --bin seed -- --clean [-y]
 
 Examples:
   bun run db:seed dev
   bun run db:seed path/to/file.sql
   bun run db:seed --list
   bun run db:clear
+  bun run db:clean
+  bun run db:clean --y
 "
     );
     print_available_seeds();
@@ -95,7 +111,11 @@ fn list_seed_names() -> Result<Vec<String>> {
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("sql") {
+        let ext_is_sql = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("sql"));
+        if !ext_is_sql {
             continue;
         }
         if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
@@ -112,7 +132,11 @@ fn resolve_seed_path(seed_arg: &str) -> Result<PathBuf> {
         return Ok(as_path);
     }
 
-    let file = if seed_arg.ends_with(".sql") {
+    let has_sql_ext = seed_arg
+        .rsplit_once('.')
+        .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("sql"));
+
+    let file = if has_sql_ext {
         seed_arg.to_string()
     } else {
         format!("{seed_arg}.sql")
@@ -131,7 +155,9 @@ fn resolve_seed_path(seed_arg: &str) -> Result<PathBuf> {
         if !seeds.is_empty() {
             msg.push_str("\n\nAvailable seeds:\n");
             for s in seeds {
-                msg.push_str(&format!("  - {s}\n"));
+                msg.push_str("  - ");
+                msg.push_str(&s);
+                msg.push('\n');
             }
         }
     }
@@ -139,11 +165,11 @@ fn resolve_seed_path(seed_arg: &str) -> Result<PathBuf> {
 }
 
 fn resolve_db_path() -> Result<PathBuf> {
-    // Mirror `BaseDirectory::AppLocalData`:
-    //   app_local_data_dir = local_data_dir / bundle_identifier
-    // and then `resolve(DB_FILENAME, BaseDirectory::AppLocalData)`.
     let bundle_id = read_bundle_identifier()?;
-    Ok(user_local_data_dir()?.join(bundle_id).join(DB_FILENAME))
+    Ok(user_local_data_dir()?
+        .join(bundle_id)
+        .join("db")
+        .join(DB_FILENAME))
 }
 
 fn read_bundle_identifier() -> Result<String> {
@@ -164,24 +190,25 @@ fn user_local_data_dir() -> Result<PathBuf> {
     {
         let base =
             std::env::var_os("LOCALAPPDATA").ok_or_else(|| anyhow!("LOCALAPPDATA is not set"))?;
-        return Ok(PathBuf::from(base));
+        Ok(PathBuf::from(base))
     }
 
     #[cfg(target_os = "macos")]
     {
         let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
-        return Ok(PathBuf::from(home)
+        Ok(PathBuf::from(home)
             .join("Library")
-            .join("Application Support"));
+            .join("Application Support"))
     }
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         if let Some(base) = std::env::var_os("XDG_DATA_HOME") {
-            return Ok(PathBuf::from(base));
+            Ok(PathBuf::from(base))
+        } else {
+            let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
+            Ok(PathBuf::from(home).join(".local").join("share"))
         }
-        let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
-        return Ok(PathBuf::from(home).join(".local").join("share"));
     }
 }
 
@@ -189,6 +216,80 @@ fn clear_db() -> Result<()> {
     let db_path = resolve_db_path()?;
     let ts = timestamp_ms();
     backup_db_files(&db_path, &ts)?;
+    Ok(())
+}
+
+fn clean_db_backups(assume_yes: bool) -> Result<()> {
+    let db_path = resolve_db_path()?;
+    let dir = db_path
+        .parent()
+        .ok_or_else(|| anyhow!("db path has no parent dir: {}", db_path.display()))?;
+
+    if !dir.exists() {
+        println!("No database backup files found in {}", dir.display());
+        return Ok(());
+    }
+
+    let mut backups = Vec::<PathBuf>::new();
+    let entries = std::fs::read_dir(dir).with_context(|| format!("read dir {}", dir.display()))?;
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(file_name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let ext_is_bak = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("bak"));
+        if !file_name.starts_with(DB_FILENAME) || !ext_is_bak {
+            continue;
+        }
+        backups.push(path);
+    }
+
+    backups.sort();
+
+    if backups.is_empty() {
+        println!("No database backup files found in {}", dir.display());
+        return Ok(());
+    }
+
+    println!(
+        "Found {} database backup file(s) in {}:",
+        backups.len(),
+        dir.display()
+    );
+    for path in &backups {
+        println!("  - {}", path.display());
+    }
+
+    if !assume_yes {
+        println!();
+        print!("Delete these backup files? [Y/n] ");
+        io::stdout().flush().context("flush stdout")?;
+
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .context("read confirmation from stdin")?;
+        let input = input.trim().to_ascii_lowercase();
+        if !input.is_empty() && input != "y" {
+            println!("Aborted; no files were deleted.");
+            return Ok(());
+        }
+    }
+
+    let mut deleted = 0usize;
+    for path in backups {
+        std::fs::remove_file(&path).with_context(|| format!("remove file {}", path.display()))?;
+        deleted += 1;
+    }
+
+    println!("Deleted {deleted} backup file(s).");
     Ok(())
 }
 

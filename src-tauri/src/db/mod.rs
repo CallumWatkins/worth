@@ -12,7 +12,7 @@ use tauri::Manager;
 pub async fn init_pool(app: &tauri::AppHandle) -> tauri::Result<SqlitePool> {
     let db_path: PathBuf = app
         .path()
-        .resolve("worth.sqlite", BaseDirectory::AppLocalData)?;
+        .resolve("db/worth.sqlite", BaseDirectory::AppLocalData)?;
 
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)?;
