@@ -4,6 +4,7 @@
     "bradlc.vscode-tailwindcss",
     "tamasfe.even-better-toml",
     "rust-lang.rust-analyzer",
-    "vue.volar"
+    "vue.volar",
+    "renesaarsoo.sql-formatter-vsc"
   ]
 }

@@ -40,5 +40,15 @@
     "jsonc",
     "yaml",
     "toml"
-  ]
+  ],
+  "[sql]": {
+    "editor.defaultFormatter": "ReneSaarsoo.sql-formatter-vsc",
+    "editor.formatOnSave": true
+  },
+  "SQL-Formatter-VSCode.dataTypeCase": "upper",
+  "SQL-Formatter-VSCode.functionCase": "upper",
+  "SQL-Formatter-VSCode.identifierCase": "lower",
+  "SQL-Formatter-VSCode.keywordCase": "upper",
+  "SQL-Formatter-VSCode.indentStyle": "standard",
+  "SQL-Formatter-VSCode.dialect": "sqlite"
 }
