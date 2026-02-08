@@ -152,8 +152,11 @@
 
 <script lang="ts" setup>
 import type { AccountTypeName } from "~/bindings";
+
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, proxyRefs, watchEffect } from "vue";
+
+import { ACCOUNT_TYPE_META, accountTypeMetaLoose } from "~/utils/account-type-meta";
 
 const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
@@ -318,17 +321,6 @@ const balanceOverTimeOption = computed<ECOption>(() => {
   };
 });
 
-const TYPE_META = {
-  current: { label: "Current", color: "#3b82f6", glow: "rgba(59, 130, 246, 0.55)", glowEmphasis: "rgba(59, 130, 246, 0.85)" },
-  savings: { label: "Savings", color: "#22c55e", glow: "rgba(34, 197, 94, 0.55)", glowEmphasis: "rgba(34, 197, 94, 0.85)" },
-  credit_card: { label: "Credit card", color: "#ef4444", glow: "rgba(239, 68, 68, 0.55)", glowEmphasis: "rgba(239, 68, 68, 0.85)" },
-  isa: { label: "ISA", color: "#f97316", glow: "rgba(249, 115, 22, 0.55)", glowEmphasis: "rgba(249, 115, 22, 0.85)" },
-  investment: { label: "Investment", color: "#a855f7", glow: "rgba(168, 85, 247, 0.55)", glowEmphasis: "rgba(168, 85, 247, 0.85)" },
-  pension: { label: "Pension", color: "#db2777", glow: "rgba(219, 39, 119, 0.55)", glowEmphasis: "rgba(219, 39, 119, 0.85)" },
-  cash: { label: "Cash", color: "#eab308", glow: "rgba(234, 179, 8, 0.55)", glowEmphasis: "rgba(234, 179, 8, 0.85)" },
-  loan: { label: "Loan", color: "#14b8a6", glow: "rgba(20, 184, 166, 0.55)", glowEmphasis: "rgba(20, 184, 166, 0.85)" }
-} as const satisfies Record<AccountTypeName, { label: string, color: string, glow: string, glowEmphasis: string }>;
-
 interface AllocationDatum {
   accountType: AccountTypeName
   value: number
@@ -340,7 +332,7 @@ interface AllocationDatum {
 const allocationData = computed<AllocationDatum[]>(() => {
   const rows = dashboardQuery.data?.allocation_by_type ?? [];
   return rows.map((r) => {
-    const meta = TYPE_META[r.account_type];
+    const meta = ACCOUNT_TYPE_META[r.account_type];
     return {
       accountType: r.account_type,
       value: r.balance_minor / 100,
@@ -393,7 +385,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         color: "#a3a3a3"
       },
       formatter: (kind: string) => {
-        const meta = TYPE_META[kind as AccountTypeName];
+        const meta = accountTypeMetaLoose(kind);
         const label = meta?.label ?? kind;
         return `${label}  ${percentByKind[kind] ?? 0}%`;
       }

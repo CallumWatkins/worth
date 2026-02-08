@@ -227,6 +227,8 @@ import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 import { h, proxyRefs, resolveComponent } from "vue";
 
+import { accountTypeBadgeClass, accountTypeLabel, accountTypeLineColor } from "~/utils/account-type-meta";
+
 type Account = AccountDto;
 
 const UButton = resolveComponent("UButton");
@@ -292,51 +294,6 @@ const sorting = ref([
     desc: false
   }
 ]);
-
-const ACCOUNT_TYPE_LABEL: Record<AccountTypeName, string> = {
-  current: "Current",
-  savings: "Savings",
-  credit_card: "Credit card",
-  isa: "ISA",
-  investment: "Investment",
-  pension: "Pension",
-  cash: "Cash",
-  loan: "Loan"
-};
-
-function accountTypeLabel(kind: AccountTypeName) {
-  return ACCOUNT_TYPE_LABEL[kind] ?? kind;
-}
-
-const ACCOUNT_TYPE_BADGE_CLASS: Record<AccountTypeName, string> = {
-  current: "bg-[#3B82F6]/20 text-[#93C5FD] ring-[#3B82F6]/45",
-  savings: "bg-[#16A34A]/15 text-[#4ADE80] ring-[#16A34A]/35",
-  credit_card: "bg-[#DC2626]/15 text-[#FCA5A5] ring-[#DC2626]/35",
-  isa: "bg-[#EA580C]/15 text-[#FDBA74] ring-[#EA580C]/35",
-  investment: "bg-[#7C3AED]/15 text-[#C4B5FD] ring-[#7C3AED]/35",
-  pension: "bg-[#DB2777]/15 text-[#FDA4AF] ring-[#DB2777]/35",
-  cash: "bg-[#CA8A04]/15 text-[#FDE047] ring-[#CA8A04]/35",
-  loan: "bg-[#0F766E]/15 text-[#5EEAD4] ring-[#0F766E]/35"
-};
-
-function accountTypeBadgeClass(kind: AccountTypeName) {
-  return `ring ring-inset ${ACCOUNT_TYPE_BADGE_CLASS[kind] ?? "bg-elevated text-default ring-accented"}`;
-}
-
-const ACCOUNT_TYPE_LINE_COLOR: Record<AccountTypeName, string> = {
-  current: "#93C5FD",
-  savings: "#4ADE80",
-  credit_card: "#FCA5A5",
-  isa: "#FDBA74",
-  investment: "#C4B5FD",
-  pension: "#FDA4AF",
-  cash: "#FDE047",
-  loan: "#5EEAD4"
-};
-
-function accountTypeLineColor(kind: AccountTypeName) {
-  return ACCOUNT_TYPE_LINE_COLOR[kind] ?? "#94A3B8";
-}
 
 const gbp = new Intl.NumberFormat("en-GB", {
   style: "currency",
