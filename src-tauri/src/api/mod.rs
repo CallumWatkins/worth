@@ -479,7 +479,7 @@ fn values_for_period(
     let slice_len = points.saturating_sub(missing);
     let mut out = Vec::with_capacity(points);
 
-    out.extend(std::iter::repeat(None).take(missing));
+    out.extend(std::iter::repeat_n(None, missing));
     out.extend(
         history_minor
             .iter()
