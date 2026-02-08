@@ -35,14 +35,14 @@ bun install
 # desktop dev (Nuxt dev server + Tauri)
 bun run tauri:dev
 
-# frontend-only dev (browser)
-bun run dev
-
 # build desktop bundle
 bun run tauri:build
 
-# lint (auto-fix)
-bun run lint
+# typecheck
+bun run check:<ts|rust|all>
+
+# lint
+bun run lint:<ts|rust|all>[:fix]
 ```
 
 - **Prereqs**: install the OS toolchain per [Tauri prerequisites](https://tauri.app/start/prerequisites).
