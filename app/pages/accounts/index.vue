@@ -77,6 +77,12 @@
       </template>
     </UPageHeader>
     <UPageBody class="space-y-6">
+      <UAlert
+        v-if="accountsQuery.isError"
+        color="error"
+        variant="subtle"
+        :title="accountsQuery.error!.message ?? 'Failed to load accounts'"
+      />
       <UTable
         v-model:sorting="sorting"
         v-model:column-visibility="columnVisibility"
@@ -128,7 +134,7 @@
                 {{ row.original.name }}
               </span>
               <UBadge
-                v-if="row.original.currentBalance === 0"
+                v-if="row.original.latest_balance_minor === 0"
                 variant="subtle"
                 color="neutral"
               >
@@ -141,7 +147,7 @@
         <template #institution-cell="{ row }">
           <span v-if="row.getIsGrouped()" />
           <span v-else>
-            {{ row.original.institution }}
+            {{ row.original.institution.name }}
           </span>
         </template>
 
@@ -151,18 +157,18 @@
             v-else
             variant="subtle"
             color="neutral"
-            :class="accountTypeBadgeClass(row.original.type)"
+            :class="accountTypeBadgeClass(row.original.account_type.name)"
           >
-            {{ accountTypeLabel(row.original.type) }}
+            {{ accountTypeLabel(row.original.account_type.name) }}
           </UBadge>
         </template>
 
         <template #firstChange-cell="{ row }">
           <span v-if="row.getIsGrouped()">
-            {{ formatShortDayNumber(getGroupedFirstChange(row)) }}
+            {{ formatShortDate(getGroupedFirstChange(row)) }}
           </span>
           <span v-else>
-            {{ formatShortDayNumber(accountHistoryById[row.original.id]?.startDay) }}
+            {{ formatShortDate(row.original.first_snapshot_date) }}
           </span>
         </template>
 
@@ -171,7 +177,7 @@
             {{ formatShortDate(getGroupedLastChange(row)) }}
           </span>
           <span v-else>
-            {{ formatShortDate(row.original.lastBalanceChangeDate) }}
+            {{ formatShortDate(row.original.latest_snapshot_date) }}
           </span>
         </template>
 
@@ -204,7 +210,7 @@
             </div>
           </div>
           <span v-else class="font-medium">
-            {{ formatGBP(row.original.currentBalance) }}
+            {{ formatGBP(row.original.latest_balance_minor) }}
           </span>
         </template>
       </UTable>
@@ -215,30 +221,13 @@
 <script lang="ts" setup>
 import type { SelectItem, TableColumn, TableRow } from "@nuxt/ui";
 import type { GroupingOptions } from "@tanstack/vue-table";
+import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/bindings";
+
+import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
-import { h, resolveComponent } from "vue";
+import { h, proxyRefs, resolveComponent } from "vue";
 
-type AccountType
-  = "current"
-    | "savings"
-    | "stocks"
-    | "isa"
-    | "pension";
-
-type ActivityPeriod
-  = "1W"
-    | "1M"
-    | "3M"
-    | "6M";
-
-interface Account {
-  id: string
-  name: string
-  institution: string
-  type: AccountType
-  currentBalance: number
-  lastBalanceChangeDate: string // YYYY-MM-DD
-}
+type Account = AccountDto;
 
 const UButton = resolveComponent("UButton");
 
@@ -260,87 +249,21 @@ const activityPeriodItems = ref<SelectItem[]>([
 
 const activityPeriod = ref<ActivityPeriod>("1M");
 
-const rawAccounts = ref<Account[]>([
-  {
-    id: "acc_01",
-    name: "Everyday Current",
-    institution: "Nationwide",
-    type: "current",
-    currentBalance: 2435.12,
-    lastBalanceChangeDate: "2026-01-21"
-  },
-  {
-    id: "acc_02",
-    name: "Bills Pot",
-    institution: "Monzo",
-    type: "current",
-    currentBalance: 0,
-    lastBalanceChangeDate: "2025-12-18"
-  },
-  {
-    id: "acc_03",
-    name: "Rainy Day Savings",
-    institution: "Nationwide",
-    type: "savings",
-    currentBalance: 13250.0,
-    lastBalanceChangeDate: "2026-01-12"
-  },
-  {
-    id: "acc_04",
-    name: "Emergency Fund",
-    institution: "Nationwide",
-    type: "savings",
-    currentBalance: 8000.0,
-    lastBalanceChangeDate: "2025-11-04"
-  },
-  {
-    id: "acc_05",
-    name: "Stocks & Shares ISA",
-    institution: "Trading 212",
-    type: "isa",
-    currentBalance: 45890.42,
-    lastBalanceChangeDate: "2026-01-23"
-  },
-  {
-    id: "acc_06",
-    name: "General Investment Account",
-    institution: "Trading 212",
-    type: "stocks",
-    currentBalance: 12110.7,
-    lastBalanceChangeDate: "2026-01-20"
-  },
-  {
-    id: "acc_07",
-    name: "Workplace Pension",
-    institution: "Aviva",
-    type: "pension",
-    currentBalance: 98025.33,
-    lastBalanceChangeDate: "2026-01-02"
-  },
-  {
-    id: "acc_08",
-    name: "Holiday Savings",
-    institution: "Starling",
-    type: "savings",
-    currentBalance: 1420.0,
-    lastBalanceChangeDate: "2025-12-29"
-  },
-  {
-    id: "acc_09",
-    name: "Cash ISA (Legacy)",
-    institution: "HSBC",
-    type: "isa",
-    currentBalance: 0,
-    lastBalanceChangeDate: "2024-08-12"
-  }
-]);
+const api = useApi();
+
+const accountsQuery = proxyRefs(useQuery({
+  queryKey: ["accounts", "list"],
+  queryFn: api.accounts.list
+}));
+
+const rawAccounts = computed<Account[]>(() => accountsQuery.data ?? []);
 
 const accountsData = computed(() => {
   if (showEmpty.value) {
     return rawAccounts.value;
   }
 
-  return rawAccounts.value.filter((a) => a.currentBalance !== 0);
+  return rawAccounts.value.filter((a) => a.latest_balance_minor !== 0);
 });
 
 const grouping = computed(() => {
@@ -370,40 +293,49 @@ const sorting = ref([
   }
 ]);
 
-const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = {
+const ACCOUNT_TYPE_LABEL: Record<AccountTypeName, string> = {
   current: "Current",
   savings: "Savings",
-  stocks: "Stocks",
+  credit_card: "Credit card",
   isa: "ISA",
-  pension: "Pension"
+  investment: "Investment",
+  pension: "Pension",
+  cash: "Cash",
+  loan: "Loan"
 };
 
-function accountTypeLabel(type: AccountType) {
-  return ACCOUNT_TYPE_LABEL[type] ?? type;
+function accountTypeLabel(kind: AccountTypeName) {
+  return ACCOUNT_TYPE_LABEL[kind] ?? kind;
 }
 
-const ACCOUNT_TYPE_BADGE_CLASS: Record<AccountType, string> = {
+const ACCOUNT_TYPE_BADGE_CLASS: Record<AccountTypeName, string> = {
   current: "bg-[#3B82F6]/20 text-[#93C5FD] ring-[#3B82F6]/45",
   savings: "bg-[#16A34A]/15 text-[#4ADE80] ring-[#16A34A]/35",
-  stocks: "bg-[#7C3AED]/15 text-[#C4B5FD] ring-[#7C3AED]/35",
+  credit_card: "bg-[#DC2626]/15 text-[#FCA5A5] ring-[#DC2626]/35",
   isa: "bg-[#EA580C]/15 text-[#FDBA74] ring-[#EA580C]/35",
-  pension: "bg-[#DB2777]/15 text-[#FDA4AF] ring-[#DB2777]/35"
+  investment: "bg-[#7C3AED]/15 text-[#C4B5FD] ring-[#7C3AED]/35",
+  pension: "bg-[#DB2777]/15 text-[#FDA4AF] ring-[#DB2777]/35",
+  cash: "bg-[#CA8A04]/15 text-[#FDE047] ring-[#CA8A04]/35",
+  loan: "bg-[#0F766E]/15 text-[#5EEAD4] ring-[#0F766E]/35"
 };
 
-function accountTypeBadgeClass(type: AccountType) {
-  return `ring ring-inset ${ACCOUNT_TYPE_BADGE_CLASS[type] ?? "bg-elevated text-default ring-accented"}`;
+function accountTypeBadgeClass(kind: AccountTypeName) {
+  return `ring ring-inset ${ACCOUNT_TYPE_BADGE_CLASS[kind] ?? "bg-elevated text-default ring-accented"}`;
 }
 
-const ACCOUNT_TYPE_LINE_COLOR: Record<AccountType, string> = {
+const ACCOUNT_TYPE_LINE_COLOR: Record<AccountTypeName, string> = {
   current: "#93C5FD",
   savings: "#4ADE80",
-  stocks: "#C4B5FD",
+  credit_card: "#FCA5A5",
   isa: "#FDBA74",
-  pension: "#FDA4AF"
+  investment: "#C4B5FD",
+  pension: "#FDA4AF",
+  cash: "#FDE047",
+  loan: "#5EEAD4"
 };
 
-function accountTypeLineColor(type: AccountType) {
-  return ACCOUNT_TYPE_LINE_COLOR[type] ?? "#94A3B8";
+function accountTypeLineColor(kind: AccountTypeName) {
+  return ACCOUNT_TYPE_LINE_COLOR[kind] ?? "#94A3B8";
 }
 
 const gbp = new Intl.NumberFormat("en-GB", {
@@ -411,144 +343,16 @@ const gbp = new Intl.NumberFormat("en-GB", {
   currency: "GBP"
 });
 
-function formatGBP(value: number) {
-  return gbp.format(value);
+function formatGBP(minor: number) {
+  return gbp.format(minor / 100);
 }
-
-interface BalanceHistory {
-  startDay: number
-  balances: number[]
-}
-
-interface ActivityData {
-  values: Array<number | null>
-  delta: number
-}
-
-const MS_PER_DAY = 86_400_000;
-
-function getTodayDayNumber() {
-  const now = new Date();
-  return Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / MS_PER_DAY);
-}
-
-const todayDay = getTodayDayNumber();
-
-function dayNumberToIso(dayNumber: number) {
-  return new Date(dayNumber * MS_PER_DAY).toISOString().slice(0, 10);
-}
-
-function formatShortDayNumber(dayNumber?: number) {
-  if (typeof dayNumber !== "number" || !Number.isFinite(dayNumber)) {
-    return "";
-  }
-
-  return formatShortDate(dayNumberToIso(dayNumber));
-}
-
-function hashStringToSeed(str: string) {
-  // FNV-1a 32-bit
-  let hash = 2_166_136_261;
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return hash >>> 0;
-}
-
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function randInt(rng: () => number, min: number, max: number) {
-  return Math.floor(rng() * (max - min + 1)) + min;
-}
-
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
-
-const ACTIVITY_PERIOD_POINTS: Record<ActivityPeriod, number> = {
-  "1W": 7,
-  "1M": 30,
-  "3M": 90,
-  "6M": 180
-};
-
-const HISTORY_RANGE_BY_TYPE: Record<AccountType, { min: number, max: number }> = {
-  current: { min: 7, max: 120 },
-  savings: { min: 14, max: 220 },
-  stocks: { min: 14, max: 220 },
-  isa: { min: 30, max: 220 },
-  pension: { min: 90, max: 220 }
-};
-
-const VOLATILITY_BY_TYPE: Record<AccountType, number> = {
-  current: 0.02,
-  savings: 0.006,
-  stocks: 0.03,
-  isa: 0.02,
-  pension: 0.01
-};
-
-const accountHistoryById = computed<Record<string, BalanceHistory>>(() => {
-  const out: Record<string, BalanceHistory> = {};
-
-  for (const account of rawAccounts.value) {
-    const seed = hashStringToSeed(account.id);
-    const rng = mulberry32(seed);
-
-    const { min, max } = HISTORY_RANGE_BY_TYPE[account.type] ?? { min: 14, max: 180 };
-    const daysAgo = randInt(rng, min, max);
-
-    const startDay = todayDay - daysAgo;
-    const points = daysAgo + 1;
-
-    const balances = Array.from({ length: points }, () => 0);
-    const scale = Math.max(Math.abs(account.currentBalance), 1000);
-    const volatility = VOLATILITY_BY_TYPE[account.type] ?? 0.01;
-
-    balances[points - 1] = round2(account.currentBalance);
-
-    for (let i = points - 2; i >= 0; i--) {
-      const noise = (rng() - 0.5) * 2;
-      const delta = noise * volatility * scale;
-      const next = balances[i + 1] ?? 0;
-      balances[i] = round2(Math.max(0, next - delta));
-    }
-
-    out[account.id] = { startDay, balances };
-  }
-
-  return out;
-});
 
 function getGroupedFirstChange(row: TableRow<Account>) {
-  return Number(row.getValue("firstChange") ?? Number.NaN);
+  return String(row.getValue("firstChange") ?? "");
 }
 
-function valuesForPeriod(history: BalanceHistory, periodStartDay: number, points: number) {
-  const startIndex = periodStartDay - history.startDay;
-  const missing = startIndex < 0 ? -startIndex : 0;
-  const sliceStart = startIndex < 0 ? 0 : startIndex;
-  const sliceLen = Math.max(0, points - missing);
-
-  const values: Array<number | null> = [];
-  for (let i = 0; i < missing; i++) {
-    values.push(null);
-  }
-  for (let i = 0; i < sliceLen; i++) {
-    values.push(history.balances[sliceStart + i] ?? null);
-  }
-
-  return values;
+function activityValues(account: Account, period: ActivityPeriod): Array<number | null> {
+  return account.activity_by_period?.[period]?.values ?? [];
 }
 
 function deltaFromValues(values: Array<number | null>) {
@@ -561,28 +365,6 @@ function deltaFromValues(values: Array<number | null>) {
 
   return last - first;
 }
-
-const activityByAccountId = computed<Record<string, ActivityData>>(() => {
-  const points = ACTIVITY_PERIOD_POINTS[activityPeriod.value];
-  const periodStartDay = todayDay - (points - 1);
-  const histories = accountHistoryById.value;
-
-  const out: Record<string, ActivityData> = {};
-  for (const account of rawAccounts.value) {
-    const history = histories[account.id];
-    if (!history) {
-      continue;
-    }
-
-    const values = valuesForPeriod(history, periodStartDay, points);
-    out[account.id] = {
-      values,
-      delta: deltaFromValues(values)
-    };
-  }
-
-  return out;
-});
 
 function leafAccountsFromRow(row: TableRow<Account>) {
   const out: Account[] = [];
@@ -616,7 +398,7 @@ function aggregateSeries(seriesList: Array<Array<number | null>>) {
       }
     }
 
-    out[i] = hasValue ? round2(sum) : null;
+    out[i] = hasValue ? sum : null;
   }
 
   return out;
@@ -624,25 +406,25 @@ function aggregateSeries(seriesList: Array<Array<number | null>>) {
 
 function getRowActivityValues(row: TableRow<Account>) {
   if (!row.getIsGrouped()) {
-    return activityByAccountId.value[row.original.id]?.values ?? [];
+    return activityValues(row.original, activityPeriod.value);
   }
 
   const accounts = leafAccountsFromRow(row);
   const seriesList = accounts
-    .map((a) => activityByAccountId.value[a.id]?.values)
-    .filter(Boolean) as Array<Array<number | null>>;
+    .map((a) => activityValues(a, activityPeriod.value))
+    .filter((v) => v.length > 0) as Array<Array<number | null>>;
 
   return aggregateSeries(seriesList);
 }
 
 function getRowActivityColor(row: TableRow<Account>) {
   if (!row.getIsGrouped()) {
-    return accountTypeLineColor(row.original.type);
+    return accountTypeLineColor(row.original.account_type.name);
   }
 
   const groupingId = row.groupingColumnId as string | undefined;
   if (groupingId === "type_group") {
-    return accountTypeLineColor(row.getValue("type_group") as AccountType);
+    return accountTypeLineColor(row.getValue("type_group") as AccountTypeName);
   }
 
   // Institution (or unknown) groups: neutral line
@@ -727,7 +509,7 @@ function getGroupLabel(row: TableRow<Account>) {
     return String(row.getValue("institution_group") ?? "");
   }
   if (id === "type_group") {
-    return accountTypeLabel(row.getValue("type_group") as AccountType);
+    return accountTypeLabel(row.getValue("type_group") as AccountTypeName);
   }
   return String(id ? row.getValue(id) : "");
 }
@@ -768,12 +550,12 @@ function sortableHeader(column: any, label: string) {
 const columns = computed<TableColumn<Account>[]>(() => [
   {
     id: "institution_group",
-    accessorKey: "institution",
+    accessorFn: (row) => row.institution.name,
     enableSorting: false
   },
   {
     id: "type_group",
-    accessorKey: "type",
+    accessorFn: (row) => row.account_type.name,
     enableSorting: false
   },
   {
@@ -781,38 +563,43 @@ const columns = computed<TableColumn<Account>[]>(() => [
     header: ({ column }) => sortableHeader(column, "Name")
   },
   {
-    accessorKey: "institution",
+    id: "institution",
+    accessorFn: (row) => row.institution.name,
     header: ({ column }) => sortableHeader(column, "Institution")
   },
   {
-    accessorKey: "type",
+    id: "type",
+    accessorFn: (row) => row.account_type.name,
     header: ({ column }) => sortableHeader(column, "Type")
   },
   {
     id: "firstChange",
     header: ({ column }) => sortableHeader(column, "First change"),
-    accessorFn: (row) => accountHistoryById.value[row.id]?.startDay ?? todayDay,
+    accessorKey: "first_snapshot_date",
     aggregationFn: (_columnId, leafRows: any[]) => {
-      const days = leafRows
-        .map((r) => accountHistoryById.value[r?.original?.id]?.startDay)
-        .filter((d): d is number => typeof d === "number");
+      const dates = leafRows
+        .map((r) => String(r?.original?.first_snapshot_date ?? ""))
+        .filter(Boolean);
 
-      return days.length ? Math.min(...days) : todayDay;
+      return dates.length
+        ? dates.reduce((min: string, d: string) => (d < min ? d : min), dates[0]!)
+        : "";
     }
   },
   {
     id: "lastChange",
-    accessorKey: "lastBalanceChangeDate",
+    accessorKey: "latest_snapshot_date",
     header: ({ column }) => sortableHeader(column, "Last change"),
     aggregationFn: "max"
   },
   {
     id: "activity",
     header: ({ column }) => sortableHeader(column, `Activity (${activityPeriod.value})`),
-    accessorFn: (row) => activityByAccountId.value[row.id]?.delta ?? 0,
+    accessorFn: (row) => row.activity_by_period?.[activityPeriod.value]?.delta_minor ?? 0,
     aggregationFn: (_columnId, leafRows: any[]) => {
+      const period = activityPeriod.value;
       const seriesList = leafRows
-        .map((r) => activityByAccountId.value[r?.original?.id]?.values)
+        .map((r) => r?.original?.activity_by_period?.[period]?.values)
         .filter(Boolean) as Array<Array<number | null>>;
 
       return deltaFromValues(aggregateSeries(seriesList));
@@ -826,7 +613,7 @@ const columns = computed<TableColumn<Account>[]>(() => [
   },
   {
     id: "balance",
-    accessorKey: "currentBalance",
+    accessorKey: "latest_balance_minor",
     header: ({ column }) => sortableHeader(column, "Balance"),
     aggregationFn: "sum",
     meta: {

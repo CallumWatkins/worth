@@ -5,6 +5,22 @@
 
 
 export const commands = {
+async accountsList() : Promise<Result<AccountDto[], ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("accounts_list") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async dashboardGet() : Promise<Result<DashboardDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("dashboard_get") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async hello(name: string) : Promise<Result<string, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("hello", { name }) };
@@ -25,7 +41,16 @@ async hello(name: string) : Promise<Result<string, ApiError>> {
 
 /** user-defined types **/
 
+export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: string; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string; latest_snapshot_date: string; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
+export type AccountTypeDto = { id: number; name: AccountTypeName }
+export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan"
+export type ActivityDataDto = { values: (number | null)[]; delta_minor: number }
+export type ActivityPeriod = "1W" | "1M" | "3M" | "6M"
 export type ApiError = "Db" | "NotFound" | { Validation: string }
+export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
+export type DashboardBalancePointDto = { date: string; balance_minor: number }
+export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; allocation_by_type: DashboardAllocationDto[]; balance_over_time: DashboardBalancePointDto[] }
+export type InstitutionDto = { id: number; name: string }
 
 /** tauri-specta globals **/
 

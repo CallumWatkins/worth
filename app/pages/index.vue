@@ -9,6 +9,12 @@
       }"
     />
     <UPageBody class="space-y-8">
+      <UAlert
+        v-if="dashboardQuery.isError"
+        color="error"
+        variant="subtle"
+        :title="dashboardQuery.error!.message ?? 'Failed to load dashboard'"
+      />
       <UPageCard
         title="Total Current Balance"
         orientation="horizontal"
@@ -22,10 +28,10 @@
       >
         <template #description>
           <div>
-            <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">£245,890.12</span>
+            <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ totalBalanceLabel }}</span>
             <span class="inline-flex gap-1 leading-none">
-              <UIcon name="i-lucide-arrow-up" class="size-4 text-success" />
-              <span class="text-success">2.4%</span>
+              <UIcon :name="changeIcon" class="size-4" :class="[changeClass]" />
+              <span :class="changeClass">{{ changePctLabel }}</span>
               <span class="text-muted text-xs self">vs last month</span>
             </span>
           </div>
@@ -33,17 +39,17 @@
         <div class="flex gap-4">
           <UPageCard
             title="Monthly Yield"
-            description="+£1,240.82"
+            :description="monthlyYieldLabel"
             variant="subtle"
             :ui="{
               title: 'text-muted text-xs whitespace-nowrap',
-              description: 'text-xl font-bold text-success whitespace-nowrap'
+              description: monthlyYieldDescriptionClass
             }"
           />
           <UPageCard
             to="/accounts"
             title="Active Accounts"
-            description="12"
+            :description="activeAccountsLabel"
             variant="subtle"
             :ui="{
               title: 'text-muted text-xs whitespace-nowrap',
@@ -145,11 +151,20 @@
 </template>
 
 <script lang="ts" setup>
-import { useMutation } from "@tanstack/vue-query";
-import { proxyRefs } from "vue";
+import type { AccountTypeName } from "~/bindings";
+import { useMutation, useQuery } from "@tanstack/vue-query";
+import { computed, proxyRefs, watchEffect } from "vue";
 
-const formatIsoDate = (d: Date) => d.toISOString().slice(0, 10);
 const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+const gbp = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP"
+});
+
+const formatGBPMinor = (minor: number) => {
+  return gbp.format(minor / 100);
+};
 
 const formatShortGBP = (value: number) => {
   const abs = Math.abs(value);
@@ -168,128 +183,191 @@ const darkTooltipBase = {
   extraCssText: "border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); padding: 10px 12px;"
 } as const;
 
-// Daily data for ~6 months (deterministic placeholder)
-const days = 183;
-const today = new Date();
-const dailyDates: string[] = [];
-const dailyValues: number[] = [];
+const api = useApi();
 
-for (let i = days - 1; i >= 0; i--) {
-  const d = new Date(today);
-  d.setDate(d.getDate() - i);
-  dailyDates.push(formatIsoDate(d));
+const dashboardQuery = proxyRefs(useQuery({
+  queryKey: ["dashboard"],
+  queryFn: api.dashboard.get
+}));
 
-  // Smooth-ish upward trend + gentle seasonality (no randomness)
-  const t = (days - 1 - i);
-  const value = 245_000 + t * 35 + Math.sin(t / 9) * 900 + Math.cos(t / 21) * 500;
-  dailyValues.push(Math.round(value * 100) / 100);
-}
+const totalBalanceLabel = computed(() => {
+  const minor = dashboardQuery.data?.total_balance_minor;
+  if (typeof minor !== "number") return "—";
+  return formatGBPMinor(minor);
+});
 
-const balanceOverTimeOption: ECOption = {
-  backgroundColor: "transparent",
-  tooltip: {
-    ...darkTooltipBase,
-    trigger: "axis",
-    axisPointer: {
-      type: "line",
-      lineStyle: { color: "rgba(244, 244, 245, 0.25)" }
-    }
-  },
-  grid: {
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0
-  },
-  xAxis: {
-    type: "category",
-    data: dailyDates,
-    boundaryGap: false,
-    axisTick: { show: false },
-    axisLine: { show: false },
-    splitLine: { show: false },
-    axisLabel: {
-      hideOverlap: true,
-      // show mid-month (e.g. 2026-02-15) as "Feb"
-      interval: (_index: number, value: string) => value.endsWith("-15"),
-      formatter: (value: string) => {
-        const m = Number(value.split("-")[1] ?? 0);
-        return monthShort[m - 1] ?? "";
+const changePct = computed(() => dashboardQuery.data?.change_vs_last_month_pct);
+
+const changeIsPositive = computed(() => (changePct.value ?? 0) >= 0);
+
+const changeClass = computed(() => {
+  if (changePct.value == null) return "text-muted";
+  return changeIsPositive.value ? "text-success" : "text-error";
+});
+
+const changeIcon = computed(() => {
+  if (changePct.value == null) return "i-lucide-minus";
+  return changeIsPositive.value ? "i-lucide-arrow-up" : "i-lucide-arrow-down";
+});
+
+const changePctLabel = computed(() => {
+  if (changePct.value == null) return "—";
+  return `${Math.abs(changePct.value).toFixed(1)}%`;
+});
+
+const monthlyYieldMinor = computed(() => dashboardQuery.data?.monthly_yield_minor);
+
+const monthlyYieldLabel = computed(() => {
+  if (monthlyYieldMinor.value == null) return "—";
+  const sign = monthlyYieldMinor.value >= 0 ? "+" : "-";
+  return `${sign}${formatGBPMinor(Math.abs(monthlyYieldMinor.value))}`;
+});
+
+const monthlyYieldDescriptionClass = computed(() => {
+  if (monthlyYieldMinor.value == null) return "text-xl font-bold text-muted whitespace-nowrap";
+  return `text-xl font-bold ${monthlyYieldMinor.value >= 0 ? "text-success" : "text-error"} whitespace-nowrap`;
+});
+
+const activeAccountsLabel = computed(() => {
+  const n = dashboardQuery.data?.active_accounts;
+  if (typeof n !== "number") return "—";
+  return String(n);
+});
+
+const balanceOverTimeOption = computed<ECOption>(() => {
+  const points = dashboardQuery.data?.balance_over_time ?? [];
+  const dates = points.map((p) => p.date);
+  const values = points.map((p) => p.balance_minor / 100);
+
+  return {
+    backgroundColor: "transparent",
+    tooltip: {
+      ...darkTooltipBase,
+      trigger: "axis",
+      axisPointer: {
+        type: "line",
+        lineStyle: { color: "rgba(244, 244, 245, 0.25)" }
       }
-    }
-  },
-  yAxis: {
-    show: false,
-    scale: true,
-    splitLine: { show: false }
-  },
-  series: [
-    {
-      name: "Balance",
-      type: "line",
-      data: dailyValues,
-      smooth: true,
-      showSymbol: false,
-      lineStyle: {
-        width: 5,
-        color: "#22c55e",
-        shadowBlur: 10,
-        shadowColor: "rgba(34, 197, 94, 0.6)",
-        shadowOffsetX: 0,
-        shadowOffsetY: 0
-      },
-      itemStyle: { color: "#22c55e" },
-      areaStyle: {
-        color: {
-          type: "linear",
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: "rgba(34, 197, 94, 0.35)" },
-            { offset: 1, color: "rgba(34, 197, 94, 0)" }
-          ]
+    },
+    grid: {
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0
+    },
+    xAxis: {
+      type: "category",
+      data: dates,
+      boundaryGap: false,
+      axisTick: { show: false },
+      axisLine: { show: false },
+      splitLine: { show: false },
+      axisLabel: {
+        hideOverlap: true,
+        // show mid-month (e.g. 2026-02-15) as "Feb"
+        interval: (_index: number, value: string) => value.endsWith("-15"),
+        formatter: (value: string) => {
+          const m = Number(value.split("-")[1] ?? 0);
+          return monthShort[m - 1] ?? "";
         }
-      },
-      emphasis: {
-        focus: "series",
+      }
+    },
+    yAxis: {
+      show: false,
+      scale: true,
+      splitLine: { show: false }
+    },
+    series: [
+      {
+        name: "Balance",
+        type: "line",
+        data: values,
+        smooth: true,
+        showSymbol: false,
         lineStyle: {
-          shadowBlur: 14,
-          shadowColor: "rgba(34, 197, 94, 0.85)"
+          width: 5,
+          color: "#22c55e",
+          shadowBlur: 10,
+          shadowColor: "rgba(34, 197, 94, 0.6)",
+          shadowOffsetX: 0,
+          shadowOffsetY: 0
+        },
+        itemStyle: { color: "#22c55e" },
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(34, 197, 94, 0.35)" },
+              { offset: 1, color: "rgba(34, 197, 94, 0)" }
+            ]
+          }
+        },
+        emphasis: {
+          focus: "series",
+          lineStyle: {
+            shadowBlur: 14,
+            shadowColor: "rgba(34, 197, 94, 0.85)"
+          }
         }
       }
-    }
-  ]
-};
+    ]
+  };
+});
+
+const TYPE_META = {
+  current: { label: "Current", color: "#3b82f6", glow: "rgba(59, 130, 246, 0.55)", glowEmphasis: "rgba(59, 130, 246, 0.85)" },
+  savings: { label: "Savings", color: "#22c55e", glow: "rgba(34, 197, 94, 0.55)", glowEmphasis: "rgba(34, 197, 94, 0.85)" },
+  credit_card: { label: "Credit card", color: "#ef4444", glow: "rgba(239, 68, 68, 0.55)", glowEmphasis: "rgba(239, 68, 68, 0.85)" },
+  isa: { label: "ISA", color: "#f97316", glow: "rgba(249, 115, 22, 0.55)", glowEmphasis: "rgba(249, 115, 22, 0.85)" },
+  investment: { label: "Investment", color: "#a855f7", glow: "rgba(168, 85, 247, 0.55)", glowEmphasis: "rgba(168, 85, 247, 0.85)" },
+  pension: { label: "Pension", color: "#db2777", glow: "rgba(219, 39, 119, 0.55)", glowEmphasis: "rgba(219, 39, 119, 0.85)" },
+  cash: { label: "Cash", color: "#eab308", glow: "rgba(234, 179, 8, 0.55)", glowEmphasis: "rgba(234, 179, 8, 0.85)" },
+  loan: { label: "Loan", color: "#14b8a6", glow: "rgba(20, 184, 166, 0.55)", glowEmphasis: "rgba(20, 184, 166, 0.85)" }
+} as const satisfies Record<AccountTypeName, { label: string, color: string, glow: string, glowEmphasis: string }>;
 
 interface AllocationDatum {
-  name: "Current" | "Savings" | "Stocks"
+  accountType: AccountTypeName
   value: number
   color: string
   glow: string
   glowEmphasis: string
 }
 
-const allocationData: AllocationDatum[] = [
-  { name: "Current", value: 72_400, color: "#3b82f6", glow: "rgba(59, 130, 246, 0.55)", glowEmphasis: "rgba(59, 130, 246, 0.85)" },
-  { name: "Savings", value: 128_900, color: "#22c55e", glow: "rgba(34, 197, 94, 0.55)", glowEmphasis: "rgba(34, 197, 94, 0.85)" },
-  { name: "Stocks", value: 44_590, color: "#a855f7", glow: "rgba(168, 85, 247, 0.55)", glowEmphasis: "rgba(168, 85, 247, 0.85)" }
-];
-
-const allocationSelected = ref<Record<AllocationDatum["name"], boolean>>({
-  Current: true,
-  Savings: true,
-  Stocks: true
+const allocationData = computed<AllocationDatum[]>(() => {
+  const rows = dashboardQuery.data?.allocation_by_type ?? [];
+  return rows.map((r) => {
+    const meta = TYPE_META[r.account_type];
+    return {
+      accountType: r.account_type,
+      value: r.balance_minor / 100,
+      color: meta.color,
+      glow: meta.glow,
+      glowEmphasis: meta.glowEmphasis
+    };
+  });
 });
 
-const buildBalanceAllocationOption = (selected: Record<string, boolean>): ECOption => {
-  const totalVisible = allocationData.reduce((sum, d) => sum + (selected[d.name] === false ? 0 : d.value), 0);
-  const percentByName = Object.fromEntries(
-    allocationData.map((d) => {
-      const value = selected[d.name] === false ? 0 : d.value;
+const allocationSelected = ref<Record<string, boolean>>({});
+
+watchEffect(() => {
+  for (const d of allocationData.value) {
+    if (allocationSelected.value[d.accountType] === undefined) {
+      allocationSelected.value[d.accountType] = true;
+    }
+  }
+});
+
+const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: AllocationDatum[]): ECOption => {
+  const totalVisible = data.reduce((sum, d) => sum + (selected[d.accountType] === false ? 0 : d.value), 0);
+  const percentByKind = Object.fromEntries(
+    data.map((d) => {
+      const value = selected[d.accountType] === false ? 0 : d.value;
       const pct = totalVisible > 0 ? Math.round((value / totalVisible) * 100) : 0;
-      return [d.name, pct];
+      return [d.accountType, pct];
     })
   ) as Record<string, number>;
 
@@ -314,7 +392,11 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>): ECOpti
       textStyle: {
         color: "#a3a3a3"
       },
-      formatter: (name: string) => `${name}  ${percentByName[name] ?? 0}%`
+      formatter: (kind: string) => {
+        const meta = TYPE_META[kind as AccountTypeName];
+        const label = meta?.label ?? kind;
+        return `${label}  ${percentByKind[kind] ?? 0}%`;
+      }
     },
     graphic: [
       {
@@ -341,8 +423,8 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>): ECOpti
         avoidLabelOverlap: true,
         label: { show: false },
         labelLine: { show: false },
-        data: allocationData.map((d) => ({
-          name: d.name,
+        data: data.map((d) => ({
+          name: d.accountType,
           value: d.value,
           itemStyle: {
             color: d.color,
@@ -362,19 +444,13 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>): ECOpti
   };
 };
 
-const balanceAllocationOption = ref<ECOption>(buildBalanceAllocationOption(allocationSelected.value));
+const balanceAllocationOption = computed<ECOption>(() => {
+  return buildBalanceAllocationOption(allocationSelected.value, allocationData.value);
+});
 
 const onAllocationLegendSelectChanged = (params: { selected?: Record<string, boolean> }) => {
-  const selected = params.selected ?? {};
-  allocationSelected.value = {
-    Current: selected.Current !== false,
-    Savings: selected.Savings !== false,
-    Stocks: selected.Stocks !== false
-  };
-  balanceAllocationOption.value = buildBalanceAllocationOption(allocationSelected.value);
+  allocationSelected.value = params.selected ?? {};
 };
-
-const api = useApi();
 
 const helloName = ref("");
 

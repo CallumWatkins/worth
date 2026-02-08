@@ -26,6 +26,7 @@ tauri = { version = "2.9.4", features = [] }
 thiserror = "1"
 anyhow = "1"
 clap = { version = "4", features = [ "derive" ] }
+chrono = "0.4"
 sqlx = { version = "0.8", features = [
   "runtime-tokio-rustls",
   "sqlite",

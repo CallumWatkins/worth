@@ -2,6 +2,12 @@ import { commands } from "~/bindings";
 import { invokeResult } from "~/utils/tauri-result";
 
 const api = {
+  accounts: {
+    list: () => invokeResult(commands.accountsList())
+  },
+  dashboard: {
+    get: () => invokeResult(commands.dashboardGet())
+  },
   hello: {
     say: (name: string) => invokeResult(commands.hello(name))
   }
