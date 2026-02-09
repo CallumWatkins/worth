@@ -67,4 +67,4 @@ bun run lint:<ts|rust|all>[:fix]
 cargo run --manifest-path src-tauri/Cargo.toml --bin export_bindings
 ```
 
-- **Frontend API wrapper**: `app/composables/useApi.ts` wraps `commands.*` and unwraps `Result<T, ApiError>` via `app/utils/tauri-result.ts` (update these when adding new commands/errors).
+- **Frontend API wrapper**: `app/composables/useApi.ts` wraps commands from `bindings.ts` and automatically unwraps `Result<T, ApiError>` to `T`.
