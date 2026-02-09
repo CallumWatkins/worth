@@ -43,10 +43,18 @@ bun run check:<ts|rust|all>
 
 # lint
 bun run lint:<ts|rust|all>[:fix]
+
+# database operations
+bun run db <backup|restore|seed|clear|clean|help>
 ```
 
 - **Prereqs**: install the OS toolchain per [Tauri prerequisites](https://tauri.app/start/prerequisites).
 - **Node version**: `.nvmrc` (currently 24); Bun is the supported package manager (`package.json` preinstall guard).
+
+Problems running `cargo` commands ("rustup could not choose a version of cargo to run, because one wasn't specified explicitly, and no default is configured")? Try this:
+- Set `CARGO_HOME = %USERPROFILE%\.cargo`
+- Set `RUSTUP_HOME = %USERPROFILE%\.rustup`
+- Add `%USERPROFILE%\.cargo\bin` to PATH prefix
 
 ### Database (SQLite)
 
