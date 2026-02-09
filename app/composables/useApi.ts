@@ -11,9 +11,6 @@ const api = {
     get: () => invokeResult(commands.dashboardGet()),
     balanceOverTime: (period: BalanceOverTimePeriod) =>
       invokeResult(commands.dashboardBalanceOverTime(period))
-  },
-  hello: {
-    say: (name: string) => invokeResult(commands.hello(name))
   }
 };
 

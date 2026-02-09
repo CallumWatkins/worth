@@ -646,16 +646,6 @@ fn imul(a: u32, b: u32) -> u32 {
     a.wrapping_mul(b)
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn hello(name: String) -> Result<String, ApiError> {
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    if name.is_empty() {
-        return Err(ApiError::Validation("Name cannot be empty".into()));
-    }
-    Ok(format!("Hello, {name}!"))
-}
-
 pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     use specta_typescript::{BigIntExportBehavior, Typescript};
     use tauri_specta::{collect_commands, Builder};
@@ -664,7 +654,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
         accounts_list,
         dashboard_get,
         dashboard_balance_over_time,
-        hello
     ]);
 
     #[cfg(debug_assertions)]

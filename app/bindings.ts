@@ -28,14 +28,6 @@ async dashboardBalanceOverTime(period: BalanceOverTimePeriod) : Promise<Result<D
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
-},
-async hello(name: string) : Promise<Result<string, ApiError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("hello", { name }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
 }
 }
 
