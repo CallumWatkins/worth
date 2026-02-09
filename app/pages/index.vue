@@ -153,7 +153,7 @@
 <script lang="ts" setup>
 import type { AccountTypeName, BalanceOverTimePeriod } from "~/bindings";
 
-import { useMutation, useQuery } from "@tanstack/vue-query";
+import { useQuery } from "@tanstack/vue-query";
 import { computed, proxyRefs, watchEffect } from "vue";
 
 import { ACCOUNT_TYPE_META, accountTypeMetaLoose } from "~/utils/account-type-meta";
@@ -192,12 +192,12 @@ const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
 
 const dashboardQuery = proxyRefs(useQuery({
   queryKey: ["dashboard"],
-  queryFn: api.dashboard.get
+  queryFn: api.dashboardGet
 }));
 
 const balanceOverTimeQuery = proxyRefs(useQuery({
   queryKey: ["dashboardBalanceOverTime", balanceOverTimePeriod],
-  queryFn: () => api.dashboard.balanceOverTime(balanceOverTimePeriod.value)
+  queryFn: () => api.dashboardBalanceOverTime(balanceOverTimePeriod.value)
 }));
 
 const balanceOverTimePeriodItems = computed(() => {

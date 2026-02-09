@@ -1,4 +1,4 @@
-import type { ApiError, BalanceOverTimePeriod, Result } from "~/bindings";
+import type { ApiError, Result } from "~/bindings";
 import { commands } from "~/bindings";
 
 export const formatApiError = (error: ApiError): string => {
@@ -31,18 +31,23 @@ export const invokeResult = async <T>(promise: Promise<Result<T, ApiError>>): Pr
   return unwrapResult(await promise);
 };
 
-const api = {
-  accounts: {
-    list: () => invokeResult(commands.accountsList())
-  },
-  dashboard: {
-    get: () => invokeResult(commands.dashboardGet()),
-    balanceOverTime: (period: BalanceOverTimePeriod) =>
-      invokeResult(commands.dashboardBalanceOverTime(period))
-  }
+type UnwrapCommand<F>
+  = F extends (...args: infer A) => Promise<Result<infer T, ApiError>>
+    ? (...args: A) => Promise<T>
+    : never;
+
+export type Api = {
+  [K in keyof typeof commands]: UnwrapCommand<(typeof commands)[K]>
 };
 
-export type Api = typeof api;
+const api: Api = new Proxy(commands as any, {
+  get(target, prop) {
+    const fn = target[prop];
+    if (typeof fn !== "function") return fn;
+
+    return (...args: any[]) => invokeResult(fn(...args));
+  }
+});
 
 export const useApi = (): Api => {
   return api;

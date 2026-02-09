@@ -255,7 +255,7 @@ const api = useApi();
 
 const accountsQuery = proxyRefs(useQuery({
   queryKey: ["accounts", "list"],
-  queryFn: api.accounts.list
+  queryFn: api.accountsList
 }));
 
 const rawAccounts = computed<Account[]>(() => accountsQuery.data ?? []);
