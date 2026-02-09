@@ -129,7 +129,6 @@ pub async fn dashboard_get() -> Result<DashboardDto, ApiError> {
 pub async fn dashboard_balance_over_time(
     period: BalanceOverTimePeriod,
 ) -> Result<Vec<DashboardBalancePointDto>, ApiError> {
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     let today = Utc::now().date_naive();
     let base = dummy_accounts_base();
     let total_balance_minor: i64 = base.iter().map(|a| a.latest_balance_minor).sum();
