@@ -1,9 +1,13 @@
+use chrono::{DateTime, NaiveDate, Utc};
+
+#[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct InstitutionRow {
     pub id: i64,
     pub name: String, // unique
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct AccountTypeRow {
     pub id: i64,
@@ -19,10 +23,10 @@ pub struct AccountRow {
     pub type_id: i64,
     pub currency_code: String,
     pub normal_balance_sign: i32, // CHECK (normal_balance_sign IN (1, -1))
-    pub opened_date: Option<String>,
-    pub closed_date: Option<String>,
-    pub created_at: String, // ISO8601 datetime: "YYYY-MM-DDTHH:MM:SS"
-    pub updated_at: String, // ISO8601 datetime: "YYYY-MM-DDTHH:MM:SS"
+    pub opened_date: Option<NaiveDate>,
+    pub closed_date: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[allow(dead_code)]
@@ -30,7 +34,7 @@ pub struct AccountRow {
 pub struct AccountBalanceSnapshotRow {
     pub id: i64,
     pub account_id: i64,
-    pub balance_date: String, // ISO8601 date: "YYYY-MM-DD"
+    pub balance_date: NaiveDate,
     pub balance_minor: i64,
-    pub created_at: String, // ISO8601 datetime: "YYYY-MM-DDTHH:MM:SS"
+    pub created_at: DateTime<Utc>,
 }

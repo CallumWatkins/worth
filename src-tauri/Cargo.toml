@@ -26,7 +26,7 @@ tauri = { version = "2.9.4", features = [] }
 thiserror = "1"
 anyhow = "1"
 clap = { version = "4", features = [ "derive" ] }
-chrono = "0.4"
+chrono = { version = "0.4", features = [ "serde" ] }
 sqlx = { version = "0.8", features = [
   "runtime-tokio-rustls",
   "sqlite",
@@ -38,6 +38,6 @@ tokio = { version = "1", features = [
   "macros",
   "rt-multi-thread"
 ] }
-specta = { version = "=2.0.0-rc.22", features = [ "serde" ] }
+specta = { version = "=2.0.0-rc.22", features = [ "serde", "chrono" ] }
 tauri-specta = { version = "=2.0.0-rc.21", features = [ "typescript" ] }
 specta-typescript = "=0.0.9"

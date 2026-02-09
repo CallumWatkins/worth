@@ -11,8 +11,8 @@ CREATE TABLE accounts (
   normal_balance_sign INTEGER NOT NULL CHECK (normal_balance_sign IN (1, -1)),
   opened_date TEXT,
   closed_date TEXT,
-  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
-  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (institution_id, name)
 );
 
@@ -21,7 +21,7 @@ CREATE TABLE account_balance_snapshots (
   account_id INTEGER NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
   balance_date TEXT NOT NULL,
   balance_minor INTEGER NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%S', 'now')),
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (account_id, balance_date)
 );
 

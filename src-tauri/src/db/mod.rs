@@ -1,8 +1,9 @@
 pub mod rows;
 
+use chrono::NaiveDate;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
-    SqlitePool,
+    QueryBuilder, Sqlite, SqlitePool,
 };
 use std::path::PathBuf;
 use std::time::Duration;
@@ -35,3 +36,185 @@ pub async fn init_pool(app: &tauri::AppHandle) -> tauri::Result<SqlitePool> {
     Ok(pool)
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountListRow {
+    pub id: i64,
+    pub name: String,
+    pub currency_code: String,
+    pub normal_balance_sign: i32,
+    pub opened_date: Option<NaiveDate>,
+    pub closed_date: Option<NaiveDate>,
+
+    pub institution_id: i64,
+    pub institution_name: String,
+
+    pub type_id: i64,
+    pub type_name: String, // e.g. "current"
+
+    pub first_snapshot_date: Option<NaiveDate>,
+    pub latest_snapshot_date: Option<NaiveDate>,
+    pub latest_balance_minor: Option<i64>,
+}
+
+pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, AccountListRow>(
+        r"
+        SELECT
+            a.id,
+            a.name,
+            a.currency_code,
+            a.normal_balance_sign,
+            a.opened_date,
+            a.closed_date,
+            i.id AS institution_id,
+            i.name AS institution_name,
+            t.id AS type_id,
+            t.name AS type_name,
+            first.balance_date AS first_snapshot_date,
+            latest.balance_date AS latest_snapshot_date,
+            latest.balance_minor AS latest_balance_minor
+        FROM
+            accounts AS a
+            INNER JOIN institutions AS i ON i.id = a.institution_id
+            INNER JOIN account_types AS t ON t.id = a.type_id
+            LEFT JOIN (
+                SELECT
+                    account_id,
+                    MIN(balance_date) AS balance_date
+                FROM
+                    account_balance_snapshots
+                GROUP BY
+                    account_id
+            ) AS FIRST ON first.account_id = a.id
+            LEFT JOIN (
+                SELECT
+                    abs.account_id,
+                    abs.balance_date,
+                    abs.balance_minor
+                FROM
+                    account_balance_snapshots AS abs
+                    INNER JOIN (
+                        SELECT
+                            account_id,
+                            MAX(balance_date) AS max_date
+                        FROM
+                            account_balance_snapshots
+                        GROUP BY
+                            account_id
+                    ) AS m ON m.account_id = abs.account_id
+                    AND m.max_date = abs.balance_date
+            ) AS latest ON latest.account_id = a.id
+        ORDER BY
+            a.name ASC
+        ",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountSnapshotRow {
+    pub account_id: i64,
+    pub balance_date: NaiveDate,
+    pub balance_minor: i64,
+}
+
+pub async fn snapshots_for_accounts_between(
+    pool: &SqlitePool,
+    account_ids: &[i64],
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> Result<Vec<AccountSnapshotRow>, sqlx::Error> {
+    if account_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT account_id, balance_date, balance_minor \
+         FROM account_balance_snapshots \
+         WHERE balance_date >= ",
+    );
+    qb.push_bind(start_date);
+    qb.push(" AND balance_date <= ");
+    qb.push_bind(end_date);
+    qb.push(" AND account_id IN (");
+
+    {
+        let mut separated = qb.separated(", ");
+        for id in account_ids {
+            separated.push_bind(id);
+        }
+    }
+    qb.push(")");
+
+    qb.push(" ORDER BY account_id ASC, balance_date ASC");
+
+    let rows = qb
+        .build_query_as::<AccountSnapshotRow>()
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
+pub async fn last_snapshots_before(
+    pool: &SqlitePool,
+    account_ids: &[i64],
+    start_date: NaiveDate,
+) -> Result<Vec<AccountSnapshotRow>, sqlx::Error> {
+    if account_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // For each account: the latest snapshot strictly before `start_date`.
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        r"
+        SELECT
+            s.account_id,
+            s.balance_date,
+            s.balance_minor
+        FROM
+            account_balance_snapshots AS s
+            INNER JOIN (
+                SELECT
+                    account_id,
+                    MAX(balance_date) AS max_date
+                FROM
+                    account_balance_snapshots
+                WHERE
+                    balance_date < ",
+    );
+    qb.push_bind(start_date);
+    qb.push(" AND account_id IN (");
+    {
+        let mut separated = qb.separated(", ");
+        for id in account_ids {
+            separated.push_bind(id);
+        }
+    }
+    qb.push(")");
+    qb.push(
+        r"
+            GROUP BY account_id
+        ) AS m
+        ON m.account_id = s.account_id
+        AND m.max_date = s.balance_date
+        ORDER BY s.account_id ASC
+        ",
+    );
+
+    let rows = qb
+        .build_query_as::<AccountSnapshotRow>()
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
+pub async fn earliest_snapshot_date(pool: &SqlitePool) -> Result<Option<NaiveDate>, sqlx::Error> {
+    let min_date: Option<NaiveDate> =
+        sqlx::query_scalar("SELECT MIN(balance_date) FROM account_balance_snapshots")
+            .fetch_one(pool)
+            .await?;
+    Ok(min_date)
+}
