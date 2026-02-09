@@ -44,6 +44,18 @@ pub enum ActivityPeriod {
     P6M,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq, Hash)]
+pub enum BalanceOverTimePeriod {
+    #[serde(rename = "1M")]
+    P1M,
+    #[serde(rename = "6M")]
+    P6M,
+    #[serde(rename = "1Y")]
+    P1Y,
+    #[serde(rename = "MAX")]
+    Max,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ActivityDataDto {
     pub values: Vec<Option<i64>>, // minor units (e.g. pennies)
@@ -110,6 +122,26 @@ pub async fn accounts_list() -> Result<Vec<AccountDto>, ApiError> {
 #[specta::specta]
 pub async fn dashboard_get() -> Result<DashboardDto, ApiError> {
     Ok(dummy_dashboard())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn dashboard_balance_over_time(
+    period: BalanceOverTimePeriod,
+) -> Result<Vec<DashboardBalancePointDto>, ApiError> {
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    let today = Utc::now().date_naive();
+    let base = dummy_accounts_base();
+    let total_balance_minor: i64 = base.iter().map(|a| a.latest_balance_minor).sum();
+
+    let days = match period {
+        BalanceOverTimePeriod::P1M => 30,
+        BalanceOverTimePeriod::P6M => 183,
+        BalanceOverTimePeriod::P1Y => 365,
+        BalanceOverTimePeriod::Max => 365 * 5,
+    };
+
+    Ok(generate_dashboard_series(today, days, total_balance_minor))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -430,22 +462,15 @@ fn generate_dashboard_series(
         return vec![];
     }
 
-    let mut raw_pounds: Vec<f64> = Vec::with_capacity(days);
-    for t in 0..days {
-        let tf = t as f64;
-        let value = 245_000.0 + tf * 35.0 + (tf / 9.0).sin() * 900.0 + (tf / 21.0).cos() * 500.0;
-        raw_pounds.push(value);
-    }
-
-    let raw_last = *raw_pounds.last().unwrap_or(&0.0);
     let target_last_pounds = target_last_minor as f64 / 100.0;
+    let raw_last = dashboard_base_pounds(today);
     let shift = target_last_pounds - raw_last;
 
     let mut out = Vec::with_capacity(days);
     for i in 0..days {
         let offset_days = (days - 1).saturating_sub(i) as i64;
         let date = today - Duration::days(offset_days);
-        let pounds = raw_pounds[i] + shift;
+        let pounds = dashboard_base_pounds(date) + shift;
         out.push(DashboardBalancePointDto {
             date: iso(date),
             balance_minor: round2_to_minor(pounds),
@@ -453,6 +478,13 @@ fn generate_dashboard_series(
     }
 
     out
+}
+
+fn dashboard_base_pounds(date: NaiveDate) -> f64 {
+    // Fixed origin means overlapping dates produce identical values across requested ranges.
+    let origin = NaiveDate::from_ymd_opt(2020, 1, 1).unwrap();
+    let t = (date - origin).num_days() as f64;
+    245_000.0 + t * 35.0 + (t / 9.0).sin() * 900.0 + (t / 21.0).cos() * 500.0
 }
 
 fn round2_to_minor(value_pounds: f64) -> i64 {
@@ -631,6 +663,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
     let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
         accounts_list,
         dashboard_get,
+        dashboard_balance_over_time,
         hello
     ]);
 

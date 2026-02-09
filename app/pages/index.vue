@@ -28,7 +28,7 @@
       >
         <template #description>
           <div>
-            <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ totalBalanceLabel }}</span>
+            <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ formatGBPMinor(dashboardQuery.data?.total_balance_minor ?? 0) }}</span>
             <span class="inline-flex gap-1 leading-none">
               <UIcon :name="changeIcon" class="size-4" :class="[changeClass]" />
               <span :class="changeClass">{{ changePctLabel }}</span>
@@ -49,7 +49,7 @@
           <UPageCard
             to="/accounts"
             title="Active Accounts"
-            :description="activeAccountsLabel"
+            :description="String(dashboardQuery.data?.active_accounts ?? 0)"
             variant="subtle"
             :ui="{
               title: 'text-muted text-xs whitespace-nowrap',
@@ -90,13 +90,27 @@
                   Total Balance Over Time
                 </div>
                 <div class="text-[15px] text-pretty text-muted mt-1">
-                  Growth trajectory over the last 6 months
+                  Growth trajectory over
+                  <template v-if="balanceOverTimePeriod === '1M'">
+                    the last month
+                  </template>
+                  <template v-else-if="balanceOverTimePeriod === '6M'">
+                    the last 6 months
+                  </template>
+                  <template v-else-if="balanceOverTimePeriod === '1Y'">
+                    the last year
+                  </template>
+                  <template v-else-if="balanceOverTimePeriod === 'MAX'">
+                    all time
+                  </template>
                 </div>
               </div>
               <div class="mt-4 sm:mt-0 sm:ml-6 shrink-0">
                 <UTabs
-                  :items="[{ label: '1M' }, { label: '6M' }, { label: '1Y' }]" color="neutral"
-                  default-value="1"
+                  v-model="balanceOverTimePeriod"
+                  :items="balanceOverTimePeriodItems"
+                  :content="false"
+                  color="neutral"
                   size="sm"
                   :ui="{
                     indicator: 'bg-neutral-700',
@@ -106,7 +120,26 @@
               </div>
             </div>
           </template>
+          <UAlert
+            v-if="balanceOverTimeQuery.isError"
+            class="mb-4"
+            color="error"
+            variant="subtle"
+            :title="balanceOverTimeQuery.error.message"
+          />
+          <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
+            <div class="inline-flex items-center gap-2">
+              <UIcon
+                v-if="balanceOverTimeQuery.isFetching"
+                name="i-lucide-loader-2"
+                class="size-4 animate-spin text-neutral-400"
+              />
+              <span v-else>No data</span>
+            </div>
+          </div>
           <VChart
+            v-else
+            :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data?.length ?? 0}`"
             :option="balanceOverTimeOption"
             autoresize
             style="height: 300px; width: 100%"
@@ -151,7 +184,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { AccountTypeName } from "~/bindings";
+import type { AccountTypeName, BalanceOverTimePeriod } from "~/bindings";
 
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, proxyRefs, watchEffect } from "vue";
@@ -188,59 +221,97 @@ const darkTooltipBase = {
 
 const api = useApi();
 
+const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
+
 const dashboardQuery = proxyRefs(useQuery({
   queryKey: ["dashboard"],
   queryFn: api.dashboard.get
 }));
 
-const totalBalanceLabel = computed(() => {
-  const minor = dashboardQuery.data?.total_balance_minor;
-  if (typeof minor !== "number") return "—";
-  return formatGBPMinor(minor);
+const balanceOverTimeQuery = proxyRefs(useQuery({
+  queryKey: ["dashboardBalanceOverTime", balanceOverTimePeriod],
+  queryFn: () => api.dashboard.balanceOverTime(balanceOverTimePeriod.value)
+}));
+
+const balanceOverTimePeriodItems = computed(() => {
+  const disabled = balanceOverTimeQuery.isFetching;
+  return [
+    { label: "1M", value: "1M", disabled },
+    { label: "6M", value: "6M", disabled },
+    { label: "1Y", value: "1Y", disabled },
+    { label: "MAX", value: "MAX", disabled }
+  ];
 });
 
-const changePct = computed(() => dashboardQuery.data?.change_vs_last_month_pct);
-
-const changeIsPositive = computed(() => (changePct.value ?? 0) >= 0);
-
 const changeClass = computed(() => {
-  if (changePct.value == null) return "text-muted";
-  return changeIsPositive.value ? "text-success" : "text-error";
+  if (dashboardQuery.data?.change_vs_last_month_pct == null) return "text-muted";
+  return (dashboardQuery.data?.change_vs_last_month_pct ?? 0) >= 0 ? "text-success" : "text-error";
 });
 
 const changeIcon = computed(() => {
-  if (changePct.value == null) return "i-lucide-minus";
-  return changeIsPositive.value ? "i-lucide-arrow-up" : "i-lucide-arrow-down";
+  if (dashboardQuery.data?.change_vs_last_month_pct == null) return "i-lucide-minus";
+  return (dashboardQuery.data?.change_vs_last_month_pct ?? 0) >= 0 ? "i-lucide-arrow-up" : "i-lucide-arrow-down";
 });
 
 const changePctLabel = computed(() => {
-  if (changePct.value == null) return "—";
-  return `${Math.abs(changePct.value).toFixed(1)}%`;
+  if (dashboardQuery.data?.change_vs_last_month_pct == null) return "—";
+  return `${Math.abs(dashboardQuery.data?.change_vs_last_month_pct).toFixed(1)}%`;
 });
 
-const monthlyYieldMinor = computed(() => dashboardQuery.data?.monthly_yield_minor);
-
 const monthlyYieldLabel = computed(() => {
-  if (monthlyYieldMinor.value == null) return "—";
-  const sign = monthlyYieldMinor.value >= 0 ? "+" : "-";
-  return `${sign}${formatGBPMinor(Math.abs(monthlyYieldMinor.value))}`;
+  if (dashboardQuery.data?.monthly_yield_minor == null) return "—";
+  const sign = dashboardQuery.data?.monthly_yield_minor >= 0 ? "+" : "-";
+  return `${sign}${formatGBPMinor(Math.abs(dashboardQuery.data?.monthly_yield_minor))}`;
 });
 
 const monthlyYieldDescriptionClass = computed(() => {
-  if (monthlyYieldMinor.value == null) return "text-xl font-bold text-muted whitespace-nowrap";
-  return `text-xl font-bold ${monthlyYieldMinor.value >= 0 ? "text-success" : "text-error"} whitespace-nowrap`;
-});
-
-const activeAccountsLabel = computed(() => {
-  const n = dashboardQuery.data?.active_accounts;
-  if (typeof n !== "number") return "—";
-  return String(n);
+  if (dashboardQuery.data?.monthly_yield_minor == null) return "text-xl font-bold text-muted whitespace-nowrap";
+  return `text-xl font-bold ${dashboardQuery.data?.monthly_yield_minor >= 0 ? "text-success" : "text-error"} whitespace-nowrap`;
 });
 
 const balanceOverTimeOption = computed<ECOption>(() => {
-  const points = dashboardQuery.data?.balance_over_time ?? [];
+  const points = balanceOverTimeQuery.data ?? [];
   const dates = points.map((p) => p.date);
   const values = points.map((p) => p.balance_minor / 100);
+
+  const labelInterval = (idx: number, value: string) => {
+    if (idx === 0 || idx === dates.length - 1) return true;
+
+    const parts = value.split("-");
+    const y = Number(parts[0] ?? 0);
+    const m = Number(parts[1] ?? 0);
+    const d = Number(parts[2] ?? 0);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false;
+
+    switch (balanceOverTimePeriod.value) {
+    case "1M":
+      return d === 1 || d === 8 || d === 15 || d === 22 || d === 29;
+    case "6M":
+      return d === 15;
+    case "1Y":
+      return d === 15 && (m % 2 === 1);
+    case "MAX":
+      return m === 1 && d === 1;
+    }
+  };
+
+  const labelFormatter = (value: string) => {
+    const parts = value.split("-");
+    const y = Number(parts[0] ?? 0);
+    const m = Number(parts[1] ?? 0);
+    const d = Number(parts[2] ?? 0);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return value;
+
+    switch (balanceOverTimePeriod.value) {
+    case "1M":
+      return `${monthShort[m - 1] ?? ""} ${d}`.trim();
+    case "6M":
+    case "1Y":
+      return monthShort[m - 1] ?? "";
+    case "MAX":
+      return String(y);
+    }
+  };
 
   return {
     backgroundColor: "transparent",
@@ -267,12 +338,8 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       splitLine: { show: false },
       axisLabel: {
         hideOverlap: true,
-        // show mid-month (e.g. 2026-02-15) as "Feb"
-        interval: (_index: number, value: string) => value.endsWith("-15"),
-        formatter: (value: string) => {
-          const m = Number(value.split("-")[1] ?? 0);
-          return monthShort[m - 1] ?? "";
-        }
+        interval: labelInterval,
+        formatter: labelFormatter
       }
     },
     yAxis: {

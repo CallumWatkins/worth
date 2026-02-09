@@ -1,3 +1,5 @@
+import type { BalanceOverTimePeriod } from "~/bindings";
+
 import { commands } from "~/bindings";
 import { invokeResult } from "~/utils/tauri-result";
 
@@ -6,7 +8,9 @@ const api = {
     list: () => invokeResult(commands.accountsList())
   },
   dashboard: {
-    get: () => invokeResult(commands.dashboardGet())
+    get: () => invokeResult(commands.dashboardGet()),
+    balanceOverTime: (period: BalanceOverTimePeriod) =>
+      invokeResult(commands.dashboardBalanceOverTime(period))
   },
   hello: {
     say: (name: string) => invokeResult(commands.hello(name))

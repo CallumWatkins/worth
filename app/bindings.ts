@@ -21,6 +21,14 @@ async dashboardGet() : Promise<Result<DashboardDto, ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async dashboardBalanceOverTime(period: BalanceOverTimePeriod) : Promise<Result<DashboardBalancePointDto[], ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("dashboard_balance_over_time", { period }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async hello(name: string) : Promise<Result<string, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("hello", { name }) };
@@ -47,6 +55,7 @@ export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "i
 export type ActivityDataDto = { values: (number | null)[]; delta_minor: number }
 export type ActivityPeriod = "1W" | "1M" | "3M" | "6M"
 export type ApiError = "Db" | "NotFound" | { Validation: string }
+export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; allocation_by_type: DashboardAllocationDto[]; balance_over_time: DashboardBalancePointDto[] }
