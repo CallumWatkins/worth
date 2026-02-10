@@ -13,6 +13,30 @@ async accountsList() : Promise<Result<AccountDto[], ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async accountsGet(accountId: number) : Promise<Result<AccountDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("accounts_get", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountSnapshotsList(accountId: number) : Promise<Result<AccountBalanceSnapshotDto[], ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_snapshots_list", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountBalanceOverTime(accountId: number, period: BalanceOverTimePeriod) : Promise<Result<BalancePointDto[], ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_balance_over_time", { accountId, period }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async dashboardGet() : Promise<Result<DashboardDto, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("dashboard_get") };
@@ -41,6 +65,7 @@ async dashboardBalanceOverTime(period: BalanceOverTimePeriod) : Promise<Result<D
 
 /** user-defined types **/
 
+export type AccountBalanceSnapshotDto = { id: number; date: string; balance_minor: number; created_at: string }
 export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: string; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string; latest_snapshot_date: string; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
 export type AccountTypeDto = { id: number; name: AccountTypeName }
 export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan"
@@ -48,6 +73,7 @@ export type ActivityDataDto = { values: (number | null)[]; delta_minor: number }
 export type ActivityPeriod = "1W" | "1M" | "3M" | "6M"
 export type ApiError = "Db" | "NotFound" | { Validation: string }
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
+export type BalancePointDto = { date: string; balance_minor: number }
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; allocation_by_type: DashboardAllocationDto[] }

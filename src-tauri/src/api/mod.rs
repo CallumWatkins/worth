@@ -108,6 +108,20 @@ pub struct DashboardBalancePointDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AccountBalanceSnapshotDto {
+    pub id: i64,
+    pub date: NaiveDate,
+    pub balance_minor: i64,
+    pub created_at: chrono::DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct BalancePointDto {
+    pub date: NaiveDate,
+    pub balance_minor: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct DashboardDto {
     pub total_balance_minor: i64,
     pub change_vs_last_month_pct: f64,
@@ -217,6 +231,201 @@ pub async fn accounts_list(state: State<'_, AppState>) -> Result<Vec<AccountDto>
     }
 
     Ok(out)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn accounts_get(
+    state: State<'_, AppState>,
+    account_id: i64,
+) -> Result<AccountDto, ApiError> {
+    let pool = &state.pool;
+    let today = Utc::now().date_naive();
+
+    let Some(a) = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    let account_type_name = account_type_from_db(&a.type_name)?;
+
+    let institution = InstitutionDto {
+        id: a.institution_id,
+        name: a.institution_name,
+    };
+    let account_type = AccountTypeDto {
+        id: a.type_id,
+        name: account_type_name,
+    };
+
+    let first_snapshot_date = a.first_snapshot_date.unwrap_or(today);
+    let latest_snapshot_date = a.latest_snapshot_date.unwrap_or(today);
+    let latest_balance_minor = a.latest_balance_minor.unwrap_or(0);
+
+    // Build activity series exactly like `accounts_list` (seed from last snapshot before range).
+    let full_points: usize = 180;
+    let full_start = today - Duration::days(full_points as i64 - 1);
+
+    let account_ids = vec![account_id];
+    let snapshots = db::snapshots_for_accounts_between(pool, &account_ids, full_start, today)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let last_before = db::last_snapshots_before(pool, &account_ids, full_start)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    let mut date_map: HashMap<NaiveDate, i64> = HashMap::new();
+    for s in snapshots {
+        date_map.insert(s.balance_date, s.balance_minor);
+    }
+
+    let seed_before = last_before.first().map(|s| s.balance_minor);
+    let series_180 = filled_values_for_period(&date_map, seed_before, full_start, full_points);
+
+    let activity_by_period: BTreeMap<_, _> = [
+        (ActivityPeriod::P1W, 7),
+        (ActivityPeriod::P1M, 30),
+        (ActivityPeriod::P3M, 90),
+        (ActivityPeriod::P6M, 180),
+    ]
+    .into_iter()
+    .map(|(period, points)| {
+        let values = series_180[series_180.len().saturating_sub(points)..].to_vec();
+        let delta_minor = match (
+            values.iter().find_map(|&v| v),
+            values.iter().rev().find_map(|&v| v),
+        ) {
+            (Some(first), Some(last)) => last - first,
+            _ => 0,
+        };
+
+        (
+            period,
+            ActivityDataDto {
+                values,
+                delta_minor,
+            },
+        )
+    })
+    .collect();
+
+    Ok(AccountDto {
+        id: a.id,
+        name: a.name,
+        institution,
+        account_type,
+        currency_code: a.currency_code,
+        normal_balance_sign: a.normal_balance_sign,
+        opened_date: a.opened_date,
+        closed_date: a.closed_date,
+        first_snapshot_date,
+        latest_snapshot_date,
+        latest_balance_minor,
+        activity_by_period,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn account_snapshots_list(
+    state: State<'_, AppState>,
+    account_id: i64,
+) -> Result<Vec<AccountBalanceSnapshotDto>, ApiError> {
+    let pool = &state.pool;
+
+    // Ensure account exists for consistent NotFound behavior.
+    let exists = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .is_some();
+    if !exists {
+        return Err(ApiError::NotFound);
+    }
+
+    let rows = db::snapshots_for_account(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| AccountBalanceSnapshotDto {
+            id: r.id,
+            date: r.balance_date,
+            balance_minor: r.balance_minor,
+            created_at: r.created_at,
+        })
+        .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn account_balance_over_time(
+    state: State<'_, AppState>,
+    account_id: i64,
+    period: BalanceOverTimePeriod,
+) -> Result<Vec<BalancePointDto>, ApiError> {
+    let today = Utc::now().date_naive();
+    let pool = &state.pool;
+
+    // Ensure account exists.
+    let exists = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .is_some();
+    if !exists {
+        return Err(ApiError::NotFound);
+    }
+
+    let Some(earliest) = db::earliest_snapshot_date_for_account(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Ok(Vec::new());
+    };
+
+    let computed_start = match period {
+        BalanceOverTimePeriod::P1M => today - Duration::days(30 - 1),
+        BalanceOverTimePeriod::P6M => today - Duration::days(183 - 1),
+        BalanceOverTimePeriod::P1Y => today - Duration::days(365 - 1),
+        BalanceOverTimePeriod::Max => earliest,
+    };
+
+    let start = std::cmp::max(computed_start, earliest);
+    if today < start {
+        return Ok(Vec::new());
+    }
+
+    let points = (today - start).num_days() as usize + 1;
+    let account_ids = vec![account_id];
+
+    let snapshots = db::snapshots_for_accounts_between(pool, &account_ids, start, today)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let last_before = db::last_snapshots_before(pool, &account_ids, start)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    let mut date_map: HashMap<NaiveDate, i64> = HashMap::new();
+    for s in snapshots {
+        date_map.insert(s.balance_date, s.balance_minor);
+    }
+
+    let seed_before = last_before.first().map(|s| s.balance_minor);
+    let series = filled_values_for_period(&date_map, seed_before, start, points);
+
+    Ok(series
+        .into_iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let date = start + Duration::days(i as i64);
+            BalancePointDto {
+                date,
+                balance_minor: v.unwrap_or(0),
+            }
+        })
+        .collect())
 }
 
 #[tauri::command]
@@ -409,6 +618,9 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
 
     let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
         accounts_list,
+        accounts_get,
+        account_snapshots_list,
+        account_balance_over_time,
         dashboard_get,
         dashboard_balance_over_time,
     ]);
