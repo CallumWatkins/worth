@@ -893,7 +893,13 @@ const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
   },
   {
     accessorKey: "date",
-    header: ({ column }) => sortableHeader(column, "Date")
+    header: ({ column }) => sortableHeader(column, "Date"),
+    meta: {
+      class: {
+        th: "w-full",
+        td: "w-full"
+      }
+    }
   },
   {
     id: "balance",
@@ -901,8 +907,8 @@ const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
     header: ({ column }) => sortableHeader(column, "Balance"),
     meta: {
       class: {
-        th: "text-right",
-        td: "text-right"
+        th: "w-auto",
+        td: "text-right w-auto"
       }
     }
   },
@@ -912,8 +918,8 @@ const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
     header: ({ column }) => sortableHeader(column, "Change"),
     meta: {
       class: {
-        th: "text-right",
-        td: "text-right"
+        th: "w-auto",
+        td: "text-right w-auto"
       }
     }
   }
