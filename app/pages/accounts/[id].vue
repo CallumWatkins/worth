@@ -186,77 +186,98 @@
                 color="neutral"
                 size="sm"
               />
+
+              <div class="flex items-center gap-2">
+                <div class="text-sm text-muted">
+                  Group by
+                </div>
+                <USelect
+                  v-model="balanceGroupBy"
+                  :items="balanceGroupByItems"
+                  class="w-44"
+                  color="neutral"
+                  variant="subtle"
+                />
+              </div>
             </div>
 
             <UAlert
-              v-if="tableView === 'snapshots' && snapshotsQuery.isError"
+              v-if="snapshotsQuery.isError"
               class="mb-4"
               color="error"
               variant="subtle"
-              :title="snapshotsQuery.error!.message ?? 'Failed to load snapshots'"
-            />
-
-            <UAlert
-              v-else-if="tableView === 'daily' && dailyAllQuery.isError"
-              class="mb-4"
-              color="error"
-              variant="subtle"
-              :title="dailyAllQuery.error!.message ?? 'Failed to load daily balances'"
+              :title="snapshotsQuery.error!.message ?? 'Failed to load balances'"
             />
 
             <UTable
-              v-if="tableView === 'snapshots'"
               v-model:sorting="tableSorting"
-              :data="snapshotTableRows"
+              v-model:column-visibility="balanceColumnVisibility"
+              :data="balanceTableData"
               :columns="balanceTableColumns"
-              :empty="snapshotsQuery.isFetching ? '' : 'No snapshots yet.'"
-              :ui="{ td: 'empty:p-0' }"
-              sticky
-              class="max-h-[500px] overflow-auto"
-            >
-              <template #date-cell="{ row }">
-                <span class="font-medium text-highlighted">
-                  {{ formatShortDate(row.original.date) }}
-                </span>
-              </template>
-              <template #balance-cell="{ row }">
-                <span class="font-medium">
-                  {{ formatMoneyMinor(row.original.balance_minor) }}
-                </span>
-              </template>
-              <template #change-cell="{ row }">
-                <span v-if="row.original.change_minor == null" class="text-muted">—</span>
-                <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
-                  {{ formatSignedMoneyMinor(row.original.change_minor) }}
-                </span>
-              </template>
-            </UTable>
-
-            <UTable
-              v-else
-              v-model:sorting="tableSorting"
-              :data="dailyTableRows"
-              :columns="balanceTableColumns"
-              :empty="dailyAllQuery.isFetching ? '' : 'No data.'"
+              :grouping="balanceGrouping"
+              :grouping-options="balanceGroupingOptions"
+              :empty="balanceTableEmpty"
               :ui="{ root: 'min-w-full', td: 'empty:p-0' }"
               sticky
               class="max-h-[500px] overflow-auto"
             >
               <template #date-cell="{ row }">
-                <span class="font-medium text-highlighted">
-                  {{ formatShortDate(row.original.date) }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="inline-block"
+                    :style="{ width: `calc(${row.depth} * 1rem)` }"
+                  />
+
+                  <template v-if="row.getIsGrouped()">
+                    <UButton
+                      variant="outline"
+                      color="neutral"
+                      size="xs"
+                      class="shrink-0"
+                      :icon="row.getIsExpanded() ? 'i-lucide-minus' : 'i-lucide-plus'"
+                      :class="!row.getCanExpand() ? 'invisible' : ''"
+                      :ui="{ base: 'p-0 rounded-sm', leadingIcon: 'size-4' }"
+                      @click.stop="row.toggleExpanded()"
+                    />
+
+                    <span class="font-semibold text-highlighted">
+                      {{ balanceGroupLabel(row) }}
+                    </span>
+                    <UBadge v-if="tableView === 'snapshots'" variant="subtle" color="neutral" size="sm">
+                      {{ row.subRows?.length || 0 }}
+                    </UBadge>
+                  </template>
+
+                  <span v-else class="font-medium text-highlighted">
+                    {{ formatShortDate(row.original.date) }}
+                  </span>
+                </div>
               </template>
+
               <template #balance-cell="{ row }">
-                <span class="font-medium">
+                <span v-if="row.getIsGrouped()" class="font-semibold text-highlighted">
+                  <span v-if="!groupedEndBalanceMinor(row)" class="text-muted">—</span>
+                  <span v-else>{{ formatMoneyMinor(groupedEndBalanceMinor(row)!) }}</span>
+                </span>
+                <span v-else class="font-medium">
                   {{ formatMoneyMinor(row.original.balance_minor) }}
                 </span>
               </template>
+
               <template #change-cell="{ row }">
-                <span v-if="row.original.change_minor == null || row.original.change_minor === 0" class="text-muted">-</span>
-                <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
-                  {{ formatSignedMoneyMinor(row.original.change_minor) }}
-                </span>
+                <template v-if="row.getIsGrouped()">
+                  <span v-if="!groupedChangeMinor(row)" class="text-muted">—</span>
+                  <span v-else :class="groupedChangeMinor(row)! >= 0 ? 'text-success' : 'text-error'">
+                    {{ formatSignedMoneyMinor(groupedChangeMinor(row)!) }}
+                  </span>
+                </template>
+
+                <template v-else>
+                  <span v-if="!row.original.change_minor" class="text-muted">—</span>
+                  <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
+                    {{ formatSignedMoneyMinor(row.original.change_minor) }}
+                  </span>
+                </template>
               </template>
             </UTable>
           </template>
@@ -267,10 +288,12 @@
 </template>
 
 <script lang="ts" setup>
-import type { BreadcrumbItem, TableColumn, TabsItem } from "@nuxt/ui";
-import type { BalanceOverTimePeriod } from "~/bindings";
+import type { BreadcrumbItem, SelectItem, TableColumn, TabsItem } from "@nuxt/ui";
+import type { GroupingOptions } from "@tanstack/vue-table";
+import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto } from "~/bindings";
 
 import { useQuery } from "@tanstack/vue-query";
+import { getGroupedRowModel } from "@tanstack/vue-table";
 import { computed, h, proxyRefs, resolveComponent } from "vue";
 
 import { ACCOUNT_TYPE_META, accountTypeBadgeClass, accountTypeLabel } from "~/utils/account-type-meta";
@@ -280,6 +303,8 @@ interface BalanceRow {
   balance_minor: number
   change_minor: number | null
 }
+
+type BalanceGroupBy = "none" | "month" | "year";
 
 const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
@@ -375,6 +400,33 @@ function formatSignedMoneyMinor(minor: number) {
 function parseIsoDate(iso: string) {
   // Avoid timezone shifts for date-only strings.
   return new Date(`${iso}T00:00:00`);
+}
+
+function utcTodayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isoDateToUtcMs(iso: string) {
+  const parts = iso.split("-");
+  if (parts.length !== 3) return Number.NaN;
+
+  const y = Number.parseInt(parts[0] ?? "", 10);
+  const m = Number.parseInt(parts[1] ?? "", 10);
+  const d = Number.parseInt(parts[2] ?? "", 10);
+
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return Number.NaN;
+  return Date.UTC(y, m - 1, d);
+}
+
+function utcMsToIsoDate(ms: number) {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+function isCreatedAtAfter(a: string, b: string) {
+  const ams = Date.parse(a);
+  const bms = Date.parse(b);
+  if (Number.isFinite(ams) && Number.isFinite(bms)) return ams > bms;
+  return a > b;
 }
 
 function formatShortDate(iso: string) {
@@ -588,17 +640,86 @@ const tableViewItems = ref<TabsItem[]>([
   { label: "Daily", value: "daily" }
 ]);
 
-const dailyAllQuery = proxyRefs(useQuery({
-  queryKey: ["accounts", "balanceOverTime", accountId, "MAX"],
-  enabled: computed(() => typeof accountId.value === "number" && tableView.value === "daily"),
-  queryFn: () => api.accountBalanceOverTime(accountId.value as number, "MAX")
-}));
+const balanceGroupByItems = ref<SelectItem[]>([
+  { label: "None", value: "none" },
+  { label: "Month", value: "month" },
+  { label: "Year", value: "year" }
+]);
+const balanceGroupBy = ref<BalanceGroupBy>("none");
+
+const derivedDailyPoints = computed<BalancePointDto[]>(() => {
+  const snaps = snapshotsQuery.data ?? [];
+  if (!snaps.length) return [];
+
+  // Pick one balance per day; if multiple snapshots share a date, keep the latest created_at.
+  const byDate = new Map<string, { balance_minor: number, created_at: string }>();
+  let minDate: string | null = null;
+  let maxDate: string | null = null;
+
+  for (const s of snaps as AccountBalanceSnapshotDto[]) {
+    const date = String(s.date ?? "");
+    if (!date) continue;
+
+    if (minDate == null || date < minDate) minDate = date;
+    if (maxDate == null || date > maxDate) maxDate = date;
+
+    const existing = byDate.get(date);
+    if (!existing) {
+      byDate.set(date, { balance_minor: s.balance_minor, created_at: s.created_at });
+      continue;
+    }
+    if (isCreatedAtAfter(String(s.created_at ?? ""), existing.created_at)) {
+      byDate.set(date, { balance_minor: s.balance_minor, created_at: s.created_at });
+    }
+  }
+
+  if (minDate == null) return [];
+
+  const today = utcTodayIsoDate();
+  let endDate = today;
+  if (maxDate != null && maxDate > endDate) endDate = maxDate;
+
+  const startMs = isoDateToUtcMs(minDate);
+  const endMs = isoDateToUtcMs(endDate);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return [];
+
+  const out: BalancePointDto[] = [];
+  let last: number | null = null;
+  for (let ms = startMs; ms <= endMs; ms += 86400000) {
+    const iso = utcMsToIsoDate(ms);
+    const v = byDate.get(iso)?.balance_minor;
+    if (typeof v === "number") last = v;
+    out.push({ date: iso, balance_minor: last ?? 0 });
+  }
+
+  return out;
+});
 
 const balancesDescription = computed(() => {
   if (tableView.value === "snapshots") {
     return "All stored balance snapshots";
   }
   return "Daily balances (all time)";
+});
+
+const balanceGrouping = computed(() => {
+  if (balanceGroupBy.value === "month") {
+    return ["month_group"];
+  }
+  if (balanceGroupBy.value === "year") {
+    return ["year_group"];
+  }
+  return [];
+});
+
+const balanceGroupingOptions = ref<GroupingOptions>({
+  groupedColumnMode: "remove",
+  getGroupedRowModel: getGroupedRowModel()
+});
+
+const balanceColumnVisibility = ref<Record<string, boolean>>({
+  month_group: false,
+  year_group: false
 });
 
 const snapshotTableRows = computed<BalanceRow[]>(() => {
@@ -616,7 +737,7 @@ const snapshotTableRows = computed<BalanceRow[]>(() => {
 });
 
 const dailyTableRows = computed<BalanceRow[]>(() => {
-  const points = dailyAllQuery.data ?? [];
+  const points = derivedDailyPoints.value ?? [];
   if (!points.length) return [];
 
   const out: BalanceRow[] = [];
@@ -633,6 +754,98 @@ const dailyTableRows = computed<BalanceRow[]>(() => {
 
   return out;
 });
+
+const balanceTableData = computed<BalanceRow[]>(() => {
+  if (tableView.value === "snapshots") {
+    return snapshotTableRows.value;
+  }
+  return dailyTableRows.value;
+});
+
+const balanceTableEmpty = computed(() => {
+  if (tableView.value === "snapshots") {
+    return snapshotsQuery.isFetching ? "" : "No snapshots yet.";
+  }
+  return snapshotsQuery.isFetching ? "" : "No data.";
+});
+
+const balanceGroupStatsByKey = computed(() => {
+  const mode = balanceGroupBy.value;
+  if (mode === "none") {
+    return new Map<string, { endBalance_minor: number, changeFromPrevGroup_minor: number | null }>();
+  }
+
+  const rows = balanceTableData.value;
+  if (!rows.length) {
+    return new Map<string, { endBalance_minor: number, changeFromPrevGroup_minor: number | null }>();
+  }
+
+  const keyOf = (r: BalanceRow) => (mode === "month" ? r.date.slice(0, 7) : r.date.slice(0, 4));
+
+  // Iterate oldest -> newest (table rows are newest -> oldest).
+  const endBalanceByKey = new Map<string, number>();
+  const order: string[] = [];
+
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i]!;
+    const key = keyOf(r);
+    if (!endBalanceByKey.has(key)) {
+      order.push(key);
+    }
+    // As we walk forward in time, this ends up being the latest balance in the group.
+    endBalanceByKey.set(key, r.balance_minor);
+  }
+
+  const out = new Map<string, { endBalance_minor: number, changeFromPrevGroup_minor: number | null }>();
+  let prevEnd: number | null = null;
+
+  for (const key of order) {
+    const endBalance_minor = endBalanceByKey.get(key)!;
+    const changeFromPrevGroup_minor = prevEnd == null ? null : (endBalance_minor - prevEnd);
+    out.set(key, { endBalance_minor, changeFromPrevGroup_minor });
+    prevEnd = endBalance_minor;
+  }
+
+  return out;
+});
+
+function groupKeyFromTableRow(row: any) {
+  const id = row?.groupingColumnId as string | undefined;
+  if (!id) return null;
+  const key = String(row.getValue(id) ?? "");
+  if (!key) return null;
+  return { id, key };
+}
+
+function balanceGroupLabel(row: any) {
+  const k = groupKeyFromTableRow(row);
+  if (!k) return "";
+
+  if (k.id === "month_group") {
+    const [y, m] = k.key.split("-");
+    const year = Number.parseInt(String(y ?? ""), 10);
+    const month = Number.parseInt(String(m ?? ""), 10);
+
+    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+      return k.key;
+    }
+
+    return `${monthShort[month - 1] ?? ""} ${year}`.trim();
+  }
+  return k.key;
+}
+
+function groupedEndBalanceMinor(row: any) {
+  const k = groupKeyFromTableRow(row);
+  if (!k) return null;
+  return balanceGroupStatsByKey.value.get(k.key)?.endBalance_minor ?? null;
+}
+
+function groupedChangeMinor(row: any) {
+  const k = groupKeyFromTableRow(row);
+  if (!k) return null;
+  return balanceGroupStatsByKey.value.get(k.key)?.changeFromPrevGroup_minor ?? null;
+}
 
 const tableSorting = ref([
   {
@@ -667,6 +880,16 @@ function sortableHeader(column: any, label: string) {
 }
 
 const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
+  {
+    id: "month_group",
+    accessorFn: (row) => row.date.slice(0, 7),
+    enableSorting: false
+  },
+  {
+    id: "year_group",
+    accessorFn: (row) => row.date.slice(0, 4),
+    enableSorting: false
+  },
   {
     accessorKey: "date",
     header: ({ column }) => sortableHeader(column, "Date")
