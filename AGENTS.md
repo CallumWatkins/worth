@@ -82,4 +82,4 @@ cargo run --manifest-path src-tauri/Cargo.toml --bin export_bindings
 - Avoid writing helper functions that are only used once; prefer to inline the code (including in Vue templates, where appropriate).
 - TanStack Query must be used for all data fetching.
 - In Rust, prefer iterators over loops.
-- In Vue, prefer existing Nuxt UI components over custom elements (where possible).
+- In Vue, prefer existing Nuxt UI components over custom elements (where possible). View the available components and a link to their docs at https://ui.nuxt.com/llms.txt.
