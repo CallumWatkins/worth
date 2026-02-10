@@ -527,8 +527,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       scale: true,
       axisTick: { show: false },
       axisLine: {
-        show: true,
-        lineStyle: { color: "rgba(244, 244, 245, 0.12)" }
+        show: false
       },
       axisLabel: {
         color: "#a3a3a3",
