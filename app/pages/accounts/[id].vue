@@ -197,6 +197,7 @@
                   class="w-44"
                   color="neutral"
                   variant="subtle"
+                  :content="{ bodyLock: false }"
                 />
               </div>
             </div>
