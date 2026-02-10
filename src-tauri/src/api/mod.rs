@@ -131,10 +131,9 @@ pub async fn accounts_list(state: State<'_, AppState>) -> Result<Vec<AccountDto>
     let full_points: usize = 180;
     let full_start = today - Duration::days(full_points as i64 - 1);
 
-    let snapshots =
-        db::snapshots_for_accounts_between(pool, &account_ids, full_start, today)
-            .await
-            .map_err(|_| ApiError::Db)?;
+    let snapshots = db::snapshots_for_accounts_between(pool, &account_ids, full_start, today)
+        .await
+        .map_err(|_| ApiError::Db)?;
     let last_before = db::last_snapshots_before(pool, &account_ids, full_start)
         .await
         .map_err(|_| ApiError::Db)?;
