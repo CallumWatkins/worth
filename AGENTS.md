@@ -76,3 +76,10 @@ cargo run --manifest-path src-tauri/Cargo.toml --bin export_bindings
 ```
 
 - **Frontend API wrapper**: `app/composables/useApi.ts` wraps commands from `bindings.ts` and automatically unwraps `Result<T, ApiError>` to `T`.
+
+### Preferences
+
+- Avoid writing helper functions that are only used once; prefer to inline the code (including in Vue templates, where appropriate).
+- TanStack Query must be used for all data fetching.
+- In Rust, prefer iterators over loops.
+- In Vue, prefer existing Nuxt UI components over custom elements (where possible).
