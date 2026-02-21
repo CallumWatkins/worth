@@ -688,7 +688,9 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
 
         builder
             .export(
-                Typescript::default().bigint(BigIntExportBehavior::Number),
+                Typescript::default()
+                    .header("// Generated file, update with `bun run bindings`.")
+                    .bigint(BigIntExportBehavior::Number),
                 bindings_path,
             )
             .expect("Failed to export typescript bindings");
