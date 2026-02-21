@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use chrono::{Duration, NaiveDate, Utc};
 use sqlx::SqlitePool;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use tauri::State;
 
 use crate::state::AppState;
@@ -137,6 +137,7 @@ pub struct DashboardDto {
     pub change_vs_last_month_pct: f64,
     pub monthly_yield_minor: i64,
     pub active_accounts: u32,
+    pub active_institutions: u32,
     pub allocation_by_type: Vec<DashboardAllocationDto>,
 }
 
@@ -491,6 +492,7 @@ pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, A
 
     let mut total_balance_minor: i64 = 0;
     let mut active_accounts: u32 = 0;
+    let mut active_institution_ids: HashSet<i64> = HashSet::new();
     let mut allocation: BTreeMap<AccountTypeName, i64> = BTreeMap::new();
 
     for a in &accounts {
@@ -499,6 +501,7 @@ pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, A
         total_balance_minor += latest_minor;
         if latest_minor != 0 {
             active_accounts += 1;
+            active_institution_ids.insert(a.institution_id);
         }
         *allocation.entry(account_type_name).or_insert(0) += latest_minor;
     }
@@ -537,6 +540,8 @@ pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, A
         change_vs_last_month_pct,
         monthly_yield_minor,
         active_accounts,
+        active_institutions: u32::try_from(active_institution_ids.len())
+            .expect("active institution count should fit in u32"),
         allocation_by_type,
     })
 }

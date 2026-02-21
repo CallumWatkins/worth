@@ -56,6 +56,16 @@
               description: 'text-xl font-bold text-default whitespace-nowrap'
             }"
           />
+          <UPageCard
+            to="/institutions"
+            title="Institutions"
+            :description="String(dashboardQuery.data?.active_institutions ?? 0)"
+            variant="subtle"
+            :ui="{
+              title: 'text-muted text-xs whitespace-nowrap',
+              description: 'text-xl font-bold text-default whitespace-nowrap'
+            }"
+          />
         </div>
       </UPageCard>
       <UPageGrid>

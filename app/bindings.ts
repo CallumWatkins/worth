@@ -84,7 +84,7 @@ export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
 export type BalancePointDto = { date: string; balance_minor: number }
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
-export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; allocation_by_type: DashboardAllocationDto[] }
+export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; active_institutions: number; allocation_by_type: DashboardAllocationDto[] }
 export type InstitutionDto = { id: number; name: string }
 export type InstitutionSummaryDto = { id: number; name: string; account_count: number; empty_account_count: number; account_types: AccountTypeName[]; total_balance_minor: number }
 
