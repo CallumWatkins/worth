@@ -34,7 +34,7 @@
           <UPageCard
             title="Current Balance"
             variant="subtle"
-            :ui="{ title: 'text-muted text-xs whitespace-nowrap' }"
+            :ui="{ title: 'text-muted text-sm whitespace-nowrap' }"
           >
             <template #description>
               <div class="text-xl font-bold text-default whitespace-nowrap">
@@ -51,7 +51,7 @@
             :description="accountQuery.data.institution.name"
             variant="subtle"
             :ui="{
-              title: 'text-muted text-xs whitespace-nowrap',
+              title: 'text-muted text-sm whitespace-nowrap',
               description: 'text-xl font-bold text-default whitespace-nowrap'
             }"
           />
@@ -59,7 +59,7 @@
           <UPageCard
             title="Account Type"
             variant="subtle"
-            :ui="{ title: 'text-muted text-xs whitespace-nowrap' }"
+            :ui="{ title: 'text-muted text-sm whitespace-nowrap' }"
           >
             <template #description>
               <div class="flex items-center gap-2">
@@ -79,7 +79,7 @@
             title="Monthly Change"
             variant="subtle"
             :ui="{
-              title: 'text-muted text-xs whitespace-nowrap'
+              title: 'text-muted text-sm whitespace-nowrap'
             }"
           >
             <template #description>

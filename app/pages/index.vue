@@ -22,7 +22,7 @@
         spotlight
         :ui="{
           container: 'lg:grid-cols-[1fr_auto]',
-          title: 'uppercase text-muted text-xs',
+          title: 'text-muted text-sm',
           spotlight: 'bg-default/95'
         }"
       >
@@ -36,23 +36,23 @@
             </span>
           </div>
         </template>
-        <div class="flex gap-4">
+        <div class="flex gap-4 *:min-w-32">
           <UPageCard
             title="Monthly Yield"
             :description="monthlyYieldLabel"
             variant="subtle"
             :ui="{
-              title: 'text-muted text-xs whitespace-nowrap',
+              title: 'text-muted text-sm whitespace-nowrap',
               description: monthlyYieldDescriptionClass
             }"
           />
           <UPageCard
             to="/accounts"
-            title="Active Accounts"
+            title="Accounts"
             :description="String(dashboardQuery.data?.active_accounts ?? 0)"
             variant="subtle"
             :ui="{
-              title: 'text-muted text-xs whitespace-nowrap',
+              title: 'text-muted text-sm whitespace-nowrap',
               description: 'text-xl font-bold text-default whitespace-nowrap'
             }"
           />
@@ -62,7 +62,7 @@
             :description="String(dashboardQuery.data?.active_institutions ?? 0)"
             variant="subtle"
             :ui="{
-              title: 'text-muted text-xs whitespace-nowrap',
+              title: 'text-muted text-sm whitespace-nowrap',
               description: 'text-xl font-bold text-default whitespace-nowrap'
             }"
           />
