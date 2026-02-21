@@ -287,6 +287,27 @@ pub async fn institutions_list(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn institutions_get(
+    state: State<'_, AppState>,
+    institution_id: i64,
+) -> Result<InstitutionDto, ApiError> {
+    let pool = &state.pool;
+
+    let Some(institution) = db::institution_get(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    Ok(InstitutionDto {
+        id: institution.id,
+        name: institution.name,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn accounts_get(
     state: State<'_, AppState>,
     account_id: i64,
@@ -675,6 +696,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
     let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
         accounts_list,
         institutions_list,
+        institutions_get,
         accounts_get,
         account_snapshots_list,
         account_balance_over_time,

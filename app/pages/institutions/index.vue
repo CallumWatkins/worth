@@ -31,7 +31,11 @@
         :data="institutionsData"
         :columns="columns"
         empty="No institutions available."
+        :ui="{
+          tr: 'data-[selectable=true]:cursor-pointer'
+        }"
         class="flex-1"
+        @select="onSelect"
       >
         <template #name-cell="{ row }">
           <span class="text-highlighted">
@@ -74,7 +78,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { TableColumn } from "@nuxt/ui";
+import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { InstitutionSummaryDto } from "~/bindings";
 
 import { useQuery } from "@tanstack/vue-query";
@@ -109,6 +113,10 @@ const gbp = new Intl.NumberFormat("en-GB", {
 
 function formatGBP(minor: number) {
   return gbp.format(minor / 100);
+}
+
+function onSelect(_e: Event, row: TableRow<Institution>) {
+  void navigateTo(`/institutions/${row.original.id}`);
 }
 
 function sortableHeader(column: any, label: string) {

@@ -21,6 +21,14 @@ async institutionsList() : Promise<Result<InstitutionSummaryDto[], ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async institutionsGet(institutionId: number) : Promise<Result<InstitutionDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("institutions_get", { institutionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async accountsGet(accountId: number) : Promise<Result<AccountDto, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("accounts_get", { accountId }) };

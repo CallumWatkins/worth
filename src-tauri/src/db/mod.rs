@@ -205,6 +205,28 @@ pub async fn institutions_account_types(
     Ok(rows)
 }
 
+pub async fn institution_get(
+    pool: &SqlitePool,
+    institution_id: i64,
+) -> Result<Option<rows::InstitutionRow>, sqlx::Error> {
+    let row = sqlx::query_as::<_, rows::InstitutionRow>(
+        r"
+        SELECT
+            id,
+            name
+        FROM
+            institutions
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(institution_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}
+
 pub async fn account_get_full(
     pool: &SqlitePool,
     account_id: i64,
