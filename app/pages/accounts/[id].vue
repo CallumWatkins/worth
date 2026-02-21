@@ -249,7 +249,7 @@
                     </UBadge>
                   </template>
 
-                  <span v-else class="font-medium text-highlighted">
+                  <span v-else class="text-highlighted">
                     {{ formatShortDate(row.original.date) }}
                   </span>
                 </div>
@@ -260,7 +260,7 @@
                   <span v-if="!groupedEndBalanceMinor(row)" class="text-muted">—</span>
                   <span v-else>{{ formatMoneyMinor(groupedEndBalanceMinor(row)!) }}</span>
                 </span>
-                <span v-else class="font-medium">
+                <span v-else>
                   {{ formatMoneyMinor(row.original.balance_minor) }}
                 </span>
               </template>

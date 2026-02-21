@@ -132,7 +132,7 @@
             </div>
 
             <div v-else class="flex items-center gap-2 min-w-0">
-              <span class="font-medium text-highlighted truncate">
+              <span class="text-highlighted truncate">
                 {{ row.original.name }}
               </span>
               <UBadge
@@ -211,7 +211,7 @@
               Group total
             </div>
           </div>
-          <span v-else class="font-medium">
+          <span v-else>
             {{ formatGBP(row.original.latest_balance_minor) }}
           </span>
         </template>
@@ -578,7 +578,7 @@ const columns = computed<TableColumn<Account>[]>(() => [
     meta: {
       class: {
         th: "text-right",
-        td: "text-right font-medium"
+        td: "text-right"
       }
     }
   }
