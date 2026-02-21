@@ -74,6 +74,13 @@ pub struct InstitutionDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct InstitutionDetailDto {
+    pub id: i64,
+    pub name: String,
+    pub accounts: Vec<AccountDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct InstitutionSummaryDto {
     pub id: i64,
     pub name: String,
@@ -145,103 +152,11 @@ pub struct DashboardDto {
 #[specta::specta]
 pub async fn accounts_list(state: State<'_, AppState>) -> Result<Vec<AccountDto>, ApiError> {
     let pool = &state.pool;
-    let today = Utc::now().date_naive();
 
     let accounts = db::accounts_list_full(pool)
         .await
         .map_err(|_| ApiError::Db)?;
-    let account_ids = accounts.iter().map(|a| a.id).collect::<Vec<_>>();
-
-    // Longest period shown in the UI is 6M (180 points). We always build that once and slice.
-    let full_points: usize = 180;
-    let full_start = today - Duration::days(full_points as i64 - 1);
-
-    let snapshots = db::snapshots_for_accounts_between(pool, &account_ids, full_start, today)
-        .await
-        .map_err(|_| ApiError::Db)?;
-    let last_before = db::last_snapshots_before(pool, &account_ids, full_start)
-        .await
-        .map_err(|_| ApiError::Db)?;
-
-    let mut snapshots_by_account: HashMap<i64, HashMap<NaiveDate, i64>> = HashMap::new();
-    for s in snapshots {
-        snapshots_by_account
-            .entry(s.account_id)
-            .or_default()
-            .insert(s.balance_date, s.balance_minor);
-    }
-
-    let initial_before: HashMap<i64, i64> = last_before
-        .into_iter()
-        .map(|s| (s.account_id, s.balance_minor))
-        .collect();
-
-    let mut out = Vec::with_capacity(accounts.len());
-    let empty_dates: HashMap<NaiveDate, i64> = HashMap::new();
-    for a in accounts {
-        let account_type_name = account_type_from_db(&a.type_name)?;
-
-        let institution = InstitutionDto {
-            id: a.institution_id,
-            name: a.institution_name,
-        };
-        let account_type = AccountTypeDto {
-            id: a.type_id,
-            name: account_type_name,
-        };
-
-        let first_snapshot_date = a.first_snapshot_date.unwrap_or(today);
-        let latest_snapshot_date = a.latest_snapshot_date.unwrap_or(today);
-        let latest_balance_minor = a.latest_balance_minor.unwrap_or(0);
-
-        let date_map = snapshots_by_account.get(&a.id).unwrap_or(&empty_dates);
-        let seed_before = initial_before.get(&a.id).copied();
-        let series_180 = filled_values_for_period(date_map, seed_before, full_start, full_points);
-
-        let activity_by_period: BTreeMap<_, _> = [
-            (ActivityPeriod::P1W, 7),
-            (ActivityPeriod::P1M, 30),
-            (ActivityPeriod::P3M, 90),
-            (ActivityPeriod::P6M, 180),
-        ]
-        .into_iter()
-        .map(|(period, points)| {
-            let values = series_180[series_180.len().saturating_sub(points)..].to_vec();
-            let delta_minor = match (
-                values.iter().find_map(|&v| v),
-                values.iter().rev().find_map(|&v| v),
-            ) {
-                (Some(first), Some(last)) => last - first,
-                _ => 0,
-            };
-
-            (
-                period,
-                ActivityDataDto {
-                    values,
-                    delta_minor,
-                },
-            )
-        })
-        .collect();
-
-        out.push(AccountDto {
-            id: a.id,
-            name: a.name,
-            institution,
-            account_type,
-            currency_code: a.currency_code,
-            normal_balance_sign: a.normal_balance_sign,
-            opened_date: a.opened_date,
-            closed_date: a.closed_date,
-            first_snapshot_date,
-            latest_snapshot_date,
-            latest_balance_minor,
-            activity_by_period,
-        });
-    }
-
-    Ok(out)
+    build_account_dtos(pool, accounts).await
 }
 
 #[tauri::command]
@@ -290,7 +205,7 @@ pub async fn institutions_list(
 pub async fn institutions_get(
     state: State<'_, AppState>,
     institution_id: i64,
-) -> Result<InstitutionDto, ApiError> {
+) -> Result<InstitutionDetailDto, ApiError> {
     let pool = &state.pool;
 
     let Some(institution) = db::institution_get(pool, institution_id)
@@ -300,9 +215,15 @@ pub async fn institutions_get(
         return Err(ApiError::NotFound);
     };
 
-    Ok(InstitutionDto {
+    let accounts = db::accounts_list_full_for_institution(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let account_dtos = build_account_dtos(pool, accounts).await?;
+
+    Ok(InstitutionDetailDto {
         id: institution.id,
         name: institution.name,
+        accounts: account_dtos,
     })
 }
 
@@ -593,6 +514,105 @@ pub async fn dashboard_balance_over_time(
     };
 
     total_balance_over_time(pool, &accounts, start, today).await
+}
+
+async fn build_account_dtos(
+    pool: &SqlitePool,
+    accounts: Vec<AccountListRow>,
+) -> Result<Vec<AccountDto>, ApiError> {
+    let today = Utc::now().date_naive();
+    let account_ids = accounts.iter().map(|a| a.id).collect::<Vec<_>>();
+
+    // Longest period shown in the UI is 6M (180 points). We always build that once and slice.
+    let full_points: usize = 180;
+    let full_start = today - Duration::days(full_points as i64 - 1);
+
+    let snapshots = db::snapshots_for_accounts_between(pool, &account_ids, full_start, today)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let last_before = db::last_snapshots_before(pool, &account_ids, full_start)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    let mut snapshots_by_account: HashMap<i64, HashMap<NaiveDate, i64>> = HashMap::new();
+    for s in snapshots {
+        snapshots_by_account
+            .entry(s.account_id)
+            .or_default()
+            .insert(s.balance_date, s.balance_minor);
+    }
+
+    let initial_before: HashMap<i64, i64> = last_before
+        .into_iter()
+        .map(|s| (s.account_id, s.balance_minor))
+        .collect();
+
+    let mut out = Vec::with_capacity(accounts.len());
+    let empty_dates: HashMap<NaiveDate, i64> = HashMap::new();
+    for a in accounts {
+        let account_type_name = account_type_from_db(&a.type_name)?;
+
+        let institution = InstitutionDto {
+            id: a.institution_id,
+            name: a.institution_name,
+        };
+        let account_type = AccountTypeDto {
+            id: a.type_id,
+            name: account_type_name,
+        };
+
+        let first_snapshot_date = a.first_snapshot_date.unwrap_or(today);
+        let latest_snapshot_date = a.latest_snapshot_date.unwrap_or(today);
+        let latest_balance_minor = a.latest_balance_minor.unwrap_or(0);
+
+        let date_map = snapshots_by_account.get(&a.id).unwrap_or(&empty_dates);
+        let seed_before = initial_before.get(&a.id).copied();
+        let series_180 = filled_values_for_period(date_map, seed_before, full_start, full_points);
+
+        let activity_by_period: BTreeMap<_, _> = [
+            (ActivityPeriod::P1W, 7),
+            (ActivityPeriod::P1M, 30),
+            (ActivityPeriod::P3M, 90),
+            (ActivityPeriod::P6M, 180),
+        ]
+        .into_iter()
+        .map(|(period, points)| {
+            let values = series_180[series_180.len().saturating_sub(points)..].to_vec();
+            let delta_minor = match (
+                values.iter().find_map(|&v| v),
+                values.iter().rev().find_map(|&v| v),
+            ) {
+                (Some(first), Some(last)) => last - first,
+                _ => 0,
+            };
+
+            (
+                period,
+                ActivityDataDto {
+                    values,
+                    delta_minor,
+                },
+            )
+        })
+        .collect();
+
+        out.push(AccountDto {
+            id: a.id,
+            name: a.name,
+            institution,
+            account_type,
+            currency_code: a.currency_code,
+            normal_balance_sign: a.normal_balance_sign,
+            opened_date: a.opened_date,
+            closed_date: a.closed_date,
+            first_snapshot_date,
+            latest_snapshot_date,
+            latest_balance_minor,
+            activity_by_period,
+        });
+    }
+
+    Ok(out)
 }
 
 fn account_type_from_db(name: &str) -> Result<AccountTypeName, ApiError> {

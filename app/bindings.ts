@@ -21,7 +21,7 @@ async institutionsList() : Promise<Result<InstitutionSummaryDto[], ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async institutionsGet(institutionId: number) : Promise<Result<InstitutionDto, ApiError>> {
+async institutionsGet(institutionId: number) : Promise<Result<InstitutionDetailDto, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("institutions_get", { institutionId }) };
 } catch (e) {
@@ -93,6 +93,7 @@ export type BalancePointDto = { date: string; balance_minor: number }
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; active_institutions: number; allocation_by_type: DashboardAllocationDto[] }
+export type InstitutionDetailDto = { id: number; name: string; accounts: AccountDto[] }
 export type InstitutionDto = { id: number; name: string }
 export type InstitutionSummaryDto = { id: number; name: string; account_count: number; empty_account_count: number; account_types: AccountTypeName[]; total_balance_minor: number }
 

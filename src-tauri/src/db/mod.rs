@@ -129,6 +129,70 @@ pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>
     Ok(rows)
 }
 
+pub async fn accounts_list_full_for_institution(
+    pool: &SqlitePool,
+    institution_id: i64,
+) -> Result<Vec<AccountListRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, AccountListRow>(
+        r"
+        SELECT
+            a.id,
+            a.name,
+            a.currency_code,
+            a.normal_balance_sign,
+            a.opened_date,
+            a.closed_date,
+            i.id AS institution_id,
+            i.name AS institution_name,
+            t.id AS type_id,
+            t.name AS type_name,
+            first.balance_date AS first_snapshot_date,
+            latest.balance_date AS latest_snapshot_date,
+            latest.balance_minor AS latest_balance_minor
+        FROM
+            accounts AS a
+            INNER JOIN institutions AS i ON i.id = a.institution_id
+            INNER JOIN account_types AS t ON t.id = a.type_id
+            LEFT JOIN (
+                SELECT
+                    account_id,
+                    MIN(balance_date) AS balance_date
+                FROM
+                    account_balance_snapshots
+                GROUP BY
+                    account_id
+            ) AS FIRST ON first.account_id = a.id
+            LEFT JOIN (
+                SELECT
+                    abs.account_id,
+                    abs.balance_date,
+                    abs.balance_minor
+                FROM
+                    account_balance_snapshots AS abs
+                    INNER JOIN (
+                        SELECT
+                            account_id,
+                            MAX(balance_date) AS max_date
+                        FROM
+                            account_balance_snapshots
+                        GROUP BY
+                            account_id
+                    ) AS m ON m.account_id = abs.account_id
+                    AND m.max_date = abs.balance_date
+            ) AS latest ON latest.account_id = a.id
+        WHERE
+            a.institution_id = ?
+        ORDER BY
+            a.name ASC
+        ",
+    )
+    .bind(institution_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
 pub async fn institutions_list_summary(
     pool: &SqlitePool,
 ) -> Result<Vec<InstitutionSummaryRow>, sqlx::Error> {

@@ -32,8 +32,29 @@
       <template v-else-if="institutionQuery.data">
         <UPageCard
           title="Accounts"
-          description="Placeholder for accounts table"
-        />
+          description="Accounts at this institution"
+          :ui="{ body: 'min-w-full' }"
+        >
+          <template #body>
+            <div class="flex items-center justify-end gap-4 mb-4">
+              <AccountsTableViewOptions
+                v-model:group-by="groupBy"
+                v-model:activity-period="activityPeriod"
+                v-model:show-empty="showEmpty"
+                :group-by-items="groupByItems"
+                :activity-period-items="activityPeriodItems"
+              />
+            </div>
+
+            <AccountsTable
+              :accounts="institutionQuery.data.accounts"
+              :group-by="groupBy"
+              :show-empty="showEmpty"
+              :activity-period="activityPeriod"
+              :hide-columns="hideColumns"
+            />
+          </template>
+        </UPageCard>
       </template>
     </UPageBody>
   </UContainer>
@@ -41,15 +62,26 @@
 
 <script lang="ts" setup>
 import type { BreadcrumbItem } from "@nuxt/ui";
-import type { InstitutionDto } from "~/bindings";
+import type { InstitutionDetailDto } from "~/bindings";
+import type { AccountsHideColumn } from "~/composables/useAccountsTableOptions";
 
 import { useQuery } from "@tanstack/vue-query";
 import { computed, proxyRefs } from "vue";
 
-type Institution = InstitutionDto;
+type Institution = InstitutionDetailDto;
 
 const route = useRoute();
 const api = useApi();
+const hideColumns = ref<AccountsHideColumn[]>(["institution"]);
+const {
+  groupBy,
+  groupByItems,
+  showEmpty,
+  activityPeriod,
+  activityPeriodItems
+} = useAccountsTableOptions({
+  hideColumns
+});
 
 const rawId = computed(() => {
   const p = (route.params as any)?.id;
@@ -83,6 +115,6 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
 const headerDescription = computed(() => {
   const institution = institutionQuery.data as Institution | undefined;
   if (!institution) return "";
-  return "Institution overview";
+  return `${institution.accounts.length} account${institution.accounts.length === 1 ? "" : "s"}`;
 });
 </script>
