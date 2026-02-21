@@ -56,6 +56,21 @@ pub struct AccountListRow {
     pub latest_balance_minor: Option<i64>,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct InstitutionSummaryRow {
+    pub id: i64,
+    pub name: String,
+    pub account_count: i64,
+    pub empty_account_count: i64,
+    pub total_balance_minor: i64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct InstitutionAccountTypeRow {
+    pub institution_id: i64,
+    pub type_name: String,
+}
+
 pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>, sqlx::Error> {
     let rows = sqlx::query_as::<_, AccountListRow>(
         r"
@@ -106,6 +121,82 @@ pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>
             ) AS latest ON latest.account_id = a.id
         ORDER BY
             a.name ASC
+        ",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+pub async fn institutions_list_summary(
+    pool: &SqlitePool,
+) -> Result<Vec<InstitutionSummaryRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, InstitutionSummaryRow>(
+        r"
+        SELECT
+            i.id,
+            i.name,
+            COUNT(a.id) AS account_count,
+            SUM(
+                CASE
+                    WHEN a.id IS NOT NULL
+                    AND COALESCE(latest.balance_minor, 0) = 0 THEN 1
+                    ELSE 0
+                END
+            ) AS empty_account_count,
+            COALESCE(SUM(COALESCE(latest.balance_minor, 0)), 0) AS total_balance_minor
+        FROM
+            institutions AS i
+            LEFT JOIN accounts AS a ON a.institution_id = i.id
+            LEFT JOIN (
+                SELECT
+                    abs.account_id,
+                    abs.balance_minor
+                FROM
+                    account_balance_snapshots AS abs
+                    INNER JOIN (
+                        SELECT
+                            account_id,
+                            MAX(balance_date) AS max_date
+                        FROM
+                            account_balance_snapshots
+                        GROUP BY
+                            account_id
+                    ) AS m ON m.account_id = abs.account_id
+                    AND m.max_date = abs.balance_date
+            ) AS latest ON latest.account_id = a.id
+        GROUP BY
+            i.id,
+            i.name
+        ORDER BY
+            i.name ASC
+        ",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+pub async fn institutions_account_types(
+    pool: &SqlitePool,
+) -> Result<Vec<InstitutionAccountTypeRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, InstitutionAccountTypeRow>(
+        r"
+        SELECT
+            a.institution_id,
+            t.name AS type_name
+        FROM
+            accounts AS a
+            INNER JOIN account_types AS t ON t.id = a.type_id
+        GROUP BY
+            a.institution_id,
+            t.name
+        ORDER BY
+            a.institution_id ASC,
+            COUNT(a.id) DESC,
+            t.name ASC
         ",
     )
     .fetch_all(pool)

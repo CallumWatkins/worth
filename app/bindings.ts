@@ -13,6 +13,14 @@ async accountsList() : Promise<Result<AccountDto[], ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async institutionsList() : Promise<Result<InstitutionSummaryDto[], ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("institutions_list") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async accountsGet(accountId: number) : Promise<Result<AccountDto, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("accounts_get", { accountId }) };
@@ -78,6 +86,7 @@ export type DashboardAllocationDto = { account_type: AccountTypeName; balance_mi
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; allocation_by_type: DashboardAllocationDto[] }
 export type InstitutionDto = { id: number; name: string }
+export type InstitutionSummaryDto = { id: number; name: string; account_count: number; empty_account_count: number; account_types: AccountTypeName[]; total_balance_minor: number }
 
 /** tauri-specta globals **/
 

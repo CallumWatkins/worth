@@ -69,6 +69,11 @@ const items = ref<NavigationMenuItem[]>([
     to: "/accounts"
   },
   {
+    label: "Institutions",
+    icon: "i-lucide-building-2",
+    to: "/institutions"
+  },
+  {
     label: "Settings",
     icon: "i-lucide-settings",
     to: "/settings"

@@ -74,6 +74,16 @@ pub struct InstitutionDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct InstitutionSummaryDto {
+    pub id: i64,
+    pub name: String,
+    pub account_count: u32,
+    pub empty_account_count: u32,
+    pub account_types: Vec<AccountTypeName>,
+    pub total_balance_minor: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct AccountTypeDto {
     pub id: i64,
     pub name: AccountTypeName,
@@ -227,6 +237,47 @@ pub async fn accounts_list(state: State<'_, AppState>) -> Result<Vec<AccountDto>
             latest_snapshot_date,
             latest_balance_minor,
             activity_by_period,
+        });
+    }
+
+    Ok(out)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn institutions_list(
+    state: State<'_, AppState>,
+) -> Result<Vec<InstitutionSummaryDto>, ApiError> {
+    let pool = &state.pool;
+
+    let summary_rows = db::institutions_list_summary(pool)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let type_rows = db::institutions_account_types(pool)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    let mut types_by_institution: HashMap<i64, Vec<AccountTypeName>> =
+        HashMap::with_capacity(summary_rows.len());
+    for row in type_rows {
+        let account_type_name = account_type_from_db(&row.type_name)?;
+        types_by_institution
+            .entry(row.institution_id)
+            .or_default()
+            .push(account_type_name);
+    }
+
+    let mut out = Vec::with_capacity(summary_rows.len());
+    for row in summary_rows {
+        out.push(InstitutionSummaryDto {
+            id: row.id,
+            name: row.name,
+            account_count: u32::try_from(row.account_count)
+                .expect("account count should fit in u32"),
+            empty_account_count: u32::try_from(row.empty_account_count)
+                .expect("empty account count should fit in u32"),
+            account_types: types_by_institution.remove(&row.id).unwrap_or_default(),
+            total_balance_minor: row.total_balance_minor,
         });
     }
 
@@ -618,6 +669,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
 
     let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
         accounts_list,
+        institutions_list,
         accounts_get,
         account_snapshots_list,
         account_balance_over_time,
