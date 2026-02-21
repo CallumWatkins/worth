@@ -23,6 +23,7 @@
     "lint:all:fix": "bun run lint:ts:fix && bun run lint:rust:fix",
     "bump": "bumpp",
     "db": "cargo run --manifest-path src-tauri/Cargo.toml --bin db --",
+    "bindings": "cargo run --manifest-path src-tauri/Cargo.toml --bin export_bindings",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",

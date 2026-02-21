@@ -41,11 +41,14 @@ bun run tauri:build
 # typecheck
 bun run check:<ts|rust|all>
 
-# lint
+# lint and format
 bun run lint:<ts|rust|all>[:fix]
 
 # database operations
 bun run db <backup|restore|seed|clear|clean|help>
+
+# export Tauri IPC bindings to app/bindings.ts
+bun run bindings
 ```
 
 - **Prereqs**: install the OS toolchain per [Tauri prerequisites](https://tauri.app/start/prerequisites).
@@ -69,11 +72,6 @@ Problems running `cargo` commands ("rustup could not choose a version of cargo t
 - **Models returned from queries**: `src-tauri/src/db/mod.rs` (query/aggregate/join result structs)
 - **Database table models**: `src-tauri/src/db/rows.rs` (every table must have an up-to-date `sqlx::FromRow` model here)
 - **API response models (DTOs)**: `src-tauri/src/api/mod.rs` (types returned over IPC; map DB models to DTOs)
-
-```sh
-# export Tauri IPC bindings to app/bindings.ts
-cargo run --manifest-path src-tauri/Cargo.toml --bin export_bindings
-```
 
 - **Frontend API wrapper**: `app/composables/useApi.ts` wraps commands from `bindings.ts` and automatically unwraps `Result<T, ApiError>` to `T`.
 
