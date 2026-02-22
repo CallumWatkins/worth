@@ -32,7 +32,7 @@
       <div class="flex flex-col">
         <span>{{ item.name }}</span>
         <span
-          v-if="item.kind === 'account' && item.institution_name"
+          v-if="item.kind === 'account'"
           class="text-xs text-muted"
         >
           {{ item.institution_name }}
@@ -42,7 +42,7 @@
 
     <template #item-trailing="{ item }">
       <UBadge
-        v-if="item.kind === 'account' && item.account_type"
+        v-if="item.kind === 'account'"
         variant="subtle"
         color="neutral"
         size="sm"
