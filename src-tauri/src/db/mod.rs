@@ -1,6 +1,7 @@
 pub mod rows;
 
 use chrono::NaiveDate;
+use itertools::Itertools;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     QueryBuilder, Sqlite, SqlitePool,
@@ -71,94 +72,179 @@ pub struct InstitutionAccountTypeRow {
     pub type_name: String,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct AccountSearchRow {
-    pub id: i64,
-    pub name: String,
-    pub type_name: String,
-    pub institution_name: String,
+#[derive(Debug, Clone)]
+pub enum GlobalSearchRow {
+    Account {
+        id: i64,
+        name: String,
+        type_name: String,
+        institution_name: String,
+    },
+    Institution {
+        id: i64,
+        name: String,
+    },
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct InstitutionSearchRow {
-    pub id: i64,
-    pub name: String,
-}
-
-fn escape_like_query(query: &str) -> String {
-    let mut out = String::with_capacity(query.len());
-    for ch in query.chars() {
-        match ch {
-            '\\' | '%' | '_' => {
-                out.push('\\');
-                out.push(ch);
-            }
-            _ => out.push(ch),
+fn normalize_search_query(query: &str) -> Option<(String, String)> {
+    let mut normalized = String::with_capacity(query.len());
+    for ch in query.trim().chars() {
+        if ch.is_alphanumeric() {
+            normalized.push(ch);
+        } else {
+            normalized.push(' ');
         }
     }
-    out
+
+    let terms: Vec<&str> = normalized.split_whitespace().collect();
+    if terms.is_empty() {
+        return None;
+    }
+
+    let phrase = terms.join(" ");
+    let fts_query = terms.into_iter().map(|term| format!("{term}*")).join(" ");
+    Some((phrase, fts_query))
 }
 
-pub async fn accounts_search_by_name(
+pub async fn search_global(
     pool: &SqlitePool,
     query: &str,
-    limit: i64,
-) -> Result<Vec<AccountSearchRow>, sqlx::Error> {
-    let pattern = format!("%{}%", escape_like_query(query));
-    let rows = sqlx::query_as::<_, AccountSearchRow>(
+) -> Result<Vec<GlobalSearchRow>, sqlx::Error> {
+    #[derive(sqlx::FromRow)]
+    struct GlobalSearchRawRow {
+        kind: String,
+        id: i64,
+        name: String,
+        type_name: Option<String>,
+        institution_name: Option<String>,
+    }
+
+    let Some((phrase_query, fts_query)) = normalize_search_query(query) else {
+        return Ok(Vec::new());
+    };
+
+    let rows = sqlx::query_as::<_, GlobalSearchRawRow>(
         r"
+        WITH
+            matched AS (
+                SELECT
+                    kind,
+                    entity_id,
+                    rank AS bm25_rank,
+                    CASE
+                        WHEN INSTR(LOWER(name), LOWER(?)) > 0 THEN 1
+                        ELSE 0
+                    END AS has_phrase,
+                    CASE
+                        WHEN INSTR(LOWER(name), LOWER(?)) > 0 THEN INSTR(LOWER(name), LOWER(?))
+                        ELSE 2147483647
+                    END AS phrase_pos
+                FROM
+                    search_fts
+                WHERE
+                    search_fts MATCH ?
+                    AND rank MATCH 'bm25(0.0, 0.0, 10.0, 2.0, 1.0)'
+            ),
+            account_hits AS (
+                SELECT
+                    m.bm25_rank,
+                    m.has_phrase,
+                    m.phrase_pos,
+                    'account' AS kind,
+                    a.id,
+                    a.name,
+                    t.name AS type_name,
+                    i.name AS institution_name
+                FROM
+                    matched AS m
+                    INNER JOIN accounts AS a ON m.kind = 'account'
+                    AND a.id = m.entity_id
+                    INNER JOIN account_types AS t ON t.id = a.type_id
+                    INNER JOIN institutions AS i ON i.id = a.institution_id
+            ),
+            institution_hits AS (
+                SELECT
+                    m.bm25_rank,
+                    m.has_phrase,
+                    m.phrase_pos,
+                    'institution' AS kind,
+                    i.id,
+                    i.name,
+                    NULL AS type_name,
+                    NULL AS institution_name
+                FROM
+                    matched AS m
+                    INNER JOIN institutions AS i ON m.kind = 'institution'
+                    AND i.id = m.entity_id
+            )
         SELECT
-            a.id,
-            a.name,
-            t.name AS type_name,
-            i.name AS institution_name
+            results.kind,
+            results.id,
+            results.name,
+            results.type_name,
+            results.institution_name
         FROM
-            accounts AS a
-            INNER JOIN account_types AS t ON t.id = a.type_id
-            INNER JOIN institutions AS i ON i.id = a.institution_id
-        WHERE
-            a.name like ? ESCAPE '\' COLLATE nocase
+            (
+                SELECT
+                    *
+                FROM
+                    account_hits
+                UNION ALL
+                SELECT
+                    *
+                FROM
+                    institution_hits
+            ) AS results
         ORDER BY
-            a.name COLLATE nocase ASC
+            results.has_phrase DESC,
+            results.phrase_pos ASC,
+            results.bm25_rank ASC,
+            CASE
+                WHEN results.kind = 'institution' THEN 0
+                ELSE 1
+            END ASC,
+            results.name COLLATE nocase ASC
         LIMIT
-            ?
+            10
         ",
     )
-    .bind(pattern)
-    .bind(limit)
+    .bind(&phrase_query)
+    .bind(&phrase_query)
+    .bind(&phrase_query)
+    .bind(fts_query)
     .fetch_all(pool)
     .await?;
 
-    Ok(rows)
-}
+    rows.into_iter()
+        .map(|row| match row.kind.as_str() {
+            "account" => {
+                let Some(type_name) = row.type_name else {
+                    return Err(sqlx::Error::Decode(
+                        "search_global: NULL type_name for account row".into(),
+                    ));
+                };
+                let Some(institution_name) = row.institution_name else {
+                    return Err(sqlx::Error::Decode(
+                        "search_global: NULL institution_name for account row".into(),
+                    ));
+                };
 
-pub async fn institutions_search_by_name(
-    pool: &SqlitePool,
-    query: &str,
-    limit: i64,
-) -> Result<Vec<InstitutionSearchRow>, sqlx::Error> {
-    let pattern = format!("%{}%", escape_like_query(query));
-    let rows = sqlx::query_as::<_, InstitutionSearchRow>(
-        r"
-        SELECT
-            i.id,
-            i.name
-        FROM
-            institutions AS i
-        WHERE
-            i.name like ? ESCAPE '\' COLLATE nocase
-        ORDER BY
-            i.name COLLATE nocase ASC
-        LIMIT
-            ?
-        ",
-    )
-    .bind(pattern)
-    .bind(limit)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows)
+                Ok(GlobalSearchRow::Account {
+                    id: row.id,
+                    name: row.name,
+                    type_name,
+                    institution_name,
+                })
+            }
+            "institution" => Ok(GlobalSearchRow::Institution {
+                id: row.id,
+                name: row.name,
+            }),
+            other => Err(sqlx::Error::Decode(
+                format!("search_global: unknown kind={other:?}").into(),
+            )),
+        })
+        .collect::<Result<Vec<_>, _>>()
 }
 
 pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>, sqlx::Error> {

@@ -227,38 +227,28 @@ pub async fn search(
     }
 
     let pool = &state.pool;
-    let account_rows = db::accounts_search_by_name(pool, query, 10)
-        .await
-        .map_err(|_| ApiError::Db)?;
-    let institution_rows = db::institutions_search_by_name(pool, query, 10)
+    let rows = db::search_global(pool, query)
         .await
         .map_err(|_| ApiError::Db)?;
 
-    let accounts = account_rows
-        .into_iter()
-        .map(|row| {
-            Ok(SearchResultDto::Account {
-                id: row.id,
-                name: row.name,
-                account_type: account_type_from_db(&row.type_name)?,
-                institution_name: row.institution_name,
-            })
+    rows.into_iter()
+        .map(|row| match row {
+            db::GlobalSearchRow::Account {
+                id,
+                name,
+                type_name,
+                institution_name,
+            } => Ok(SearchResultDto::Account {
+                id,
+                name,
+                account_type: account_type_from_db(&type_name)?,
+                institution_name,
+            }),
+            db::GlobalSearchRow::Institution { id, name } => {
+                Ok(SearchResultDto::Institution { id, name })
+            }
         })
-        .collect::<Result<Vec<_>, ApiError>>()?;
-
-    let institutions = institution_rows
-        .into_iter()
-        .map(|row| SearchResultDto::Institution {
-            id: row.id,
-            name: row.name,
-        })
-        .collect::<Vec<_>>();
-
-    let mut out = Vec::with_capacity(accounts.len() + institutions.len());
-    out.extend(accounts);
-    out.extend(institutions);
-
-    Ok(out)
+        .collect()
 }
 
 #[tauri::command]

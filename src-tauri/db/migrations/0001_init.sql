@@ -31,6 +31,226 @@ CREATE INDEX idx_balance_date_account ON account_balance_snapshots (balance_date
 
 CREATE INDEX idx_accounts_institution ON accounts (institution_id);
 
+CREATE VIRTUAL TABLE search_fts USING fts5 (
+  kind unindexed,
+  entity_id unindexed,
+  name,
+  institution_name,
+  account_type,
+  tokenize = 'unicode61 remove_diacritics 2',
+  prefix = '2 3 4 5 6 7 8'
+);
+
+CREATE TRIGGER institutions_ai AFTER INSERT ON institutions BEGIN
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+VALUES
+  ('institution', new.id, new.name, '', '');
+
+END;
+
+CREATE TRIGGER institutions_au AFTER
+UPDATE ON institutions BEGIN
+DELETE FROM search_fts
+WHERE
+  kind = 'institution'
+  AND entity_id = old.id;
+
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+VALUES
+  ('institution', new.id, new.name, '', '');
+
+DELETE FROM search_fts
+WHERE
+  kind = 'account'
+  AND entity_id IN (
+    SELECT
+      id
+    FROM
+      accounts
+    WHERE
+      institution_id = new.id
+  );
+
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+SELECT
+  'account',
+  a.id,
+  a.name,
+  i.name,
+  t.name
+FROM
+  accounts AS a
+  INNER JOIN institutions AS i ON i.id = a.institution_id
+  INNER JOIN account_types AS t ON t.id = a.type_id
+WHERE
+  a.institution_id = new.id;
+
+END;
+
+CREATE TRIGGER institutions_ad AFTER DELETE ON institutions BEGIN
+DELETE FROM search_fts
+WHERE
+  kind = 'institution'
+  AND entity_id = old.id;
+
+END;
+
+CREATE TRIGGER accounts_ai AFTER INSERT ON accounts BEGIN
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+SELECT
+  'account',
+  a.id,
+  a.name,
+  i.name,
+  t.name
+FROM
+  accounts AS a
+  INNER JOIN institutions AS i ON i.id = a.institution_id
+  INNER JOIN account_types AS t ON t.id = a.type_id
+WHERE
+  a.id = new.id;
+
+END;
+
+CREATE TRIGGER accounts_au AFTER
+UPDATE ON accounts BEGIN
+DELETE FROM search_fts
+WHERE
+  kind = 'account'
+  AND entity_id = old.id;
+
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+SELECT
+  'account',
+  a.id,
+  a.name,
+  i.name,
+  t.name
+FROM
+  accounts AS a
+  INNER JOIN institutions AS i ON i.id = a.institution_id
+  INNER JOIN account_types AS t ON t.id = a.type_id
+WHERE
+  a.id = new.id;
+
+END;
+
+CREATE TRIGGER accounts_ad AFTER DELETE ON accounts BEGIN
+DELETE FROM search_fts
+WHERE
+  kind = 'account'
+  AND entity_id = old.id;
+
+END;
+
+CREATE TRIGGER account_types_au AFTER
+UPDATE ON account_types BEGIN
+DELETE FROM search_fts
+WHERE
+  kind = 'account'
+  AND entity_id IN (
+    SELECT
+      id
+    FROM
+      accounts
+    WHERE
+      type_id = new.id
+  );
+
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+SELECT
+  'account',
+  a.id,
+  a.name,
+  i.name,
+  t.name
+FROM
+  accounts AS a
+  INNER JOIN institutions AS i ON i.id = a.institution_id
+  INNER JOIN account_types AS t ON t.id = a.type_id
+WHERE
+  a.type_id = new.id;
+
+END;
+
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+SELECT
+  'institution',
+  i.id,
+  i.name,
+  '',
+  ''
+FROM
+  institutions AS i;
+
+INSERT INTO
+  search_fts (
+    kind,
+    entity_id,
+    name,
+    institution_name,
+    account_type
+  )
+SELECT
+  'account',
+  a.id,
+  a.name,
+  i.name,
+  t.name
+FROM
+  accounts AS a
+  INNER JOIN institutions AS i ON i.id = a.institution_id
+  INNER JOIN account_types AS t ON t.id = a.type_id;
+
 INSERT INTO
   account_types (name)
 VALUES
