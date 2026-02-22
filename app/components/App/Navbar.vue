@@ -41,15 +41,7 @@
       />
     </template>
     <template #right>
-      <UInputMenu
-        leading-icon="i-lucide-search"
-        :trailing-icon="false"
-        placeholder="Search accounts..."
-      >
-        <template #empty>
-          No matching accounts
-        </template>
-      </UInputMenu>
+      <AppSearchBar class="w-72" />
     </template>
   </UHeader>
 </template>

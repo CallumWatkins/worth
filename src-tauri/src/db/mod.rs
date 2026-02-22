@@ -71,6 +71,96 @@ pub struct InstitutionAccountTypeRow {
     pub type_name: String,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountSearchRow {
+    pub id: i64,
+    pub name: String,
+    pub type_name: String,
+    pub institution_name: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct InstitutionSearchRow {
+    pub id: i64,
+    pub name: String,
+}
+
+fn escape_like_query(query: &str) -> String {
+    let mut out = String::with_capacity(query.len());
+    for ch in query.chars() {
+        match ch {
+            '\\' | '%' | '_' => {
+                out.push('\\');
+                out.push(ch);
+            }
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+pub async fn accounts_search_by_name(
+    pool: &SqlitePool,
+    query: &str,
+    limit: i64,
+) -> Result<Vec<AccountSearchRow>, sqlx::Error> {
+    let pattern = format!("%{}%", escape_like_query(query));
+    let rows = sqlx::query_as::<_, AccountSearchRow>(
+        r"
+        SELECT
+            a.id,
+            a.name,
+            t.name AS type_name,
+            i.name AS institution_name
+        FROM
+            accounts AS a
+            INNER JOIN account_types AS t ON t.id = a.type_id
+            INNER JOIN institutions AS i ON i.id = a.institution_id
+        WHERE
+            a.name like ? ESCAPE '\' COLLATE nocase
+        ORDER BY
+            a.name COLLATE nocase ASC
+        LIMIT
+            ?
+        ",
+    )
+    .bind(pattern)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+pub async fn institutions_search_by_name(
+    pool: &SqlitePool,
+    query: &str,
+    limit: i64,
+) -> Result<Vec<InstitutionSearchRow>, sqlx::Error> {
+    let pattern = format!("%{}%", escape_like_query(query));
+    let rows = sqlx::query_as::<_, InstitutionSearchRow>(
+        r"
+        SELECT
+            i.id,
+            i.name
+        FROM
+            institutions AS i
+        WHERE
+            i.name like ? ESCAPE '\' COLLATE nocase
+        ORDER BY
+            i.name COLLATE nocase ASC
+        LIMIT
+            ?
+        ",
+    )
+    .bind(pattern)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
 pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>, sqlx::Error> {
     let rows = sqlx::query_as::<_, AccountListRow>(
         r"

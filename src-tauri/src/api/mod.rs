@@ -148,6 +148,21 @@ pub struct DashboardDto {
     pub allocation_by_type: Vec<DashboardAllocationDto>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SearchResultDto {
+    Account {
+        id: i64,
+        name: String,
+        account_type: AccountTypeName,
+        institution_name: String,
+    },
+    Institution {
+        id: i64,
+        name: String,
+    },
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn accounts_list(state: State<'_, AppState>) -> Result<Vec<AccountDto>, ApiError> {
@@ -196,6 +211,52 @@ pub async fn institutions_list(
             total_balance_minor: row.total_balance_minor,
         });
     }
+
+    Ok(out)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn search(
+    state: State<'_, AppState>,
+    query: String,
+) -> Result<Vec<SearchResultDto>, ApiError> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let pool = &state.pool;
+    let account_rows = db::accounts_search_by_name(pool, query, 10)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let institution_rows = db::institutions_search_by_name(pool, query, 10)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    let accounts = account_rows
+        .into_iter()
+        .map(|row| {
+            Ok(SearchResultDto::Account {
+                id: row.id,
+                name: row.name,
+                account_type: account_type_from_db(&row.type_name)?,
+                institution_name: row.institution_name,
+            })
+        })
+        .collect::<Result<Vec<_>, ApiError>>()?;
+
+    let institutions = institution_rows
+        .into_iter()
+        .map(|row| SearchResultDto::Institution {
+            id: row.id,
+            name: row.name,
+        })
+        .collect::<Vec<_>>();
+
+    let mut out = Vec::with_capacity(accounts.len() + institutions.len());
+    out.extend(accounts);
+    out.extend(institutions);
 
     Ok(out)
 }
@@ -722,6 +783,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
         account_balance_over_time,
         dashboard_get,
         dashboard_balance_over_time,
+        search,
     ]);
 
     #[cfg(debug_assertions)]

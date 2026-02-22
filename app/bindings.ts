@@ -68,6 +68,14 @@ async dashboardBalanceOverTime(period: BalanceOverTimePeriod) : Promise<Result<D
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async search(query: string) : Promise<Result<SearchResultDto[], ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search", { query }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -96,6 +104,7 @@ export type DashboardDto = { total_balance_minor: number; change_vs_last_month_p
 export type InstitutionDetailDto = { id: number; name: string; accounts: AccountDto[] }
 export type InstitutionDto = { id: number; name: string }
 export type InstitutionSummaryDto = { id: number; name: string; account_count: number; empty_account_count: number; account_types: AccountTypeName[]; total_balance_minor: number }
+export type SearchResultDto = { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string } | { kind: "institution"; id: number; name: string }
 
 /** tauri-specta globals **/
 
