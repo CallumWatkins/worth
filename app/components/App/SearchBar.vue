@@ -13,7 +13,6 @@
     :trailing-icon="false"
     open-on-focus
     ignore-filter
-    :loading="showSearchingState && hasSearchTerm"
     placeholder="Search..."
     :ui="{
       content: 'min-w-fit',
@@ -54,12 +53,7 @@
     </template>
 
     <template #empty>
-      <span v-if="showSearchingState">
-        Searching...
-      </span>
-      <span v-else>
-        No results
-      </span>
+      No results
     </template>
   </UInputMenu>
 </template>
@@ -67,7 +61,7 @@
 <script lang="ts" setup>
 import type { SearchResultDto } from "~/bindings";
 
-import { useQuery } from "@tanstack/vue-query";
+import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { computed, proxyRefs, watch } from "vue";
 
 import { accountTypeBadgeClass, accountTypeLabel } from "~/utils/account-type-meta";
@@ -77,9 +71,8 @@ const api = useApi();
 const selectedItem = ref<SearchResultDto | null>(null);
 const rawMenuOpen = ref(false);
 const searchTerm = ref("");
-const hasSearchTerm = computed(() => searchTerm.value.trim().length > 0);
-const debouncedSearchTerm = refDebounced(searchTerm, 200);
-const trimmedSearchTerm = computed(() => debouncedSearchTerm.value.trim());
+const trimmedSearchTerm = computed(() => searchTerm.value.trim());
+const hasSearchTerm = computed(() => trimmedSearchTerm.value.length > 0);
 const menuOpen = computed({
   get: () => rawMenuOpen.value && hasSearchTerm.value,
   set: (value: boolean) => {
@@ -93,12 +86,11 @@ watch(hasSearchTerm, (hasValue) => {
 
 const searchQuery = proxyRefs(useQuery({
   queryKey: ["search", "global", trimmedSearchTerm],
-  enabled: computed(() => trimmedSearchTerm.value.length > 0),
-  queryFn: () => api.search(trimmedSearchTerm.value)
+  enabled: hasSearchTerm,
+  queryFn: () => api.search(trimmedSearchTerm.value),
+  // Prevent "no results" flash while typing by keeping previous data until the new query completes
+  placeholderData: keepPreviousData
 }));
-const showSearchingState = computed(() =>
-  searchQuery.isFetching || (hasSearchTerm.value && searchTerm.value.trim() !== trimmedSearchTerm.value)
-);
 
 async function onSelect(item: SearchResultDto | undefined) {
   if (!item) return;
