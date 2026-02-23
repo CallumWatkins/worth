@@ -26,7 +26,8 @@
         list: 'h-full gap-x-3',
         root: 'h-full [&>div]:h-full',
         item: 'h-full py-0',
-        link: 'h-full py-0 after:bottom-0 before:rounded-none after:inset-x-px'
+        link: 'h-full py-0 after:bottom-0 before:rounded-none after:inset-x-px',
+        viewportWrapper: 'hidden'
       }"
     />
     <template #body>
