@@ -338,23 +338,23 @@ const accountId = computed<number | null>(() => {
 const invalidId = computed(() => rawId.value != null && accountId.value == null);
 
 const accountQuery = proxyRefs(useQuery({
-  queryKey: ["accounts", "get", accountId],
-  enabled: computed(() => typeof accountId.value === "number"),
-  queryFn: () => api.accountsGet(accountId.value as number)
+  queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
+  enabled: computed(() => accountId.value !== null),
+  queryFn: () => api.accountsGet(accountId.value!)
 }));
 
 const snapshotsQuery = proxyRefs(useQuery({
-  queryKey: ["accounts", "snapshots", accountId],
-  enabled: computed(() => typeof accountId.value === "number"),
-  queryFn: () => api.accountSnapshotsList(accountId.value as number)
+  queryKey: computed(() => queryKeys.accounts.snapshots(accountId.value!)),
+  enabled: computed(() => accountId.value !== null),
+  queryFn: () => api.accountSnapshotsList(accountId.value!)
 }));
 
 const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
 
 const balanceOverTimeQuery = proxyRefs(useQuery({
-  queryKey: ["accounts", "balanceOverTime", accountId, balanceOverTimePeriod],
-  enabled: computed(() => typeof accountId.value === "number"),
-  queryFn: () => api.accountBalanceOverTime(accountId.value as number, balanceOverTimePeriod.value)
+  queryKey: computed(() => queryKeys.accounts.balanceOverTime(accountId.value!, balanceOverTimePeriod.value)),
+  enabled: computed(() => accountId.value !== null),
+  queryFn: () => api.accountBalanceOverTime(accountId.value!, balanceOverTimePeriod.value)
 }));
 
 const balanceOverTimePeriodItems = computed<TabsItem[]>(() => {

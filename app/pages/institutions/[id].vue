@@ -99,9 +99,9 @@ const institutionId = computed<number | null>(() => {
 const invalidId = computed(() => rawId.value != null && institutionId.value == null);
 
 const institutionQuery = proxyRefs(useQuery({
-  queryKey: ["institutions", "get", institutionId],
-  enabled: computed(() => typeof institutionId.value === "number"),
-  queryFn: () => api.institutionsGet(institutionId.value as number)
+  queryKey: computed(() => queryKeys.institutions.get(institutionId.value!)),
+  enabled: computed(() => institutionId.value !== null),
+  queryFn: () => api.institutionsGet(institutionId.value!)
 }));
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {

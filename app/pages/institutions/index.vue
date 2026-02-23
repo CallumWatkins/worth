@@ -93,7 +93,7 @@ const UButton = resolveComponent("UButton");
 const api = useApi();
 
 const institutionsQuery = proxyRefs(useQuery({
-  queryKey: ["institutions", "list"],
+  queryKey: queryKeys.institutions.list(),
   queryFn: api.institutionsList
 }));
 

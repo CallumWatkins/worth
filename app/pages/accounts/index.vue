@@ -64,7 +64,7 @@ const {
 });
 
 const accountsQuery = proxyRefs(useQuery({
-  queryKey: ["accounts", "list"],
+  queryKey: queryKeys.accounts.list(),
   queryFn: api.accountsList
 }));
 </script>

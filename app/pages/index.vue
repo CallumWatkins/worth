@@ -201,12 +201,12 @@ const api = useApi();
 const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
 
 const dashboardQuery = proxyRefs(useQuery({
-  queryKey: ["dashboard"],
+  queryKey: queryKeys.dashboard.summary(),
   queryFn: api.dashboardGet
 }));
 
 const balanceOverTimeQuery = proxyRefs(useQuery({
-  queryKey: ["dashboardBalanceOverTime", balanceOverTimePeriod],
+  queryKey: computed(() => queryKeys.dashboard.balanceOverTime(balanceOverTimePeriod.value)),
   queryFn: () => api.dashboardBalanceOverTime(balanceOverTimePeriod.value)
 }));
 

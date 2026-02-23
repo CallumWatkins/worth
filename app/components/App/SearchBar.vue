@@ -85,7 +85,7 @@ watch(hasSearchTerm, (hasValue) => {
 });
 
 const searchQuery = proxyRefs(useQuery({
-  queryKey: ["search", "global", trimmedSearchTerm],
+  queryKey: computed(() => queryKeys.search.get(trimmedSearchTerm.value)),
   enabled: hasSearchTerm,
   queryFn: () => api.search(trimmedSearchTerm.value),
   // Prevent "no results" flash while typing by keeping previous data until the new query completes
