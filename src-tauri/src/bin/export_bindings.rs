@@ -1,6 +1,5 @@
-fn main() {
-    // In debug builds, this will write `app/generated/bindings.ts` via tauri-specta.
-    // The actual app also exports on startup (see `worth_lib::api::invoke_handler`).
-    let _handler = worth_lib::api::invoke_handler();
+fn main() -> anyhow::Result<()> {
+    worth_lib::api::export_bindings_to_app_generated()?;
     println!("Bindings export complete.");
+    Ok(())
 }

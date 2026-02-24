@@ -1080,11 +1080,10 @@ async fn total_balance_over_time(
     Ok(out)
 }
 
-pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
-    use specta_typescript::{BigIntExportBehavior, Typescript};
+fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     use tauri_specta::{collect_commands, Builder};
 
-    let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
+    Builder::<tauri::Wry>::new().commands(collect_commands![
         accounts_list,
         accounts_create,
         accounts_update,
@@ -1098,27 +1097,29 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
         dashboard_get,
         dashboard_balance_over_time,
         search,
-    ]);
+    ])
+}
 
-    #[cfg(debug_assertions)]
-    {
-        use std::path::PathBuf;
+pub fn export_bindings_to_app_generated() -> anyhow::Result<()> {
+    use specta_typescript::{BigIntExportBehavior, Typescript};
+    use std::path::PathBuf;
 
-        let bindings_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("app")
-            .join("generated")
-            .join("bindings.ts");
+    let bindings_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("app")
+        .join("generated")
+        .join("bindings.ts");
 
-        builder
-            .export(
-                Typescript::default()
-                    .header("// Generated file, update with `bun run contracts:gen`.")
-                    .bigint(BigIntExportBehavior::Number),
-                bindings_path,
-            )
-            .expect("Failed to export typescript bindings");
-    }
+    specta_builder()
+        .export(
+            Typescript::default()
+                .header("// Generated file, update with `bun run contracts:gen`.")
+                .bigint(BigIntExportBehavior::Number),
+            bindings_path,
+        )
+        .map_err(|error| anyhow::anyhow!("Failed to export typescript bindings: {error}"))
+}
 
-    builder.invoke_handler()
+pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
+    specta_builder().invoke_handler()
 }
