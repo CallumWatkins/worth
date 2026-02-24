@@ -1768,6 +1768,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.3.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "009ae045c87e7082cb72dab0ccd01ae075dd00141ddc108f43a0ea150a9e7227"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5585,6 +5594,7 @@ dependencies = [
  "chrono",
  "clap",
  "garde",
+ "inventory",
  "itertools",
  "schemars 1.1.0",
  "serde",
@@ -5597,6 +5607,17 @@ dependencies = [
  "tauri-specta",
  "thiserror 1.0.69",
  "tokio",
+ "worth_macros",
+]
+
+[[package]]
+name = "worth_macros"
+version = "0.1.0"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
 ]
 
 [[package]]

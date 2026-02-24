@@ -1,9 +1,13 @@
 #![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
+extern crate self as worth_lib;
+
 pub mod api;
 pub mod contracts;
 mod db;
 mod state;
+
+pub use worth_macros::export_schema;
 
 use state::AppState;
 use tauri::Manager;

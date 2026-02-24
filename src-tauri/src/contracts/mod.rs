@@ -1,3 +1,5 @@
+pub mod schema_export;
+
 use chrono::NaiveDate;
 use garde::Validate;
 use schemars::JsonSchema;
@@ -30,6 +32,7 @@ pub enum AccountTypeName {
     Loan,
 }
 
+#[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct InstitutionUpsertInput {
     #[garde(length(min = 1, max = 120), pattern(r".*\S.*"))]
@@ -50,6 +53,7 @@ pub enum InstitutionRef {
     },
 }
 
+#[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountUpsertInput {
     #[garde(dive)]

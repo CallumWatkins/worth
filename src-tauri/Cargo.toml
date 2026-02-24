@@ -44,3 +44,5 @@ specta-typescript = "=0.0.9"
 itertools = "0.14.0"
 schemars = { version = "1", features = [ "chrono04" ] }
 garde = { version = "0.22", features = [ "derive", "regex" ] }
+inventory = "0.3"
+worth_macros = { path = "crates/worth_macros" }
