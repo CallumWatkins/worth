@@ -1,8 +1,5 @@
 import type { SelectItem } from "@nuxt/ui";
-import type { Ref } from "vue";
 import type { ActivityPeriod } from "~/bindings";
-
-import { toValue } from "vue";
 
 export type AccountGroupBy = "none" | "institution" | "type";
 export type AccountsHideColumn = "institution";

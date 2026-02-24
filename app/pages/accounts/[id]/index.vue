@@ -300,12 +300,8 @@
 import type { BreadcrumbItem, SelectItem, TableColumn, TabsItem } from "@nuxt/ui";
 import type { GroupingOptions } from "@tanstack/vue-table";
 import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto } from "~/bindings";
-
 import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
-import { computed, h, proxyRefs, resolveComponent } from "vue";
-
-import { ACCOUNT_TYPE_META, accountTypeBadgeClass, accountTypeLabel } from "~/utils/account-type-meta";
 
 interface BalanceRow {
   date: string

@@ -63,7 +63,6 @@
 <script lang="ts" setup>
 import type { SelectItem } from "@nuxt/ui";
 import type { ActivityPeriod } from "~/bindings";
-import type { AccountGroupBy } from "~/composables/useAccountsTableOptions";
 
 defineProps<{
   groupByItems: SelectItem[]

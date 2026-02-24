@@ -136,11 +136,7 @@
 import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { GroupingOptions } from "@tanstack/vue-table";
 import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/bindings";
-
 import { getGroupedRowModel } from "@tanstack/vue-table";
-import { h, resolveComponent } from "vue";
-
-import { accountTypeBadgeClass, accountTypeLabel, accountTypeLineColor } from "~/utils/account-type-meta";
 
 type Account = AccountDto;
 type GroupBy = "none" | "institution" | "type";

@@ -83,11 +83,7 @@
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { InstitutionSummaryDto } from "~/bindings";
-
 import { useQuery } from "@tanstack/vue-query";
-import { h, proxyRefs, resolveComponent } from "vue";
-
-import { accountTypeBadgeClass, accountTypeLabel } from "~/utils/account-type-meta";
 
 type Institution = InstitutionSummaryDto;
 

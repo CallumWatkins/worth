@@ -83,10 +83,7 @@
 <script lang="ts" setup>
 import type { BreadcrumbItem } from "@nuxt/ui";
 import type { InstitutionDetailDto } from "~/bindings";
-import type { AccountsHideColumn } from "~/composables/useAccountsTableOptions";
-
 import { useQuery } from "@tanstack/vue-query";
-import { computed, proxyRefs } from "vue";
 
 type Institution = InstitutionDetailDto;
 

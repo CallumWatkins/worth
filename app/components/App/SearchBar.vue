@@ -60,11 +60,7 @@
 
 <script lang="ts" setup>
 import type { SearchResultDto } from "~/bindings";
-
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
-import { computed, proxyRefs, watch } from "vue";
-
-import { accountTypeBadgeClass, accountTypeLabel } from "~/utils/account-type-meta";
 
 const api = useApi();
 

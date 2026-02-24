@@ -47,10 +47,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { AccountsHideColumn } from "~/composables/useAccountsTableOptions";
-
 import { useQuery } from "@tanstack/vue-query";
-import { proxyRefs } from "vue";
 
 const api = useApi();
 const hideColumns = ref<AccountsHideColumn[]>([]);

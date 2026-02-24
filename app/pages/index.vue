@@ -162,11 +162,7 @@
 
 <script lang="ts" setup>
 import type { AccountTypeName, BalanceOverTimePeriod } from "~/bindings";
-
 import { useQuery } from "@tanstack/vue-query";
-import { computed, proxyRefs, watchEffect } from "vue";
-
-import { ACCOUNT_TYPE_META, accountTypeMetaLoose } from "~/utils/account-type-meta";
 
 const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
