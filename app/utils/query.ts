@@ -1,4 +1,4 @@
-import type { BalanceOverTimePeriod } from "~/bindings";
+import type { BalanceOverTimePeriod } from "~/generated/bindings";
 
 export const queryKeys = {
   accounts: {

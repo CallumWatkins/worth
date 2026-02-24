@@ -299,7 +299,7 @@
 <script lang="ts" setup>
 import type { BreadcrumbItem, SelectItem, TableColumn, TabsItem } from "@nuxt/ui";
 import type { GroupingOptions } from "@tanstack/vue-table";
-import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto } from "~/bindings";
+import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 

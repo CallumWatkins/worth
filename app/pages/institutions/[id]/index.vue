@@ -82,7 +82,7 @@
 
 <script lang="ts" setup>
 import type { BreadcrumbItem } from "@nuxt/ui";
-import type { InstitutionDetailDto } from "~/bindings";
+import type { InstitutionDetailDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 
 type Institution = InstitutionDetailDto;

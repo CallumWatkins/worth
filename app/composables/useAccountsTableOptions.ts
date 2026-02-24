@@ -1,5 +1,5 @@
 import type { SelectItem } from "@nuxt/ui";
-import type { ActivityPeriod } from "~/bindings";
+import type { ActivityPeriod } from "~/generated/bindings";
 
 export type AccountGroupBy = "none" | "institution" | "type";
 export type AccountsHideColumn = "institution";

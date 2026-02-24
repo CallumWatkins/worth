@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { SearchResultDto } from "~/bindings";
+import type { SearchResultDto } from "~/generated/bindings";
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 
 const api = useApi();

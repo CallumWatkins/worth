@@ -82,7 +82,7 @@
 
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
-import type { InstitutionSummaryDto } from "~/bindings";
+import type { InstitutionSummaryDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 
 type Institution = InstitutionSummaryDto;

@@ -57,7 +57,6 @@
               <UInput
                 v-model="state.name"
                 class="w-full"
-                :disabled="isSubmitting"
               />
             </UFormField>
 
@@ -66,7 +65,7 @@
                 type="submit"
                 color="primary"
                 :loading="isSubmitting"
-                :disabled="isSubmitting || !isDirty"
+                :disabled="isSubmitting"
               >
                 Save changes
               </UButton>
@@ -103,18 +102,14 @@
 </template>
 
 <script lang="ts" setup>
-import type { BreadcrumbItem, FormError, FormSubmitEvent } from "@nuxt/ui";
-import type { InstitutionFormValues } from "~/utils/forms/schemas";
-
+import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
 import { useQuery } from "@tanstack/vue-query";
-import { computed, proxyRefs } from "vue";
-
-import { institutionFormSchema } from "~/utils/forms/schemas";
 
 const route = useRoute();
 const api = useApi();
 const { updateInstitution } = useInstitutionMutations();
-const form = useTemplateRef<{ clear: () => void, setErrors: (errors: FormError[]) => void }>("form");
+const form = useTemplateRef("form");
+const setBackendValidationErrors = useBackendValidationErrors(form);
 
 const rawId = computed(() => {
   const p = (route.params as any)?.id;
@@ -140,9 +135,7 @@ const institutionQuery = proxyRefs(useQuery({
 const submitError = ref<string | null>(null);
 const didSave = ref(false);
 const hasHydrated = ref(false);
-const state = reactive<Partial<InstitutionFormValues>>({
-  name: ""
-});
+const { state, hydrateFromInstitution } = useInstitutionUpsertForm();
 
 watch(institutionId, () => {
   hasHydrated.value = false;
@@ -150,16 +143,12 @@ watch(institutionId, () => {
 
 watch(() => institutionQuery.data, (institution) => {
   if (!institution || hasHydrated.value) return;
-  state.name = institution.name;
+  hydrateFromInstitution(institution.name);
   hasHydrated.value = true;
   form.value?.clear();
 }, { immediate: true });
 
 const isSubmitting = computed(() => updateInstitution.isPending.value);
-const isDirty = computed(() => {
-  if (!institutionQuery.data) return false;
-  return (state.name ?? "") !== institutionQuery.data.name;
-});
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const institution = institutionQuery.data;
@@ -170,16 +159,6 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
     { label: "Settings" }
   ];
 });
-
-function setBackendValidationErrors(error: unknown) {
-  const issues = extractValidationIssues(error);
-  if (!issues.length) return false;
-  form.value?.setErrors(issues.map((issue) => ({
-    name: issue.field,
-    message: issue.message
-  })));
-  return true;
-}
 
 async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
   if (!institutionId.value) return;

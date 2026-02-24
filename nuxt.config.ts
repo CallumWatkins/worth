@@ -42,6 +42,12 @@ export default defineNuxtConfig({
       "TooltipComponent"
     ]
   },
+  imports: {
+    dirs: [
+      "~/composables/**",
+      "~/utils/**"
+    ]
+  },
   build: {
     transpile: ["echarts-liquidfill"]
   },

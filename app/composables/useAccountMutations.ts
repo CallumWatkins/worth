@@ -1,4 +1,4 @@
-import type { AccountUpsertInput } from "~/bindings";
+import type { AccountUpsertInput } from "~/generated/bindings";
 
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
 

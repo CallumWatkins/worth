@@ -135,7 +135,7 @@
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { GroupingOptions } from "@tanstack/vue-table";
-import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/bindings";
+import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 
 type Account = AccountDto;

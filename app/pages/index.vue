@@ -161,7 +161,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { AccountTypeName, BalanceOverTimePeriod } from "~/bindings";
+import type { AccountTypeName, BalanceOverTimePeriod } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 
 const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;

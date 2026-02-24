@@ -75,7 +75,6 @@
                 <UInput
                   v-model="newInstitutionName"
                   class="w-full"
-                  :disabled="isSubmitting"
                 />
               </UFormField>
 
@@ -92,7 +91,6 @@
                   color="neutral"
                   variant="subtle"
                   :content="{ bodyLock: false }"
-                  :disabled="isSubmitting"
                 />
               </UFormField>
             </div>
@@ -101,7 +99,6 @@
               <UInput
                 v-model="state.name"
                 class="w-full"
-                :disabled="isSubmitting"
               />
             </UFormField>
 
@@ -113,7 +110,6 @@
                 color="neutral"
                 variant="subtle"
                 :content="{ bodyLock: false }"
-                :disabled="isSubmitting"
               />
             </UFormField>
 
@@ -122,7 +118,6 @@
                 <UInput
                   v-model="state.currency_code"
                   class="w-full"
-                  :disabled="isSubmitting"
                   maxlength="3"
                   @blur="state.currency_code = state.currency_code?.trim().toUpperCase() ?? ''"
                 />
@@ -136,17 +131,16 @@
                   color="neutral"
                   variant="subtle"
                   :content="{ bodyLock: false }"
-                  :disabled="isSubmitting"
                 />
               </UFormField>
             </div>
 
             <UFormField label="Opened date (optional)" name="opened_date">
-              <UInput
-                v-model="openedDateInput"
-                type="date"
+              <UInputDate
+                v-model="state.opened_date"
                 class="w-full"
-                :disabled="isSubmitting"
+                color="neutral"
+                variant="subtle"
               />
             </UFormField>
 
@@ -155,7 +149,7 @@
                 type="submit"
                 color="primary"
                 :loading="isSubmitting"
-                :disabled="isSubmitting || !isDirty"
+                :disabled="isSubmitting"
               >
                 Save changes
               </UButton>
@@ -192,33 +186,15 @@
 </template>
 
 <script lang="ts" setup>
-import type { BreadcrumbItem, FormError, FormSubmitEvent } from "@nuxt/ui";
-import type {
-  AccountTypeName,
-  AccountUpsertInput,
-  InstitutionSummaryDto
-} from "~/bindings";
-import type { AccountFormValues } from "~/utils/forms/schemas";
-
+import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
+import type { AccountUpsertInput } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
-import { computed, proxyRefs } from "vue";
-
-import { accountTypeLabel } from "~/utils/account-type-meta";
-import { accountFormSchema } from "~/utils/forms/schemas";
-
-interface AccountFormState {
-  institution?: AccountFormValues["institution"]
-  name?: string
-  account_type?: AccountTypeName
-  currency_code?: string
-  normal_balance_sign?: 1 | -1
-  opened_date?: string | null
-}
 
 const route = useRoute();
 const api = useApi();
 const { updateAccount } = useAccountMutations();
-const form = useTemplateRef<{ clear: () => void, setErrors: (errors: FormError[]) => void }>("form");
+const form = useTemplateRef("form");
+const setBackendValidationErrors = useBackendValidationErrors(form);
 
 const rawId = computed(() => {
   const p = (route.params as any)?.id;
@@ -246,92 +222,25 @@ const institutionsQuery = useQuery({
   queryFn: api.institutionsList
 });
 
-const institutionItems = computed(() => {
-  const institutions = institutionsQuery.data.value ?? [];
-  return institutions.map((institution: InstitutionSummaryDto) => ({
-    label: institution.name,
-    value: institution.id
-  }));
-});
-
 const submitError = ref<string | null>(null);
 const didSave = ref(false);
 const hasHydrated = ref(false);
-const state = reactive<AccountFormState>({
-  institution: undefined,
-  name: "",
-  account_type: "current",
-  currency_code: "GBP",
-  normal_balance_sign: 1,
-  opened_date: ""
+const {
+  state,
+  institutionItems,
+  createNewInstitution,
+  selectedInstitutionId,
+  newInstitutionName,
+  accountTypeItems,
+  normalBalanceSignItems,
+  hydrateFromAccount
+} = useAccountUpsertForm({
+  institutions: computed(() => institutionsQuery.data.value)
 });
-
-function setExistingInstitution(id: number | undefined) {
-  state.institution = id == null ? undefined : { kind: "existing", id };
-}
-
-const createNewInstitution = computed({
-  get: () => state.institution?.kind === "new",
-  set: (value: boolean) => {
-    if (value) {
-      state.institution = { kind: "new", input: { name: "" } } as AccountFormValues["institution"];
-      return;
-    }
-    setExistingInstitution(institutionItems.value[0]?.value);
-  }
-});
-
-const selectedInstitutionId = computed<number | undefined>({
-  get: () => state.institution?.kind === "existing" ? state.institution.id : undefined,
-  set: (value: number | undefined) => {
-    setExistingInstitution(value);
-  }
-});
-
-const newInstitutionName = computed<string>({
-  get: () => state.institution?.kind === "new" ? (state.institution.input.name ?? "") : "",
-  set: (value: string) => {
-    state.institution = { kind: "new", input: { name: value } } as AccountFormValues["institution"];
-  }
-});
-
-const openedDateInput = computed<string>({
-  get: () => state.opened_date ?? "",
-  set: (value: string) => {
-    state.opened_date = value;
-  }
-});
-
-const accountTypeItems = computed(() => {
-  const values: AccountTypeName[] = [
-    "current",
-    "savings",
-    "credit_card",
-    "isa",
-    "investment",
-    "pension",
-    "cash",
-    "loan"
-  ];
-  return values.map((value) => ({
-    label: accountTypeLabel(value),
-    value
-  }));
-});
-
-const normalBalanceSignItems = [
-  { label: "Positive (1)", value: 1 },
-  { label: "Negative (-1)", value: -1 }
-];
 
 watch(() => accountQuery.data, (account) => {
   if (!account || hasHydrated.value) return;
-  state.institution = { kind: "existing", id: account.institution.id };
-  state.name = account.name;
-  state.account_type = account.account_type.name;
-  state.currency_code = account.currency_code;
-  state.normal_balance_sign = account.normal_balance_sign === -1 ? -1 : 1;
-  state.opened_date = account.opened_date ?? "";
+  hydrateFromAccount(account);
   hasHydrated.value = true;
   form.value?.clear();
 }, { immediate: true });
@@ -340,35 +249,7 @@ watch(accountId, () => {
   hasHydrated.value = false;
 });
 
-watch(() => state.account_type, (kind) => {
-  if (!kind) return;
-  state.normal_balance_sign = kind === "credit_card" || kind === "loan" ? -1 : 1;
-});
-
-watch(institutionItems, (items) => {
-  if (state.institution?.kind === "new") return;
-  if (state.institution?.kind === "existing" && state.institution.id != null) return;
-  setExistingInstitution(items[0]?.value);
-}, { immediate: true });
-
 const isSubmitting = computed(() => updateAccount.isPending.value);
-
-const isDirty = computed(() => {
-  const account = accountQuery.data;
-  if (!account) return false;
-
-  if ((state.name ?? "") !== account.name) return true;
-  if ((state.account_type ?? "current") !== account.account_type.name) return true;
-  if ((state.currency_code ?? "GBP") !== account.currency_code) return true;
-  if ((state.normal_balance_sign ?? 1) !== account.normal_balance_sign) return true;
-  if (((state.opened_date ?? "") || null) !== account.opened_date) return true;
-
-  if (state.institution?.kind === "new") {
-    return !!state.institution.input.name?.trim();
-  }
-
-  return state.institution?.id !== account.institution.id;
-});
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const account = accountQuery.data;
@@ -380,25 +261,12 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   ];
 });
 
-function setBackendValidationErrors(error: unknown) {
-  const issues = extractValidationIssues(error);
-  if (!issues.length) return false;
-  form.value?.setErrors(issues.map((issue) => ({
-    name: issue.field,
-    message: issue.message
-  })));
-  return true;
-}
-
 async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
   if (!accountId.value) return;
 
   submitError.value = null;
   didSave.value = false;
-  const payload: AccountUpsertInput = {
-    ...event.data,
-    opened_date: event.data.opened_date ?? null
-  };
+  const payload: AccountUpsertInput = event.data;
 
   try {
     await updateAccount.mutateAsync({

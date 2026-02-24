@@ -1,4 +1,4 @@
-import type { AccountTypeName } from "~/bindings";
+import type { AccountTypeName } from "~/generated/bindings";
 
 export interface AccountTypeMeta {
   label: string

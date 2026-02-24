@@ -1,4 +1,4 @@
-import type { InstitutionUpsertInput } from "~/bindings";
+import type { InstitutionUpsertInput } from "~/generated/bindings";
 
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
 

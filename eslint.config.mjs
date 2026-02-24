@@ -6,7 +6,7 @@ export default eslintConfig(
   {
     ignores: [
       "**/src-tauri/**",
-      "app/bindings.ts",
+      "app/generated/**",
       "**/*.md"
     ],
     typescript: true,

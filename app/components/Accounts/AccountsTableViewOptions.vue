@@ -62,7 +62,7 @@
 
 <script lang="ts" setup>
 import type { SelectItem } from "@nuxt/ui";
-import type { ActivityPeriod } from "~/bindings";
+import type { ActivityPeriod } from "~/generated/bindings";
 
 defineProps<{
   groupByItems: SelectItem[]

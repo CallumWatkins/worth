@@ -1,17 +1,10 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AccountUpsertInput",
   "type": "object",
-  "required": [
-    "account_type",
-    "currency_code",
-    "institution",
-    "name",
-    "normal_balance_sign"
-  ],
   "properties": {
     "account_type": {
-      "$ref": "#/definitions/AccountTypeName"
+      "$ref": "#/$defs/AccountTypeName"
     },
     "currency_code": {
       "type": "string",
@@ -20,7 +13,7 @@
       "pattern": "^[A-Z]{3}$"
     },
     "institution": {
-      "$ref": "#/definitions/InstitutionRef"
+      "$ref": "#/$defs/InstitutionRef"
     },
     "name": {
       "type": "string",
@@ -30,13 +23,10 @@
     },
     "normal_balance_sign": {
       "type": "integer",
-      "oneOf": [
-        {
-          "const": -1
-        },
-        {
-          "const": 1
-        }
+      "format": "int32",
+      "enum": [
+        -1,
+        1
       ]
     },
     "opened_date": {
@@ -47,7 +37,14 @@
       "format": "date"
     }
   },
-  "definitions": {
+  "required": [
+    "institution",
+    "name",
+    "account_type",
+    "currency_code",
+    "normal_balance_sign"
+  ],
+  "$defs": {
     "AccountTypeName": {
       "type": "string",
       "enum": [
@@ -62,52 +59,48 @@
       ]
     },
     "InstitutionRef": {
+      "discriminator": {
+        "propertyName": "kind"
+      },
       "oneOf": [
         {
           "type": "object",
-          "required": [
-            "id",
-            "kind"
-          ],
           "properties": {
             "id": {
               "type": "integer",
               "format": "int64",
-              "minimum": 1.0
+              "minimum": 1
             },
             "kind": {
               "type": "string",
-              "enum": [
-                "existing"
-              ]
+              "const": "existing"
             }
-          }
+          },
+          "required": [
+            "kind",
+            "id"
+          ]
         },
         {
           "type": "object",
-          "required": [
-            "input",
-            "kind"
-          ],
           "properties": {
             "input": {
-              "$ref": "#/definitions/InstitutionUpsertInput"
+              "$ref": "#/$defs/InstitutionUpsertInput"
             },
             "kind": {
               "type": "string",
-              "enum": [
-                "new"
-              ]
+              "const": "new"
             }
-          }
+          },
+          "required": [
+            "kind",
+            "input"
+          ]
         }
       ]
     },
     "InstitutionUpsertInput": {
       "type": "object",
-      "required": [
-        "name"
-      ],
       "properties": {
         "name": {
           "type": "string",
@@ -115,7 +108,10 @@
           "minLength": 1,
           "pattern": ".*\\S.*"
         }
-      }
+      },
+      "required": [
+        "name"
+      ]
     }
   }
 }

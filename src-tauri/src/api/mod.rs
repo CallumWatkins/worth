@@ -309,6 +309,7 @@ pub async fn accounts_create(
     state: State<'_, AppState>,
     input: AccountUpsertInput,
 ) -> Result<AccountDto, ApiError> {
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     let pool = &state.pool;
     let validated = validate_account_upsert(pool, &input, None).await?;
 
@@ -1102,12 +1103,13 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
         let bindings_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
             .join("app")
+            .join("generated")
             .join("bindings.ts");
 
         builder
             .export(
                 Typescript::default()
-                    .header("// Generated file, update with `bun run bindings`.")
+                    .header("// Generated file, update with `bun run contracts:gen`.")
                     .bigint(BigIntExportBehavior::Number),
                 bindings_path,
             )

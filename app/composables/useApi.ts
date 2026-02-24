@@ -1,5 +1,5 @@
-import type { ApiError, Result, ValidationIssue } from "~/bindings";
-import { commands } from "~/bindings";
+import type { ApiError, Result, ValidationIssue } from "~/generated/bindings";
+import { commands } from "~/generated/bindings";
 
 export const formatApiError = (error: ApiError): string => {
   if (error === "Db") return "Database error";

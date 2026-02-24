@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use schemars::schema_for;
+use schemars::generate::SchemaSettings;
 use std::path::{Path, PathBuf};
 
 use worth_lib::contracts::{AccountUpsertInput, InstitutionUpsertInput};
@@ -25,7 +25,8 @@ fn write_schema<T>(output_dir: &Path, file_name: &str) -> Result<()>
 where
     T: schemars::JsonSchema,
 {
-    let schema = schema_for!(T);
+    let generator = SchemaSettings::draft2020_12().into_generator();
+    let schema = generator.into_root_schema_for::<T>();
     let json = serde_json::to_string_pretty(&schema).context("serialize schema as JSON")?;
     let path = output_dir.join(file_name);
     std::fs::write(&path, format!("{json}\n"))
