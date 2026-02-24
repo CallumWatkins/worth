@@ -20,9 +20,9 @@
         <UButton
           label="Add New Account"
           icon="i-lucide-plus"
-          to="/accounts/new"
           color="primary"
           variant="solid"
+          @click="createDialogOpen = true"
         />
       </template>
     </UPageHeader>
@@ -40,6 +40,8 @@
         :activity-period="activityPeriod"
         :hide-columns="hideColumns"
       />
+
+      <AccountsCreateDialog v-model:open="createDialogOpen" />
     </UPageBody>
   </UContainer>
 </template>
@@ -52,6 +54,7 @@ import { proxyRefs } from "vue";
 
 const api = useApi();
 const hideColumns = ref<AccountsHideColumn[]>([]);
+const createDialogOpen = ref(false);
 
 const {
   groupBy,

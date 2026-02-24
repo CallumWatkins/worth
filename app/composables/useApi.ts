@@ -1,13 +1,22 @@
-import type { ApiError, Result } from "~/bindings";
+import type { ApiError, Result, ValidationIssue } from "~/bindings";
 import { commands } from "~/bindings";
 
 export const formatApiError = (error: ApiError): string => {
   if (error === "Db") return "Database error";
   if (error === "NotFound") return "Not found";
-  if (typeof error === "object" && error && "Validation" in error)
-    return `Validation error: ${error.Validation}`;
+  if (typeof error === "object" && error && "Validation" in error) {
+    const joined = error.Validation.map((issue) => issue.message).join("; ");
+    return joined.length ? `Validation error: ${joined}` : "Validation error";
+  }
 
   return "Unknown error";
+};
+
+export const validationIssuesFromApiError = (error: ApiError): ValidationIssue[] => {
+  if (typeof error === "object" && error && "Validation" in error) {
+    return error.Validation;
+  }
+  return [];
 };
 
 export class ApiCommandError extends Error {
@@ -19,6 +28,31 @@ export class ApiCommandError extends Error {
     this.apiError = apiError;
   }
 }
+
+export const extractValidationIssues = (error: unknown): ValidationIssue[] => {
+  if (error instanceof ApiCommandError) {
+    return validationIssuesFromApiError(error.apiError);
+  }
+  return [];
+};
+
+export const validationIssuesToFieldMap = (
+  issues: ValidationIssue[]
+): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (const issue of issues) {
+    if (!out[issue.field]) {
+      out[issue.field] = issue.message;
+    }
+  }
+  return out;
+};
+
+export const extractValidationFieldErrors = (
+  error: unknown
+): Record<string, string> => {
+  return validationIssuesToFieldMap(extractValidationIssues(error));
+};
 
 export const unwrapResult = <T>(result: Result<T, ApiError>): T => {
   if (result.status === "ok")

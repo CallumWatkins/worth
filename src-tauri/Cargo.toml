@@ -42,3 +42,5 @@ specta = { version = "=2.0.0-rc.22", features = [ "serde", "chrono" ] }
 tauri-specta = { version = "=2.0.0-rc.21", features = [ "typescript" ] }
 specta-typescript = "=0.0.9"
 itertools = "0.14.0"
+schemars = { version = "0.8", features = [ "chrono" ] }
+garde = { version = "0.22", features = [ "derive", "regex" ] }

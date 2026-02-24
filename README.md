@@ -45,9 +45,25 @@ $ bun run check:ts
 $ bun run check:rust
 $ bun run check:all
 
+# regenerate Rust-first contracts
+$ bun run contracts:gen
+
+# verify generated contracts are up to date
+$ bun run contracts:check
+
 # database CLI
 $ bun run db
 ```
+
+### Rust contract generation
+
+Rust is the source of truth for API contract types and validation metadata used for form generation:
+
+- Rust command signatures/types generate `app/bindings.ts` (`bun run bindings`).
+- Rust JSON schemas are exported to `app/generated/schemas/*.schema.json`.
+- JSON schemas are converted to Zod schemas in `app/generated/zod/*.ts`.
+
+Use `bun run contracts:gen` after changing Rust contract types, and `bun run contracts:check` to fail if generated files are stale.
 
 ### Build
 Generate the Nuxt static output and bundle the project under `src-tauri/target`.

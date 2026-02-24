@@ -12,7 +12,24 @@
         root: 'pb-0 border-none',
         description: 'mt-1'
       }"
-    />
+    >
+      <template #links>
+        <UButton
+          label="Settings"
+          icon="i-lucide-settings"
+          color="neutral"
+          variant="subtle"
+          :to="`/institutions/${institutionQuery.data.id}/settings`"
+        />
+        <UButton
+          label="Add account"
+          icon="i-lucide-plus"
+          color="primary"
+          variant="solid"
+          @click="createAccountOpen = true"
+        />
+      </template>
+    </UPageHeader>
 
     <UPageBody class="space-y-8">
       <UAlert
@@ -35,27 +52,30 @@
           description="Accounts at this institution"
           :ui="{ body: 'min-w-full' }"
         >
-          <template #body>
-            <div class="flex items-center justify-end gap-4 mb-4">
-              <AccountsTableViewOptions
-                v-model:group-by="groupBy"
-                v-model:activity-period="activityPeriod"
-                v-model:show-empty="showEmpty"
-                :group-by-items="groupByItems"
-                :activity-period-items="activityPeriodItems"
-              />
-            </div>
-
-            <AccountsTable
-              :accounts="institutionQuery.data.accounts"
-              :group-by="groupBy"
-              :show-empty="showEmpty"
-              :activity-period="activityPeriod"
-              :hide-columns="hideColumns"
+          <div class="flex items-center justify-end gap-4 mb-4">
+            <AccountsTableViewOptions
+              v-model:group-by="groupBy"
+              v-model:activity-period="activityPeriod"
+              v-model:show-empty="showEmpty"
+              :group-by-items="groupByItems"
+              :activity-period-items="activityPeriodItems"
             />
-          </template>
+          </div>
+
+          <AccountsTable
+            :accounts="institutionQuery.data.accounts"
+            :group-by="groupBy"
+            :show-empty="showEmpty"
+            :activity-period="activityPeriod"
+            :hide-columns="hideColumns"
+          />
         </UPageCard>
       </template>
+
+      <AccountsCreateDialog
+        v-model:open="createAccountOpen"
+        :default-institution-id="institutionId"
+      />
     </UPageBody>
   </UContainer>
 </template>
@@ -73,6 +93,7 @@ type Institution = InstitutionDetailDto;
 const route = useRoute();
 const api = useApi();
 const hideColumns = ref<AccountsHideColumn[]>(["institution"]);
+const createAccountOpen = ref(false);
 const {
   groupBy,
   groupByItems,

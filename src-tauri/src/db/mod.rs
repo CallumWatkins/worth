@@ -681,3 +681,380 @@ pub async fn earliest_snapshot_date_for_account(
 
     Ok(min_date)
 }
+
+pub async fn institution_exists(
+    pool: &SqlitePool,
+    institution_id: i64,
+) -> Result<bool, sqlx::Error> {
+    let exists: Option<i64> = sqlx::query_scalar(
+        r"
+        SELECT
+            id
+        FROM
+            institutions
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(institution_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(exists.is_some())
+}
+
+pub async fn institution_name_exists(
+    pool: &SqlitePool,
+    name: &str,
+    exclude_institution_id: Option<i64>,
+) -> Result<bool, sqlx::Error> {
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        r"
+        SELECT
+            id
+        FROM
+            institutions
+        WHERE
+            name = ",
+    );
+    qb.push_bind(name);
+    if let Some(exclude_id) = exclude_institution_id {
+        qb.push(" AND id <> ");
+        qb.push_bind(exclude_id);
+    }
+    qb.push(" LIMIT 1");
+
+    let exists = qb.build_query_scalar::<i64>().fetch_optional(pool).await?;
+    Ok(exists.is_some())
+}
+
+pub async fn institution_create(
+    pool: &SqlitePool,
+    name: &str,
+) -> Result<rows::InstitutionRow, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        INSERT INTO
+            institutions (name)
+        VALUES
+            (?)
+        ",
+    )
+    .bind(name)
+    .execute(pool)
+    .await?;
+    let id = result.last_insert_rowid();
+
+    let created = sqlx::query_as::<_, rows::InstitutionRow>(
+        r"
+        SELECT
+            id,
+            name
+        FROM
+            institutions
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(created)
+}
+
+pub async fn institution_create_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    name: &str,
+) -> Result<i64, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        INSERT INTO
+            institutions (name)
+        VALUES
+            (?)
+        ",
+    )
+    .bind(name)
+    .execute(&mut **tx)
+    .await?;
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn institution_update(
+    pool: &SqlitePool,
+    institution_id: i64,
+    name: &str,
+) -> Result<Option<rows::InstitutionRow>, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        UPDATE institutions
+        SET
+            name = ?
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(name)
+    .bind(institution_id)
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Ok(None);
+    }
+
+    let updated = sqlx::query_as::<_, rows::InstitutionRow>(
+        r"
+        SELECT
+            id,
+            name
+        FROM
+            institutions
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(institution_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(updated)
+}
+
+pub async fn account_type_id_by_name(
+    pool: &SqlitePool,
+    type_name: &str,
+) -> Result<Option<i64>, sqlx::Error> {
+    let id: Option<i64> = sqlx::query_scalar(
+        r"
+        SELECT
+            id
+        FROM
+            account_types
+        WHERE
+            name = ?
+        ",
+    )
+    .bind(type_name)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(id)
+}
+
+pub async fn account_name_exists_in_institution(
+    pool: &SqlitePool,
+    institution_id: i64,
+    name: &str,
+    exclude_account_id: Option<i64>,
+) -> Result<bool, sqlx::Error> {
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        r"
+        SELECT
+            id
+        FROM
+            accounts
+        WHERE
+            institution_id = ",
+    );
+    qb.push_bind(institution_id);
+    qb.push(" AND name = ");
+    qb.push_bind(name);
+    if let Some(exclude_id) = exclude_account_id {
+        qb.push(" AND id <> ");
+        qb.push_bind(exclude_id);
+    }
+    qb.push(" LIMIT 1");
+
+    let existing = qb.build_query_scalar::<i64>().fetch_optional(pool).await?;
+    Ok(existing.is_some())
+}
+
+#[derive(Debug, Clone)]
+pub struct AccountMutationInput {
+    pub institution_id: i64,
+    pub name: String,
+    pub type_id: i64,
+    pub currency_code: String,
+    pub normal_balance_sign: i32,
+    pub opened_date: Option<NaiveDate>,
+}
+
+pub async fn account_create(
+    pool: &SqlitePool,
+    input: &AccountMutationInput,
+) -> Result<rows::AccountRow, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        INSERT INTO
+            accounts (
+                name,
+                institution_id,
+                type_id,
+                currency_code,
+                normal_balance_sign,
+                opened_date
+            )
+        VALUES
+            (?, ?, ?, ?, ?, ?)
+        ",
+    )
+    .bind(&input.name)
+    .bind(input.institution_id)
+    .bind(input.type_id)
+    .bind(&input.currency_code)
+    .bind(input.normal_balance_sign)
+    .bind(input.opened_date)
+    .execute(pool)
+    .await?;
+
+    let id = result.last_insert_rowid();
+    let created = sqlx::query_as::<_, rows::AccountRow>(
+        r"
+        SELECT
+            id,
+            name,
+            institution_id,
+            type_id,
+            currency_code,
+            normal_balance_sign,
+            opened_date,
+            closed_date,
+            created_at,
+            updated_at
+        FROM
+            accounts
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(created)
+}
+
+pub async fn account_create_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    input: &AccountMutationInput,
+) -> Result<i64, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        INSERT INTO
+            accounts (
+                name,
+                institution_id,
+                type_id,
+                currency_code,
+                normal_balance_sign,
+                opened_date
+            )
+        VALUES
+            (?, ?, ?, ?, ?, ?)
+        ",
+    )
+    .bind(&input.name)
+    .bind(input.institution_id)
+    .bind(input.type_id)
+    .bind(&input.currency_code)
+    .bind(input.normal_balance_sign)
+    .bind(input.opened_date)
+    .execute(&mut **tx)
+    .await?;
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn account_update(
+    pool: &SqlitePool,
+    account_id: i64,
+    input: &AccountMutationInput,
+) -> Result<Option<rows::AccountRow>, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        UPDATE accounts
+        SET
+            institution_id = ?,
+            name = ?,
+            type_id = ?,
+            currency_code = ?,
+            normal_balance_sign = ?,
+            opened_date = ?,
+            updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(input.institution_id)
+    .bind(&input.name)
+    .bind(input.type_id)
+    .bind(&input.currency_code)
+    .bind(input.normal_balance_sign)
+    .bind(input.opened_date)
+    .bind(account_id)
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Ok(None);
+    }
+
+    let updated = sqlx::query_as::<_, rows::AccountRow>(
+        r"
+        SELECT
+            id,
+            name,
+            institution_id,
+            type_id,
+            currency_code,
+            normal_balance_sign,
+            opened_date,
+            closed_date,
+            created_at,
+            updated_at
+        FROM
+            accounts
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(account_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(updated)
+}
+
+pub async fn account_update_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    account_id: i64,
+    input: &AccountMutationInput,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        UPDATE accounts
+        SET
+            institution_id = ?,
+            name = ?,
+            type_id = ?,
+            currency_code = ?,
+            normal_balance_sign = ?,
+            opened_date = ?,
+            updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(input.institution_id)
+    .bind(&input.name)
+    .bind(input.type_id)
+    .bind(&input.currency_code)
+    .bind(input.normal_balance_sign)
+    .bind(input.opened_date)
+    .bind(account_id)
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}

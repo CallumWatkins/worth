@@ -3,10 +3,14 @@ use specta::Type;
 use thiserror::Error;
 
 use chrono::{Duration, NaiveDate, Utc};
+use garde::Validate;
 use sqlx::SqlitePool;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use tauri::State;
 
+use crate::contracts::{
+    AccountTypeName, AccountUpsertInput, InstitutionRef, InstitutionUpsertInput,
+};
 use crate::state::AppState;
 use crate::{db, db::AccountListRow};
 
@@ -16,23 +20,14 @@ pub enum ApiError {
     Db,
     #[error("Not found")]
     NotFound,
-    #[error("Validation error: {0}")]
-    Validation(String),
+    #[error("Validation error")]
+    Validation(Vec<ValidationIssue>),
 }
 
-#[derive(
-    Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq, PartialOrd, Ord, Hash,
-)]
-#[serde(rename_all = "snake_case")]
-pub enum AccountTypeName {
-    Current,
-    Savings,
-    CreditCard,
-    Isa,
-    Investment,
-    Pension,
-    Cash,
-    Loan,
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ValidationIssue {
+    pub field: String,
+    pub message: String,
 }
 
 #[derive(
@@ -258,24 +253,44 @@ pub async fn institutions_get(
     institution_id: i64,
 ) -> Result<InstitutionDetailDto, ApiError> {
     let pool = &state.pool;
+    institution_detail_by_id(pool, institution_id).await
+}
 
-    let Some(institution) = db::institution_get(pool, institution_id)
+#[tauri::command]
+#[specta::specta]
+pub async fn institutions_create(
+    state: State<'_, AppState>,
+    input: InstitutionUpsertInput,
+) -> Result<InstitutionDetailDto, ApiError> {
+    let pool = &state.pool;
+    let validated = validate_institution_upsert(pool, &input, None).await?;
+
+    let created = db::institution_create(pool, &validated.name)
         .await
-        .map_err(|_| ApiError::Db)?
-    else {
+        .map_err(map_institution_write_error)?;
+
+    institution_detail_by_id(pool, created.id).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn institutions_update(
+    state: State<'_, AppState>,
+    institution_id: i64,
+    input: InstitutionUpsertInput,
+) -> Result<InstitutionDetailDto, ApiError> {
+    let pool = &state.pool;
+    let validated = validate_institution_upsert(pool, &input, Some(institution_id)).await?;
+
+    let updated = db::institution_update(pool, institution_id, &validated.name)
+        .await
+        .map_err(map_institution_write_error)?;
+
+    if updated.is_none() {
         return Err(ApiError::NotFound);
-    };
+    }
 
-    let accounts = db::accounts_list_full_for_institution(pool, institution_id)
-        .await
-        .map_err(|_| ApiError::Db)?;
-    let account_dtos = build_account_dtos(pool, accounts).await?;
-
-    Ok(InstitutionDetailDto {
-        id: institution.id,
-        name: institution.name,
-        accounts: account_dtos,
-    })
+    institution_detail_by_id(pool, institution_id).await
 }
 
 #[tauri::command]
@@ -285,91 +300,126 @@ pub async fn accounts_get(
     account_id: i64,
 ) -> Result<AccountDto, ApiError> {
     let pool = &state.pool;
-    let today = Utc::now().date_naive();
+    account_dto_by_id(pool, account_id).await
+}
 
-    let Some(a) = db::account_get_full(pool, account_id)
+#[tauri::command]
+#[specta::specta]
+pub async fn accounts_create(
+    state: State<'_, AppState>,
+    input: AccountUpsertInput,
+) -> Result<AccountDto, ApiError> {
+    let pool = &state.pool;
+    let validated = validate_account_upsert(pool, &input, None).await?;
+
+    let account_id = match &validated.institution {
+        ValidatedInstitutionRef::Existing { id } => {
+            let mutation = db::AccountMutationInput {
+                institution_id: *id,
+                name: validated.name.clone(),
+                type_id: validated.type_id,
+                currency_code: validated.currency_code.clone(),
+                normal_balance_sign: validated.normal_balance_sign,
+                opened_date: validated.opened_date,
+            };
+
+            db::account_create(pool, &mutation)
+                .await
+                .map_err(map_account_write_error)?
+                .id
+        }
+        ValidatedInstitutionRef::New { name } => {
+            let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+
+            let institution_id = db::institution_create_tx(&mut tx, name)
+                .await
+                .map_err(map_institution_write_error)?;
+
+            let mutation = db::AccountMutationInput {
+                institution_id,
+                name: validated.name.clone(),
+                type_id: validated.type_id,
+                currency_code: validated.currency_code.clone(),
+                normal_balance_sign: validated.normal_balance_sign,
+                opened_date: validated.opened_date,
+            };
+
+            let account_id = db::account_create_tx(&mut tx, &mutation)
+                .await
+                .map_err(map_account_write_error)?;
+
+            tx.commit().await.map_err(|_| ApiError::Db)?;
+            account_id
+        }
+    };
+
+    account_dto_by_id(pool, account_id).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn accounts_update(
+    state: State<'_, AppState>,
+    account_id: i64,
+    input: AccountUpsertInput,
+) -> Result<AccountDto, ApiError> {
+    let pool = &state.pool;
+
+    // Keep behavior explicit before we potentially create a new institution.
+    let exists = db::account_get_full(pool, account_id)
         .await
         .map_err(|_| ApiError::Db)?
-    else {
+        .is_some();
+    if !exists {
         return Err(ApiError::NotFound);
-    };
-
-    let account_type_name = account_type_from_db(&a.type_name)?;
-
-    let institution = InstitutionDto {
-        id: a.institution_id,
-        name: a.institution_name,
-    };
-    let account_type = AccountTypeDto {
-        id: a.type_id,
-        name: account_type_name,
-    };
-
-    let first_snapshot_date = a.first_snapshot_date.unwrap_or(today);
-    let latest_snapshot_date = a.latest_snapshot_date.unwrap_or(today);
-    let latest_balance_minor = a.latest_balance_minor.unwrap_or(0);
-
-    // Build activity series exactly like `accounts_list` (seed from last snapshot before range).
-    let full_points: usize = 180;
-    let full_start = today - Duration::days(full_points as i64 - 1);
-
-    let account_ids = vec![account_id];
-    let snapshots = db::snapshots_for_accounts_between(pool, &account_ids, full_start, today)
-        .await
-        .map_err(|_| ApiError::Db)?;
-    let last_before = db::last_snapshots_before(pool, &account_ids, full_start)
-        .await
-        .map_err(|_| ApiError::Db)?;
-
-    let mut date_map: HashMap<NaiveDate, i64> = HashMap::new();
-    for s in snapshots {
-        date_map.insert(s.balance_date, s.balance_minor);
     }
 
-    let seed_before = last_before.first().map(|s| s.balance_minor);
-    let series_180 = filled_values_for_period(&date_map, seed_before, full_start, full_points);
+    let validated = validate_account_upsert(pool, &input, Some(account_id)).await?;
 
-    let activity_by_period: BTreeMap<_, _> = [
-        (ActivityPeriod::P1W, 7),
-        (ActivityPeriod::P1M, 30),
-        (ActivityPeriod::P3M, 90),
-        (ActivityPeriod::P6M, 180),
-    ]
-    .into_iter()
-    .map(|(period, points)| {
-        let values = series_180[series_180.len().saturating_sub(points)..].to_vec();
-        let delta_minor = match (
-            values.iter().find_map(|&v| v),
-            values.iter().rev().find_map(|&v| v),
-        ) {
-            (Some(first), Some(last)) => last - first,
-            _ => 0,
-        };
+    match &validated.institution {
+        ValidatedInstitutionRef::Existing { id } => {
+            let mutation = db::AccountMutationInput {
+                institution_id: *id,
+                name: validated.name.clone(),
+                type_id: validated.type_id,
+                currency_code: validated.currency_code.clone(),
+                normal_balance_sign: validated.normal_balance_sign,
+                opened_date: validated.opened_date,
+            };
 
-        (
-            period,
-            ActivityDataDto {
-                values,
-                delta_minor,
-            },
-        )
-    })
-    .collect();
+            let updated = db::account_update(pool, account_id, &mutation)
+                .await
+                .map_err(map_account_write_error)?;
+            if updated.is_none() {
+                return Err(ApiError::NotFound);
+            }
+        }
+        ValidatedInstitutionRef::New { name } => {
+            let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+            let institution_id = db::institution_create_tx(&mut tx, name)
+                .await
+                .map_err(map_institution_write_error)?;
+            let mutation = db::AccountMutationInput {
+                institution_id,
+                name: validated.name.clone(),
+                type_id: validated.type_id,
+                currency_code: validated.currency_code.clone(),
+                normal_balance_sign: validated.normal_balance_sign,
+                opened_date: validated.opened_date,
+            };
 
-    Ok(AccountDto {
-        id: a.id,
-        name: a.name,
-        institution,
-        account_type,
-        currency_code: a.currency_code,
-        normal_balance_sign: a.normal_balance_sign,
-        opened_date: a.opened_date,
-        closed_date: a.closed_date,
-        first_snapshot_date,
-        latest_snapshot_date,
-        latest_balance_minor,
-        activity_by_period,
-    })
+            let updated = db::account_update_tx(&mut tx, account_id, &mutation)
+                .await
+                .map_err(map_account_write_error)?;
+            if !updated {
+                return Err(ApiError::NotFound);
+            }
+
+            tx.commit().await.map_err(|_| ApiError::Db)?;
+        }
+    }
+
+    account_dto_by_id(pool, account_id).await
 }
 
 #[tauri::command]
@@ -567,6 +617,257 @@ pub async fn dashboard_balance_over_time(
     total_balance_over_time(pool, &accounts, start, today).await
 }
 
+#[derive(Debug, Clone)]
+struct ValidatedInstitutionUpsert {
+    name: String,
+}
+
+#[derive(Debug, Clone)]
+enum ValidatedInstitutionRef {
+    Existing { id: i64 },
+    New { name: String },
+}
+
+#[derive(Debug, Clone)]
+struct ValidatedAccountUpsert {
+    institution: ValidatedInstitutionRef,
+    name: String,
+    type_id: i64,
+    currency_code: String,
+    normal_balance_sign: i32,
+    opened_date: Option<NaiveDate>,
+}
+
+async fn institution_detail_by_id(
+    pool: &SqlitePool,
+    institution_id: i64,
+) -> Result<InstitutionDetailDto, ApiError> {
+    let Some(institution) = db::institution_get(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    let accounts = db::accounts_list_full_for_institution(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let account_dtos = build_account_dtos(pool, accounts).await?;
+
+    Ok(InstitutionDetailDto {
+        id: institution.id,
+        name: institution.name,
+        accounts: account_dtos,
+    })
+}
+
+async fn account_dto_by_id(pool: &SqlitePool, account_id: i64) -> Result<AccountDto, ApiError> {
+    let Some(account_row) = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    let mut dtos = build_account_dtos(pool, vec![account_row]).await?;
+    dtos.pop().ok_or(ApiError::NotFound)
+}
+
+async fn validate_institution_upsert(
+    pool: &SqlitePool,
+    input: &InstitutionUpsertInput,
+    exclude_institution_id: Option<i64>,
+) -> Result<ValidatedInstitutionUpsert, ApiError> {
+    let normalized = normalize_institution_upsert(input);
+    let mut issues = validation_issues_from_garde_report(normalized.validate().err());
+
+    if issues.is_empty() {
+        let exists = db::institution_name_exists(pool, &normalized.name, exclude_institution_id)
+            .await
+            .map_err(|_| ApiError::Db)?;
+        if exists {
+            issues.push(validation_issue(
+                "name",
+                "An institution with this name already exists",
+            ));
+        }
+    }
+
+    if !issues.is_empty() {
+        return Err(ApiError::Validation(issues));
+    }
+
+    Ok(ValidatedInstitutionUpsert {
+        name: normalized.name,
+    })
+}
+
+async fn validate_account_upsert(
+    pool: &SqlitePool,
+    input: &AccountUpsertInput,
+    exclude_account_id: Option<i64>,
+) -> Result<ValidatedAccountUpsert, ApiError> {
+    let normalized = normalize_account_upsert(input);
+    let mut issues = validation_issues_from_garde_report(normalized.validate().err());
+
+    let account_type_db = account_type_to_db(normalized.account_type);
+    let type_id = db::account_type_id_by_name(pool, account_type_db)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    if type_id.is_none() {
+        issues.push(validation_issue("account_type", "Invalid account type"));
+    }
+
+    let institution = match &normalized.institution {
+        InstitutionRef::Existing { id } => {
+            let exists = db::institution_exists(pool, *id)
+                .await
+                .map_err(|_| ApiError::Db)?;
+            if !exists {
+                issues.push(validation_issue(
+                    "institution.id",
+                    "Institution does not exist",
+                ));
+            }
+            ValidatedInstitutionRef::Existing { id: *id }
+        }
+        InstitutionRef::New { input } => {
+            if issues.is_empty() {
+                let exists = db::institution_name_exists(pool, &input.name, None)
+                    .await
+                    .map_err(|_| ApiError::Db)?;
+                if exists {
+                    issues.push(validation_issue(
+                        "institution.input.name",
+                        "An institution with this name already exists",
+                    ));
+                }
+            }
+
+            ValidatedInstitutionRef::New {
+                name: input.name.clone(),
+            }
+        }
+    };
+
+    if issues.is_empty() {
+        if let ValidatedInstitutionRef::Existing { id } = &institution {
+            let duplicate = db::account_name_exists_in_institution(
+                pool,
+                *id,
+                &normalized.name,
+                exclude_account_id,
+            )
+            .await
+            .map_err(|_| ApiError::Db)?;
+            if duplicate {
+                issues.push(validation_issue(
+                    "name",
+                    "An account with this name already exists for this institution",
+                ));
+            }
+        }
+    }
+
+    if !issues.is_empty() {
+        return Err(ApiError::Validation(issues));
+    }
+
+    Ok(ValidatedAccountUpsert {
+        institution,
+        name: normalized.name,
+        type_id: type_id.expect("validated above"),
+        currency_code: normalized.currency_code,
+        normal_balance_sign: normalized.normal_balance_sign,
+        opened_date: normalized.opened_date,
+    })
+}
+
+fn validation_issue(field: &str, message: &str) -> ValidationIssue {
+    ValidationIssue {
+        field: field.to_string(),
+        message: message.to_string(),
+    }
+}
+
+fn validation_issues_from_garde_report(
+    report: Option<garde::error::Report>,
+) -> Vec<ValidationIssue> {
+    let Some(report) = report else {
+        return Vec::new();
+    };
+
+    report
+        .iter()
+        .map(|(path, error)| {
+            let field = garde_path_to_field(path);
+            validation_issue(&field, &error.to_string())
+        })
+        .collect()
+}
+
+fn garde_path_to_field(path: &garde::error::Path) -> String {
+    let raw = path.to_string();
+    if raw == "$" {
+        return String::new();
+    }
+    if let Some(stripped) = raw.strip_prefix("$.") {
+        return stripped.to_string();
+    }
+    raw
+}
+
+fn normalize_institution_upsert(input: &InstitutionUpsertInput) -> InstitutionUpsertInput {
+    InstitutionUpsertInput {
+        name: input.name.trim().to_string(),
+    }
+}
+
+fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
+    AccountUpsertInput {
+        institution: match &input.institution {
+            InstitutionRef::Existing { id } => InstitutionRef::Existing { id: *id },
+            InstitutionRef::New { input } => InstitutionRef::New {
+                input: normalize_institution_upsert(input),
+            },
+        },
+        name: input.name.trim().to_string(),
+        account_type: input.account_type,
+        currency_code: input.currency_code.trim().to_uppercase(),
+        normal_balance_sign: input.normal_balance_sign,
+        opened_date: input.opened_date,
+    }
+}
+
+fn map_institution_write_error(error: sqlx::Error) -> ApiError {
+    if is_unique_constraint(&error, "institutions.name") {
+        return ApiError::Validation(vec![validation_issue(
+            "name",
+            "An institution with this name already exists",
+        )]);
+    }
+
+    ApiError::Db
+}
+
+fn map_account_write_error(error: sqlx::Error) -> ApiError {
+    if is_unique_constraint(&error, "accounts.institution_id, accounts.name") {
+        return ApiError::Validation(vec![validation_issue(
+            "name",
+            "An account with this name already exists for this institution",
+        )]);
+    }
+
+    ApiError::Db
+}
+
+fn is_unique_constraint(error: &sqlx::Error, needle: &str) -> bool {
+    let sqlx::Error::Database(db_error) = error else {
+        return false;
+    };
+    db_error.message().contains("UNIQUE constraint failed") && db_error.message().contains(needle)
+}
+
 async fn build_account_dtos(
     pool: &SqlitePool,
     accounts: Vec<AccountListRow>,
@@ -676,9 +977,23 @@ fn account_type_from_db(name: &str) -> Result<AccountTypeName, ApiError> {
         "pension" => Ok(AccountTypeName::Pension),
         "cash" => Ok(AccountTypeName::Cash),
         "loan" => Ok(AccountTypeName::Loan),
-        other => Err(ApiError::Validation(format!(
-            "unknown account type name in DB: {other}"
-        ))),
+        other => Err(ApiError::Validation(vec![validation_issue(
+            "account_type",
+            &format!("unknown account type name in DB: {other}"),
+        )])),
+    }
+}
+
+fn account_type_to_db(name: AccountTypeName) -> &'static str {
+    match name {
+        AccountTypeName::Current => "current",
+        AccountTypeName::Savings => "savings",
+        AccountTypeName::CreditCard => "credit_card",
+        AccountTypeName::Isa => "isa",
+        AccountTypeName::Investment => "investment",
+        AccountTypeName::Pension => "pension",
+        AccountTypeName::Cash => "cash",
+        AccountTypeName::Loan => "loan",
     }
 }
 
@@ -766,7 +1081,11 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
 
     let builder = Builder::<tauri::Wry>::new().commands(collect_commands![
         accounts_list,
+        accounts_create,
+        accounts_update,
         institutions_list,
+        institutions_create,
+        institutions_update,
         institutions_get,
         accounts_get,
         account_snapshots_list,

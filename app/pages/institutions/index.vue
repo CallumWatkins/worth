@@ -14,6 +14,7 @@
           icon="i-lucide-plus"
           color="primary"
           variant="solid"
+          @click="createDialogOpen = true"
         />
       </template>
     </UPageHeader>
@@ -74,6 +75,8 @@
         </template>
       </UTable>
     </UPageBody>
+
+    <InstitutionsCreateDialog v-model:open="createDialogOpen" />
   </UContainer>
 </template>
 
@@ -91,6 +94,7 @@ type Institution = InstitutionSummaryDto;
 const UButton = resolveComponent("UButton");
 
 const api = useApi();
+const createDialogOpen = ref(false);
 
 const institutionsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.institutions.list(),

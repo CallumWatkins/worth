@@ -13,9 +13,41 @@ async accountsList() : Promise<Result<AccountDto[], ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async accountsCreate(input: AccountUpsertInput) : Promise<Result<AccountDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("accounts_create", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountsUpdate(accountId: number, input: AccountUpsertInput) : Promise<Result<AccountDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("accounts_update", { accountId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async institutionsList() : Promise<Result<InstitutionSummaryDto[], ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("institutions_list") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async institutionsCreate(input: InstitutionUpsertInput) : Promise<Result<InstitutionDetailDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("institutions_create", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async institutionsUpdate(institutionId: number, input: InstitutionUpsertInput) : Promise<Result<InstitutionDetailDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("institutions_update", { institutionId, input }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -93,9 +125,10 @@ export type AccountBalanceSnapshotDto = { id: number; date: string; balance_mino
 export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: string; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string; latest_snapshot_date: string; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
 export type AccountTypeDto = { id: number; name: AccountTypeName }
 export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan"
+export type AccountUpsertInput = { institution: InstitutionRef; name: string; account_type: AccountTypeName; currency_code: string; normal_balance_sign: number; opened_date: string | null }
 export type ActivityDataDto = { values: (number | null)[]; delta_minor: number }
 export type ActivityPeriod = "1W" | "1M" | "3M" | "6M"
-export type ApiError = "Db" | "NotFound" | { Validation: string }
+export type ApiError = "Db" | "NotFound" | { Validation: ValidationIssue[] }
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
 export type BalancePointDto = { date: string; balance_minor: number }
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
@@ -103,8 +136,11 @@ export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; active_institutions: number; allocation_by_type: DashboardAllocationDto[] }
 export type InstitutionDetailDto = { id: number; name: string; accounts: AccountDto[] }
 export type InstitutionDto = { id: number; name: string }
+export type InstitutionRef = { kind: "existing"; id: number } | { kind: "new"; input: InstitutionUpsertInput }
 export type InstitutionSummaryDto = { id: number; name: string; account_count: number; empty_account_count: number; account_types: AccountTypeName[]; total_balance_minor: number }
+export type InstitutionUpsertInput = { name: string }
 export type SearchResultDto = { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string } | { kind: "institution"; id: number; name: string }
+export type ValidationIssue = { field: string; message: string }
 
 /** tauri-specta globals **/
 

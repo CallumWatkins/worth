@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstitutionUpsertInput",
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "pattern": ".*\\S.*"
+    }
+  }
+}
