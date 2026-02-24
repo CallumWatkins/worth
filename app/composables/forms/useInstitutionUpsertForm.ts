@@ -1,10 +1,13 @@
 export function useInstitutionUpsertForm() {
+  const defaults: Partial<InstitutionFormInputValues> = {
+  };
+
   const state = reactive<Partial<InstitutionFormInputValues>>({
-    name: ""
+    ...defaults
   });
 
   function reset() {
-    state.name = "";
+    Object.assign(state, defaults);
   }
 
   function hydrateFromInstitution(name: string) {

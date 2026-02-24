@@ -6,17 +6,6 @@ interface UseAccountUpsertFormParams {
   getDefaultInstitutionId?: () => number | null | undefined
 }
 
-type InstitutionState = { kind: "existing", id: number } | { kind: "new", input: { name: string } };
-
-interface AccountUpsertFormState {
-  institution?: InstitutionState
-  name?: string
-  account_type?: AccountTypeName
-  currency_code?: string
-  normal_balance_sign?: 1 | -1
-  opened_date?: any
-}
-
 function defaultInstitutionFallback(
   institutionItems: { value: { label: string, value: number }[] },
   getDefaultInstitutionId?: () => number | null | undefined
@@ -25,13 +14,14 @@ function defaultInstitutionFallback(
 }
 
 export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
-  const state = reactive<AccountUpsertFormState>({
-    institution: undefined,
-    name: "",
+  const defaults: Partial<AccountFormInputValues> = {
     account_type: "current",
     currency_code: "GBP",
-    normal_balance_sign: 1,
-    opened_date: null as any
+    normal_balance_sign: 1
+  };
+
+  const state = shallowReactive<Partial<AccountFormInputValues>>({
+    ...defaults
   });
 
   const institutionItems = computed(() => {
@@ -94,12 +84,8 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
   ];
 
   function reset() {
+    Object.assign(state, defaults);
     setExistingInstitution(defaultInstitutionFallback(institutionItems, params.getDefaultInstitutionId));
-    state.name = "";
-    state.account_type = "current";
-    state.currency_code = "GBP";
-    state.normal_balance_sign = 1;
-    state.opened_date = null;
   }
 
   function hydrateFromAccount(account: AccountDto) {
@@ -108,7 +94,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.account_type = account.account_type.name;
     state.currency_code = account.currency_code;
     state.normal_balance_sign = account.normal_balance_sign === -1 ? -1 : 1;
-    state.opened_date = account.opened_date ? parseDate(account.opened_date) : null;
+    state.opened_date = account.opened_date == null ? undefined : parseDate(account.opened_date);
   }
 
   watch(() => state.account_type, (kind) => {

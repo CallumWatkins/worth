@@ -62,7 +62,7 @@
 
             <div class="space-y-2">
               <label class="flex items-center gap-2 text-sm text-muted">
-                <UCheckbox v-model="createNewInstitution" color="neutral" />
+                <UCheckbox v-model="createNewInstitution" />
                 <span>Create new institution</span>
               </label>
 
@@ -88,8 +88,6 @@
                   v-model="selectedInstitutionId"
                   :items="institutionItems"
                   class="w-full"
-                  color="neutral"
-                  variant="subtle"
                   :content="{ bodyLock: false }"
                 />
               </UFormField>
@@ -107,8 +105,6 @@
                 v-model="state.account_type"
                 :items="accountTypeItems"
                 class="w-full"
-                color="neutral"
-                variant="subtle"
                 :content="{ bodyLock: false }"
               />
             </UFormField>
@@ -128,8 +124,6 @@
                   v-model="state.normal_balance_sign"
                   :items="normalBalanceSignItems"
                   class="w-full"
-                  color="neutral"
-                  variant="subtle"
                   :content="{ bodyLock: false }"
                 />
               </UFormField>
@@ -138,9 +132,8 @@
             <UFormField label="Opened date (optional)" name="opened_date">
               <UInputDate
                 v-model="state.opened_date"
+                :range="false"
                 class="w-full"
-                color="neutral"
-                variant="subtle"
               />
             </UFormField>
 

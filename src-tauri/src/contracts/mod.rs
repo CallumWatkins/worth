@@ -64,6 +64,7 @@ pub struct AccountUpsertInput {
     #[schemars(extend("enum" = [-1, 1]))]
     pub normal_balance_sign: i32,
     #[garde(skip)]
+    #[specta(optional)]
     pub opened_date: Option<NaiveDate>,
 }
 

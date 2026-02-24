@@ -103,6 +103,7 @@
         <UFormField label="Opened date (optional)" name="opened_date">
           <UInputDate
             v-model="state.opened_date"
+            :range="false"
             class="w-full"
           />
         </UFormField>

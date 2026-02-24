@@ -309,7 +309,6 @@ pub async fn accounts_create(
     state: State<'_, AppState>,
     input: AccountUpsertInput,
 ) -> Result<AccountDto, ApiError> {
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     let pool = &state.pool;
     let validated = validate_account_upsert(pool, &input, None).await?;
 
