@@ -35,6 +35,7 @@
   "dependencies": {
     "@internationalized/date": "3.10.1",
     "@nuxt/ui": "^4.3.0",
+    "@nuxtjs/i18n": "^10.2.3",
     "@tanstack/vue-query": "^5.92.9",
     "@tauri-apps/api": "^2.9.1",
     "echarts": "^6.0.0",

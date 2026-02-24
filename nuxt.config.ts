@@ -4,7 +4,8 @@ export default defineNuxtConfig({
     "@nuxt/ui",
     "reka-ui/nuxt",
     "@nuxt/eslint",
-    "nuxt-echarts"
+    "nuxt-echarts",
+    "@nuxtjs/i18n"
   ],
   app: {
     head: {
@@ -23,6 +24,10 @@ export default defineNuxtConfig({
   css: [
     "@/assets/css/main.css"
   ],
+  i18n: {
+    defaultLocale: "en_gb",
+    locales: ["en_gb"]
+  },
   ssr: false,
   devtools: { enabled: true },
   dir: {
