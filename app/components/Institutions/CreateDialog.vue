@@ -75,12 +75,12 @@ async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
   submitError.value = null;
 
   try {
-    const institution = await createInstitution.mutateAsync({
+    const { id } = await createInstitution.mutateAsync({
       name: event.data.name
     });
 
     open.value = false;
-    await navigateTo(`/institutions/${institution.id}`);
+    await navigateTo(`/institutions/${id}`);
   } catch (error) {
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to create institution";

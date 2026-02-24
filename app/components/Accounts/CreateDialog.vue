@@ -181,9 +181,9 @@ async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
   const payload: AccountUpsertInput = event.data;
 
   try {
-    const account = await createAccount.mutateAsync(payload);
+    const { id } = await createAccount.mutateAsync(payload);
     open.value = false;
-    await navigateTo(`/accounts/${account.id}`);
+    await navigateTo(`/accounts/${id}`);
   } catch (error) {
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to create account";

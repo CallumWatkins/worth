@@ -108,6 +108,11 @@ pub struct AccountDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CreatedIdDto {
+    pub id: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct DashboardAllocationDto {
     pub account_type: AccountTypeName,
     pub balance_minor: i64,
@@ -261,7 +266,7 @@ pub async fn institutions_get(
 pub async fn institutions_create(
     state: State<'_, AppState>,
     input: InstitutionUpsertInput,
-) -> Result<InstitutionDetailDto, ApiError> {
+) -> Result<CreatedIdDto, ApiError> {
     let pool = &state.pool;
     let validated = validate_institution_upsert(pool, &input, None).await?;
 
@@ -269,7 +274,7 @@ pub async fn institutions_create(
         .await
         .map_err(map_institution_write_error)?;
 
-    institution_detail_by_id(pool, created.id).await
+    Ok(CreatedIdDto { id: created.id })
 }
 
 #[tauri::command]
@@ -278,7 +283,7 @@ pub async fn institutions_update(
     state: State<'_, AppState>,
     institution_id: i64,
     input: InstitutionUpsertInput,
-) -> Result<InstitutionDetailDto, ApiError> {
+) -> Result<(), ApiError> {
     let pool = &state.pool;
     let validated = validate_institution_upsert(pool, &input, Some(institution_id)).await?;
 
@@ -290,7 +295,7 @@ pub async fn institutions_update(
         return Err(ApiError::NotFound);
     }
 
-    institution_detail_by_id(pool, institution_id).await
+    Ok(())
 }
 
 #[tauri::command]
@@ -308,7 +313,7 @@ pub async fn accounts_get(
 pub async fn accounts_create(
     state: State<'_, AppState>,
     input: AccountUpsertInput,
-) -> Result<AccountDto, ApiError> {
+) -> Result<CreatedIdDto, ApiError> {
     let pool = &state.pool;
     let validated = validate_account_upsert(pool, &input, None).await?;
 
@@ -353,7 +358,7 @@ pub async fn accounts_create(
         }
     };
 
-    account_dto_by_id(pool, account_id).await
+    Ok(CreatedIdDto { id: account_id })
 }
 
 #[tauri::command]
@@ -362,7 +367,7 @@ pub async fn accounts_update(
     state: State<'_, AppState>,
     account_id: i64,
     input: AccountUpsertInput,
-) -> Result<AccountDto, ApiError> {
+) -> Result<(), ApiError> {
     let pool = &state.pool;
 
     // Keep behavior explicit before we potentially create a new institution.
@@ -419,7 +424,7 @@ pub async fn accounts_update(
         }
     }
 
-    account_dto_by_id(pool, account_id).await
+    Ok(())
 }
 
 #[tauri::command]

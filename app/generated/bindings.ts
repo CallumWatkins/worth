@@ -13,7 +13,7 @@ async accountsList() : Promise<Result<AccountDto[], ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async accountsCreate(input: AccountUpsertInput) : Promise<Result<AccountDto, ApiError>> {
+async accountsCreate(input: AccountUpsertInput) : Promise<Result<CreatedIdDto, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("accounts_create", { input }) };
 } catch (e) {
@@ -21,7 +21,7 @@ async accountsCreate(input: AccountUpsertInput) : Promise<Result<AccountDto, Api
     else return { status: "error", error: e  as any };
 }
 },
-async accountsUpdate(accountId: number, input: AccountUpsertInput) : Promise<Result<AccountDto, ApiError>> {
+async accountsUpdate(accountId: number, input: AccountUpsertInput) : Promise<Result<null, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("accounts_update", { accountId, input }) };
 } catch (e) {
@@ -37,7 +37,7 @@ async institutionsList() : Promise<Result<InstitutionSummaryDto[], ApiError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async institutionsCreate(input: InstitutionUpsertInput) : Promise<Result<InstitutionDetailDto, ApiError>> {
+async institutionsCreate(input: InstitutionUpsertInput) : Promise<Result<CreatedIdDto, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("institutions_create", { input }) };
 } catch (e) {
@@ -45,7 +45,7 @@ async institutionsCreate(input: InstitutionUpsertInput) : Promise<Result<Institu
     else return { status: "error", error: e  as any };
 }
 },
-async institutionsUpdate(institutionId: number, input: InstitutionUpsertInput) : Promise<Result<InstitutionDetailDto, ApiError>> {
+async institutionsUpdate(institutionId: number, input: InstitutionUpsertInput) : Promise<Result<null, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("institutions_update", { institutionId, input }) };
 } catch (e) {
@@ -131,6 +131,7 @@ export type ActivityPeriod = "1W" | "1M" | "3M" | "6M"
 export type ApiError = "Db" | "NotFound" | { Validation: ValidationIssue[] }
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
 export type BalancePointDto = { date: string; balance_minor: number }
+export type CreatedIdDto = { id: number }
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; active_institutions: number; allocation_by_type: DashboardAllocationDto[] }
