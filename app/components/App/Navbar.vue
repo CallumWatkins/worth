@@ -7,7 +7,11 @@
     }"
   >
     <template #left>
-      <div class="flex items-center gap-x-2">
+      <NuxtLink
+        to="/"
+        class="flex items-center gap-x-2"
+        aria-label="Go to dashboard"
+      >
         <div class="bg-primary rounded-md w-8 h-8">
           <img
             src="/logo.png"
@@ -16,7 +20,7 @@
           >
         </div>
         Worth
-      </div>
+      </NuxtLink>
     </template>
     <UNavigationMenu
       :items="items"
