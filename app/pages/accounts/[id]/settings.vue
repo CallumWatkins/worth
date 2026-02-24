@@ -7,7 +7,7 @@
     <UPageHeader
       v-if="accountQuery.data"
       title="Account settings"
-      :description="accountQuery.data.name"
+      :description="`${accountQuery.data.institution.name} • ${accountQuery.data.name}`"
       :ui="{
         root: 'pb-0 border-none',
         description: 'mt-1'
