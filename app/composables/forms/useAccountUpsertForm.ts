@@ -14,10 +14,13 @@ function defaultInstitutionFallback(
 }
 
 export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
-  const defaults: Partial<AccountFormInputValues> = {
+  const defaults: RequiredOrUndefined<AccountFormInputValues> = {
     account_type: "current",
     currency_code: "GBP",
-    normal_balance_sign: 1
+    institution: undefined,
+    name: undefined,
+    normal_balance_sign: 1,
+    opened_date: undefined
   };
 
   const state = shallowReactive<Partial<AccountFormInputValues>>({

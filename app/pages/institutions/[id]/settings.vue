@@ -143,7 +143,7 @@ watch(institutionId, () => {
 
 watch(() => institutionQuery.data, (institution) => {
   if (!institution || hasHydrated.value) return;
-  hydrateFromInstitution(institution.name);
+  hydrateFromInstitution(institution);
   hasHydrated.value = true;
   form.value?.clear();
 }, { immediate: true });

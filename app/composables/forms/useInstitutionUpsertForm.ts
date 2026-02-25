@@ -1,5 +1,8 @@
+import type { InstitutionDetailDto, InstitutionDto } from "~/generated/bindings";
+
 export function useInstitutionUpsertForm() {
-  const defaults: Partial<InstitutionFormInputValues> = {
+  const defaults: RequiredOrUndefined<InstitutionFormInputValues> = {
+    name: undefined
   };
 
   const state = reactive<Partial<InstitutionFormInputValues>>({
@@ -10,8 +13,8 @@ export function useInstitutionUpsertForm() {
     Object.assign(state, defaults);
   }
 
-  function hydrateFromInstitution(name: string) {
-    state.name = name;
+  function hydrateFromInstitution(institution: InstitutionDto | InstitutionDetailDto) {
+    state.name = institution.name;
   }
 
   return {
