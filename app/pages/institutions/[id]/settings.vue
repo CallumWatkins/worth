@@ -64,8 +64,7 @@
               <UButton
                 type="submit"
                 color="primary"
-                :loading="isSubmitting"
-                :disabled="isSubmitting"
+                loading-auto
               >
                 Save changes
               </UButton>
@@ -148,7 +147,12 @@ watch(() => institutionQuery.data, (institution) => {
   form.value?.clear();
 }, { immediate: true });
 
-const isSubmitting = computed(() => updateInstitution.isPending.value);
+usePreventRouteNavigation({
+  isSubmitting: computed(() => form.value?.loading ?? false),
+  isDirty: computed(() => form.value?.dirty ?? false),
+  title: "Discard institution changes?",
+  description: "You have unsaved institution changes that will be lost if you leave this page."
+});
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const institution = institutionQuery.data;
@@ -178,6 +182,7 @@ async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to update institution";
     }
+    throw error;
   }
 }
 </script>

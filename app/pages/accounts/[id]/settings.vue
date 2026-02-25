@@ -141,8 +141,7 @@
               <UButton
                 type="submit"
                 color="primary"
-                :loading="isSubmitting"
-                :disabled="isSubmitting"
+                loading-auto
               >
                 Save changes
               </UButton>
@@ -242,7 +241,12 @@ watch(accountId, () => {
   hasHydrated.value = false;
 });
 
-const isSubmitting = computed(() => updateAccount.isPending.value);
+usePreventRouteNavigation({
+  isSubmitting: computed(() => form.value?.loading ?? false),
+  isDirty: computed(() => form.value?.dirty ?? false),
+  title: "Discard account changes?",
+  description: "You have unsaved account changes that will be lost if you leave this page."
+});
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const account = accountQuery.data;
@@ -271,6 +275,7 @@ async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to update account";
     }
+    throw error;
   }
 }
 </script>

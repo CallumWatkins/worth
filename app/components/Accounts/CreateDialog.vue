@@ -2,7 +2,7 @@
   <UModal
     v-model:open="open"
     title="Create account"
-    :dismissible="!form?.loading"
+    :dismissible="!form?.loading && !form?.dirty"
     :close="!form?.loading"
   >
     <template #body>
