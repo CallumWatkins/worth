@@ -33,12 +33,11 @@
           name="institution"
           :error-pattern="/^institution(\..*)?$/"
         >
-          <UInputMenu
+          <USelectMenu
             v-model="institutionMenuValue"
             :items="institutionItems"
             value-key="value"
             create-item="always"
-            open-on-click
             placeholder="Select or create institution"
             class="w-full"
             :content="{ bodyLock: false }"
@@ -72,7 +71,7 @@
             <template #create-item-label="{ item }">
               Create new institution "{{ item }}"
             </template>
-          </UInputMenu>
+          </USelectMenu>
         </UFormField>
 
         <UFormField label="Account name" name="name">
