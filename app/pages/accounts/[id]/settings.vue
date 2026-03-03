@@ -60,38 +60,52 @@
               :title="institutionsQuery.error.value?.message ?? 'Failed to load institutions'"
             />
 
-            <div class="space-y-2">
-              <label class="flex items-center gap-2 text-sm text-muted">
-                <UCheckbox v-model="createNewInstitution" />
-                <span>Create new institution</span>
-              </label>
-
-              <UFormField
-                v-if="createNewInstitution"
-                label="New institution name"
-                name="institution.input.name"
-                :error-pattern="/^institution(\.input\.name)?$/"
+            <UFormField
+              label="Institution"
+              name="institution"
+              :error-pattern="/^institution(\..*)?$/"
+            >
+              <UInputMenu
+                v-model="institutionMenuValue"
+                :items="institutionItems"
+                value-key="value"
+                create-item="always"
+                open-on-click
+                placeholder="Select or create institution"
+                class="w-full"
+                :content="{ bodyLock: false }"
+                :loading="institutionsQuery.isPending.value"
+                :disabled="institutionsQuery.isPending.value"
+                :ui="{
+                  base: typeof institutionMenuValue === 'string' ? 'ps-13' : 'ps-2.5',
+                  leading: typeof institutionMenuValue === 'string' ? undefined : 'hidden'
+                }"
+                @create="onInstitutionCreate"
               >
-                <UInput
-                  v-model="newInstitutionName"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField
-                v-else
-                label="Institution"
-                name="institution.id"
-                :error-pattern="/^institution(\.id)?$/"
-              >
-                <USelect
-                  v-model="selectedInstitutionId"
-                  :items="institutionItems"
-                  class="w-full"
-                  :content="{ bodyLock: false }"
-                />
-              </UFormField>
-            </div>
+                <template #leading>
+                  <UBadge
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                  >
+                    New
+                  </UBadge>
+                </template>
+                <template #item-leading="item">
+                  <UBadge
+                    v-if="typeof item.item.value === 'string'"
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                  >
+                    New
+                  </UBadge>
+                </template>
+                <template #create-item-label="{ item }">
+                  Create new institution "{{ item }}"
+                </template>
+              </UInputMenu>
+            </UFormField>
 
             <UFormField label="Account name" name="name">
               <UInput
@@ -220,9 +234,8 @@ const hasHydrated = ref(false);
 const {
   state,
   institutionItems,
-  createNewInstitution,
-  selectedInstitutionId,
-  newInstitutionName,
+  institutionMenuValue,
+  onInstitutionCreate,
   accountTypeItems,
   normalBalanceSignItems,
   hydrateFromAccount
