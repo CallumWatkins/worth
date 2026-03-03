@@ -68,15 +68,17 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.institution = id == null ? undefined : { kind: "existing", id };
   }
 
-  function findExistingInstitutionId(name: string) {
+  function findExistingInstitution(name: string) {
     const normalized = normalizeInstitutionName(name);
     if (!normalized) return undefined;
 
-    const institution = institutionItems.value.find((institution) => (
-      normalizeInstitutionName(institution.label) === normalized
+    return (params.institutions.value ?? []).find((institution) => (
+      normalizeInstitutionName(institution.name) === normalized
     ));
+  }
 
-    return typeof institution?.value === "number" ? institution.value : undefined;
+  function findExistingInstitutionId(name: string) {
+    return findExistingInstitution(name)?.id;
   }
 
   function onInstitutionCreate(name: string) {
@@ -93,6 +95,18 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
       kind: "new",
       input: { name: trimmedName }
     };
+  }
+
+  const institutionSearchTerm = ref("");
+
+  const institutionCreateItem = computed<false | "always">(() => {
+    const trimmedSearchTerm = institutionSearchTerm.value.trim();
+    if (!trimmedSearchTerm) return false;
+    return findExistingInstitution(trimmedSearchTerm) ? false : "always";
+  });
+
+  function onInstitutionSearchTermUpdate(searchTerm: string) {
+    institutionSearchTerm.value = searchTerm;
   }
 
   const institutionMenuValue = computed<number | string | undefined>({
@@ -141,6 +155,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
   function reset() {
     Object.assign(state, defaults);
     setExistingInstitution(defaultInstitutionFallback(institutionItems, params.getDefaultInstitutionId));
+    institutionSearchTerm.value = "";
   }
 
   function hydrateFromAccount(account: AccountDto) {
@@ -150,6 +165,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.currency_code = account.currency_code;
     state.normal_balance_sign = account.normal_balance_sign === -1 ? -1 : 1;
     state.opened_date = account.opened_date == null ? undefined : parseDate(account.opened_date);
+    institutionSearchTerm.value = "";
   }
 
   watch(() => state.account_type, (kind) => {
@@ -170,6 +186,8 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state,
     institutionItems,
     institutionMenuValue,
+    institutionCreateItem,
+    onInstitutionSearchTermUpdate,
     onInstitutionCreate,
     accountTypeItems,
     normalBalanceSignItems,

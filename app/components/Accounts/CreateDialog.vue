@@ -37,7 +37,7 @@
             v-model="institutionMenuValue"
             :items="institutionItems"
             value-key="value"
-            create-item="always"
+            :create-item="institutionCreateItem"
             placeholder="Select or create institution"
             class="w-full"
             :content="{ bodyLock: false }"
@@ -47,6 +47,7 @@
               base: typeof institutionMenuValue === 'string' ? 'ps-13' : 'ps-2.5',
               leading: typeof institutionMenuValue === 'string' ? undefined : 'hidden'
             }"
+            @update:search-term="onInstitutionSearchTermUpdate"
             @create="onInstitutionCreate"
           >
             <template #leading>
@@ -170,6 +171,8 @@ const {
   state,
   institutionItems,
   institutionMenuValue,
+  institutionCreateItem,
+  onInstitutionSearchTermUpdate,
   onInstitutionCreate,
   accountTypeItems,
   normalBalanceSignItems,
