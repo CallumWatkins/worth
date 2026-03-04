@@ -300,6 +300,7 @@
 import type { BreadcrumbItem, SelectItem, TableColumn, TabsItem } from "@nuxt/ui";
 import type { GroupingOptions } from "@tanstack/vue-table";
 import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto } from "~/generated/bindings";
+import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
 import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 
@@ -323,6 +324,7 @@ const darkTooltipBase = {
 
 const route = useRoute();
 const api = useApi();
+const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 
 const UButton = resolveComponent("UButton");
 
@@ -373,9 +375,20 @@ const balanceOverTimePeriodItems = computed<TabsItem[]>(() => {
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const account = accountQuery.data;
+  if (!account) return [];
+
+  const context = accountBreadcrumbContext.value;
+  if (context && context.accountId === account.id && context.institutionId === account.institution.id) {
+    return [
+      { label: "Institutions", to: "/institutions", icon: "i-lucide-building-2" },
+      { label: account.institution.name, to: `/institutions/${account.institution.id}` },
+      { label: account.name }
+    ];
+  }
+
   return [
     { label: "Accounts", to: "/accounts", icon: "i-lucide-wallet" },
-    { label: account?.name ?? "" }
+    { label: account.name }
   ];
 });
 

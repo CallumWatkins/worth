@@ -193,11 +193,13 @@
 <script lang="ts" setup>
 import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
 import type { AccountUpsertInput } from "~/generated/bindings";
+import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
 import { useQuery } from "@tanstack/vue-query";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 
 const route = useRoute();
 const api = useApi();
+const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 const { updateAccount } = useAccountMutations();
 const form = useTemplateRef("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
@@ -267,6 +269,17 @@ usePreventRouteNavigation({
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const account = accountQuery.data;
   if (!account) return [];
+
+  const context = accountBreadcrumbContext.value;
+  if (context && context.accountId === account.id && context.institutionId === account.institution.id) {
+    return [
+      { label: "Institutions", to: "/institutions", icon: "i-lucide-building-2" },
+      { label: account.institution.name, to: `/institutions/${account.institution.id}` },
+      { label: account.name, to: `/accounts/${account.id}` },
+      { label: "Settings" }
+    ];
+  }
+
   return [
     { label: "Accounts", to: "/accounts", icon: "i-lucide-wallet" },
     { label: account.name, to: `/accounts/${account.id}` },
