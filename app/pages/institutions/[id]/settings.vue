@@ -1,11 +1,11 @@
 <template>
   <UContainer>
-    <div v-if="institutionQuery.data" class="pt-6">
+    <div v-if="institutionQuery.isSuccess" class="pt-6">
       <UBreadcrumb :items="breadcrumbItems" />
     </div>
 
     <UPageHeader
-      v-if="institutionQuery.data"
+      v-if="institutionQuery.isSuccess"
       title="Institution settings"
       :description="institutionQuery.data.name"
       :ui="{
@@ -15,21 +15,7 @@
     />
 
     <UPageBody class="space-y-6">
-      <UAlert
-        v-if="institutionId == null"
-        color="error"
-        variant="subtle"
-        title="Invalid institution id"
-      />
-
-      <UAlert
-        v-else-if="institutionQuery.isError"
-        color="error"
-        variant="subtle"
-        :title="institutionQuery.error!.message ?? 'Failed to load institution'"
-      />
-
-      <template v-else-if="institutionQuery.data">
+      <template v-if="institutionQuery.isSuccess">
         <UPageCard title="General" description="Update institution details">
           <UForm
             ref="form"
@@ -108,17 +94,21 @@ const { updateInstitution } = useInstitutionMutations();
 const form = useTemplateRef("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
-const institutionId = computed<number | null>(() => {
-  const n = Number.parseInt(route.params.id);
-  if (!Number.isFinite(n)) return null;
-  return n;
-});
+const institutionId = useRouteParamInt(route, "id");
 
 const institutionQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.institutions.get(institutionId.value!)),
   enabled: computed(() => institutionId.value !== null),
   queryFn: () => api.institutionsGet(institutionId.value!)
 }));
+
+useResourcePageError({
+  resourceName: "Institution",
+  resourceId: institutionId,
+  resourceIsError: computed(() => institutionQuery.isError),
+  resourceError: computed(() => institutionQuery.error),
+  fallbackErrorMessage: "Failed to load institution"
+});
 
 const submitError = ref<string | null>(null);
 const didSave = ref(false);

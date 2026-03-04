@@ -1,11 +1,11 @@
 <template>
   <UContainer>
-    <div v-if="accountQuery.data" class="pt-6">
+    <div v-if="accountQuery.isSuccess" class="pt-6">
       <UBreadcrumb :items="breadcrumbItems" />
     </div>
 
     <UPageHeader
-      v-if="accountQuery.data"
+      v-if="accountQuery.isSuccess"
       title="Account settings"
       :description="`${accountQuery.data.institution.name} • ${accountQuery.data.name}`"
       :ui="{
@@ -15,21 +15,7 @@
     />
 
     <UPageBody class="space-y-6">
-      <UAlert
-        v-if="accountId == null"
-        color="error"
-        variant="subtle"
-        title="Invalid account id"
-      />
-
-      <UAlert
-        v-else-if="accountQuery.isError"
-        color="error"
-        variant="subtle"
-        :title="accountQuery.error!.message ?? 'Failed to load account'"
-      />
-
-      <template v-else-if="accountQuery.data">
+      <template v-if="accountQuery.isSuccess">
         <UPageCard title="General" description="Update account details and institution">
           <UForm
             ref="form"
@@ -204,11 +190,7 @@ const { updateAccount } = useAccountMutations();
 const form = useTemplateRef("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
-const accountId = computed<number | null>(() => {
-  const n = Number.parseInt(route.params.id);
-  if (!Number.isFinite(n)) return null;
-  return n;
-});
+const accountId = useRouteParamInt(route, "id");
 
 const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
@@ -216,8 +198,17 @@ const accountQuery = proxyRefs(useQuery({
   queryFn: () => api.accountsGet(accountId.value!)
 }));
 
+useResourcePageError({
+  resourceName: "Account",
+  resourceId: accountId,
+  resourceIsError: computed(() => accountQuery.isError),
+  resourceError: computed(() => accountQuery.error),
+  fallbackErrorMessage: "Failed to load account"
+});
+
 const institutionsQuery = useQuery({
   queryKey: queryKeys.institutions.list(),
+  enabled: computed(() => !!accountQuery.data),
   queryFn: api.institutionsList
 });
 

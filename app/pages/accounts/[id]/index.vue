@@ -1,11 +1,11 @@
 <template>
   <UContainer>
-    <div v-if="accountQuery.data" class="pt-6">
+    <div v-if="accountQuery.isSuccess" class="pt-6">
       <UBreadcrumb :items="breadcrumbItems" />
     </div>
 
     <UPageHeader
-      v-if="accountQuery.data"
+      v-if="accountQuery.isSuccess"
       :title="accountQuery.data.name"
       :description="headerDescription"
       :ui="{
@@ -25,21 +25,7 @@
     </UPageHeader>
 
     <UPageBody class="space-y-8">
-      <UAlert
-        v-if="accountId == null"
-        color="error"
-        variant="subtle"
-        title="Invalid account id"
-      />
-
-      <UAlert
-        v-else-if="accountQuery.isError"
-        color="error"
-        variant="subtle"
-        :title="accountQuery.error!.message ?? 'Failed to load account'"
-      />
-
-      <template v-else-if="accountQuery.data">
+      <template v-if="accountQuery.isSuccess">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <UPageCard
             title="Current Balance"
@@ -328,11 +314,7 @@ const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("acco
 
 const UButton = resolveComponent("UButton");
 
-const accountId = computed<number | null>(() => {
-  const n = Number.parseInt(route.params.id);
-  if (!Number.isFinite(n)) return null;
-  return n;
-});
+const accountId = useRouteParamInt(route, "id");
 
 const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
@@ -340,9 +322,17 @@ const accountQuery = proxyRefs(useQuery({
   queryFn: () => api.accountsGet(accountId.value!)
 }));
 
+useResourcePageError({
+  resourceName: "Account",
+  resourceId: accountId,
+  resourceIsError: computed(() => accountQuery.isError),
+  resourceError: computed(() => accountQuery.error),
+  fallbackErrorMessage: "Failed to load account"
+});
+
 const snapshotsQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.snapshots(accountId.value!)),
-  enabled: computed(() => accountId.value !== null),
+  enabled: computed(() => accountQuery.isSuccess),
   queryFn: () => api.accountSnapshotsList(accountId.value!)
 }));
 
@@ -350,7 +340,7 @@ const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
 
 const balanceOverTimeQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.balanceOverTime(accountId.value!, balanceOverTimePeriod.value)),
-  enabled: computed(() => accountId.value !== null),
+  enabled: computed(() => accountQuery.isSuccess),
   queryFn: () => api.accountBalanceOverTime(accountId.value!, balanceOverTimePeriod.value)
 }));
 
