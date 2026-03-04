@@ -51,7 +51,6 @@
                 :create-item="institutionCreateItem"
                 placeholder="Select or create institution"
                 class="w-full"
-                :content="{ bodyLock: false }"
                 :loading="institutionsQuery.isPending.value"
                 :disabled="institutionsQuery.isPending.value"
                 :ui="{
@@ -98,7 +97,6 @@
                 v-model="state.account_type"
                 :items="accountTypeItems"
                 class="w-full"
-                :content="{ bodyLock: false }"
               />
             </UFormField>
 
@@ -109,7 +107,6 @@
                   :items="supportedCurrencyCodes"
                   placeholder="Select currency"
                   class="w-full"
-                  :content="{ bodyLock: false }"
                 />
               </UFormField>
 
@@ -118,7 +115,6 @@
                   v-model="state.normal_balance_sign"
                   :items="normalBalanceSignItems"
                   class="w-full"
-                  :content="{ bodyLock: false }"
                 />
               </UFormField>
             </div>

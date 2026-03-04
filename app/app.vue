@@ -1,7 +1,10 @@
 <template>
   <Html class="overflow-x-hidden select-none">
     <Body class="font-sans antialiased">
-      <UApp :locale="locales[locale]">
+      <UApp
+        :locale="locales[locale]"
+        :scroll-body="{ padding: false, margin: false }"
+      >
         <AppNavbar />
         <UMain>
           <NuxtPage />

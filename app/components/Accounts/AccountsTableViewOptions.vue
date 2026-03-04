@@ -32,7 +32,6 @@
             class="w-full"
             color="neutral"
             variant="subtle"
-            :content="{ bodyLock: false }"
           />
         </UFormField>
 
@@ -43,7 +42,6 @@
             class="w-full"
             color="neutral"
             variant="subtle"
-            :content="{ bodyLock: false }"
           />
         </UFormField>
 
