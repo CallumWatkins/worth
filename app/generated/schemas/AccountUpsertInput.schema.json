@@ -7,10 +7,7 @@
       "$ref": "#/$defs/AccountTypeName"
     },
     "currency_code": {
-      "type": "string",
-      "maxLength": 3,
-      "minLength": 3,
-      "pattern": "^[A-Z]{3}$"
+      "$ref": "#/$defs/CurrencyCode"
     },
     "institution": {
       "$ref": "#/$defs/InstitutionRef"
@@ -56,6 +53,12 @@
         "pension",
         "cash",
         "loan"
+      ]
+    },
+    "CurrencyCode": {
+      "type": "string",
+      "enum": [
+        "GBP"
       ]
     },
     "InstitutionRef": {

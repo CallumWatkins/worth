@@ -1,5 +1,7 @@
 pub mod schema_export;
 
+use std::str::FromStr;
+
 use chrono::NaiveDate;
 use garde::Validate;
 use schemars::JsonSchema;
@@ -32,6 +34,75 @@ pub enum AccountTypeName {
     Loan,
 }
 
+impl AccountTypeName {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AccountTypeName::Current => "current",
+            AccountTypeName::Savings => "savings",
+            AccountTypeName::CreditCard => "credit_card",
+            AccountTypeName::Isa => "isa",
+            AccountTypeName::Investment => "investment",
+            AccountTypeName::Pension => "pension",
+            AccountTypeName::Cash => "cash",
+            AccountTypeName::Loan => "loan",
+        }
+    }
+}
+
+impl FromStr for AccountTypeName {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "current" => Ok(AccountTypeName::Current),
+            "savings" => Ok(AccountTypeName::Savings),
+            "credit_card" => Ok(AccountTypeName::CreditCard),
+            "isa" => Ok(AccountTypeName::Isa),
+            "investment" => Ok(AccountTypeName::Investment),
+            "pension" => Ok(AccountTypeName::Pension),
+            "cash" => Ok(AccountTypeName::Cash),
+            "loan" => Ok(AccountTypeName::Loan),
+            _ => Err("Invalid account type"),
+        }
+    }
+}
+
+#[crate::export_schema]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Type,
+    JsonSchema,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+)]
+pub enum CurrencyCode {
+    GBP,
+}
+
+impl CurrencyCode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CurrencyCode::GBP => "GBP",
+        }
+    }
+}
+
+impl FromStr for CurrencyCode {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "GBP" => Ok(CurrencyCode::GBP),
+            _ => Err("Invalid currency code"),
+        }
+    }
+}
+
 #[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct InstitutionUpsertInput {
@@ -62,8 +133,8 @@ pub struct AccountUpsertInput {
     pub name: String,
     #[garde(skip)]
     pub account_type: AccountTypeName,
-    #[garde(length(equal = 3), pattern(r"^[A-Z]{3}$"))]
-    pub currency_code: String,
+    #[garde(skip)]
+    pub currency_code: CurrencyCode,
     #[garde(custom(validate_normal_balance_sign))]
     #[schemars(extend("enum" = [-1, 1]))]
     pub normal_balance_sign: i32,

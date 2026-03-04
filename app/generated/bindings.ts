@@ -122,16 +122,17 @@ async search(query: string) : Promise<Result<SearchResultDto[], ApiError>> {
 /** user-defined types **/
 
 export type AccountBalanceSnapshotDto = { id: number; date: string; balance_minor: number; created_at: string }
-export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: string; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string; latest_snapshot_date: string; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
+export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: CurrencyCode; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string; latest_snapshot_date: string; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
 export type AccountTypeDto = { id: number; name: AccountTypeName }
 export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan"
-export type AccountUpsertInput = { institution: InstitutionRef; name: string; account_type: AccountTypeName; currency_code: string; normal_balance_sign: number; opened_date?: string | null }
+export type AccountUpsertInput = { institution: InstitutionRef; name: string; account_type: AccountTypeName; currency_code: CurrencyCode; normal_balance_sign: number; opened_date?: string | null }
 export type ActivityDataDto = { values: (number | null)[]; delta_minor: number }
 export type ActivityPeriod = "1W" | "1M" | "3M" | "6M"
 export type ApiError = "Db" | "NotFound" | { Validation: ValidationIssue[] }
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
 export type BalancePointDto = { date: string; balance_minor: number }
 export type CreatedIdDto = { id: number }
+export type CurrencyCode = "GBP"
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; active_institutions: number; allocation_by_type: DashboardAllocationDto[] }

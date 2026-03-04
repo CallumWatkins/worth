@@ -125,11 +125,12 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <UFormField label="Currency" name="currency_code">
-                <UInput
+                <USelectMenu
                   v-model="state.currency_code"
+                  :items="supportedCurrencyCodes"
+                  placeholder="Select currency"
                   class="w-full"
-                  maxlength="3"
-                  @blur="state.currency_code = state.currency_code?.trim().toUpperCase() ?? ''"
+                  :content="{ bodyLock: false }"
                 />
               </UFormField>
 
@@ -195,6 +196,7 @@
 import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
 import type { AccountUpsertInput } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
+import { supportedCurrencyCodes } from "~/utils/currencies";
 
 const route = useRoute();
 const api = useApi();

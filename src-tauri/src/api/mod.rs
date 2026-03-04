@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use tauri::State;
 
 use crate::contracts::{
-    AccountTypeName, AccountUpsertInput, InstitutionRef, InstitutionUpsertInput,
+    AccountTypeName, AccountUpsertInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput,
 };
 use crate::state::AppState;
 use crate::{db, db::AccountListRow};
@@ -97,7 +97,7 @@ pub struct AccountDto {
     pub name: String,
     pub institution: InstitutionDto,
     pub account_type: AccountTypeDto,
-    pub currency_code: String,
+    pub currency_code: CurrencyCode,
     pub normal_balance_sign: i32, // {-1, 1}
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
@@ -191,7 +191,7 @@ pub async fn institutions_list(
     let mut types_by_institution: HashMap<i64, Vec<AccountTypeName>> =
         HashMap::with_capacity(summary_rows.len());
     for row in type_rows {
-        let account_type_name = account_type_from_db(&row.type_name)?;
+        let account_type_name = row.type_name.parse().map_err(|_| ApiError::Db)?;
         types_by_institution
             .entry(row.institution_id)
             .or_default()
@@ -241,7 +241,7 @@ pub async fn search(
             } => Ok(SearchResultDto::Account {
                 id,
                 name,
-                account_type: account_type_from_db(&type_name)?,
+                account_type: type_name.parse().map_err(|_| ApiError::Db)?,
                 institution_name,
             }),
             db::GlobalSearchRow::Institution { id, name } => {
@@ -544,7 +544,7 @@ pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, A
     let mut allocation: BTreeMap<AccountTypeName, i64> = BTreeMap::new();
 
     for a in &accounts {
-        let account_type_name = account_type_from_db(&a.type_name)?;
+        let account_type_name = a.type_name.parse().map_err(|_| ApiError::Db)?;
         let latest_minor = a.latest_balance_minor.unwrap_or(0);
         total_balance_minor += latest_minor;
         if latest_minor != 0 {
@@ -715,7 +715,7 @@ async fn validate_account_upsert(
     let normalized = normalize_account_upsert(input);
     let mut issues = validation_issues_from_garde_report(normalized.validate().err());
 
-    let account_type_db = account_type_to_db(normalized.account_type);
+    let account_type_db = normalized.account_type.as_str();
     let type_id = db::account_type_id_by_name(pool, account_type_db)
         .await
         .map_err(|_| ApiError::Db)?;
@@ -782,7 +782,7 @@ async fn validate_account_upsert(
         institution,
         name: normalized.name,
         type_id: type_id.expect("validated above"),
-        currency_code: normalized.currency_code,
+        currency_code: normalized.currency_code.as_str().to_owned(),
         normal_balance_sign: normalized.normal_balance_sign,
         opened_date: normalized.opened_date,
     })
@@ -838,7 +838,7 @@ fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
         },
         name: input.name.trim().to_string(),
         account_type: input.account_type,
-        currency_code: input.currency_code.trim().to_uppercase(),
+        currency_code: input.currency_code,
         normal_balance_sign: input.normal_balance_sign,
         opened_date: input.opened_date,
     }
@@ -907,7 +907,7 @@ async fn build_account_dtos(
     let mut out = Vec::with_capacity(accounts.len());
     let empty_dates: HashMap<NaiveDate, i64> = HashMap::new();
     for a in accounts {
-        let account_type_name = account_type_from_db(&a.type_name)?;
+        let account_type_name = a.type_name.parse().map_err(|_| ApiError::Db)?;
 
         let institution = InstitutionDto {
             id: a.institution_id,
@@ -958,7 +958,7 @@ async fn build_account_dtos(
             name: a.name,
             institution,
             account_type,
-            currency_code: a.currency_code,
+            currency_code: a.currency_code.parse().map_err(|_| ApiError::Db)?,
             normal_balance_sign: a.normal_balance_sign,
             opened_date: a.opened_date,
             closed_date: a.closed_date,
@@ -970,36 +970,6 @@ async fn build_account_dtos(
     }
 
     Ok(out)
-}
-
-fn account_type_from_db(name: &str) -> Result<AccountTypeName, ApiError> {
-    match name {
-        "current" => Ok(AccountTypeName::Current),
-        "savings" => Ok(AccountTypeName::Savings),
-        "credit_card" => Ok(AccountTypeName::CreditCard),
-        "isa" => Ok(AccountTypeName::Isa),
-        "investment" => Ok(AccountTypeName::Investment),
-        "pension" => Ok(AccountTypeName::Pension),
-        "cash" => Ok(AccountTypeName::Cash),
-        "loan" => Ok(AccountTypeName::Loan),
-        other => Err(ApiError::Validation(vec![validation_issue(
-            "account_type",
-            &format!("unknown account type name in DB: {other}"),
-        )])),
-    }
-}
-
-fn account_type_to_db(name: AccountTypeName) -> &'static str {
-    match name {
-        AccountTypeName::Current => "current",
-        AccountTypeName::Savings => "savings",
-        AccountTypeName::CreditCard => "credit_card",
-        AccountTypeName::Isa => "isa",
-        AccountTypeName::Investment => "investment",
-        AccountTypeName::Pension => "pension",
-        AccountTypeName::Cash => "cash",
-        AccountTypeName::Loan => "loan",
-    }
 }
 
 fn filled_values_for_period(
