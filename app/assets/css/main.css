@@ -113,3 +113,14 @@
 .page-leave-to {
 	@apply opacity-0;
 }
+
+.save-status-fade-enter-active {
+	@apply transition-opacity duration-200 ease-out;
+}
+.save-status-fade-leave-active {
+	@apply transition-opacity duration-200 ease-in;
+}
+.save-status-fade-enter-from,
+.save-status-fade-leave-to {
+	@apply opacity-0;
+}

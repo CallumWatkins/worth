@@ -47,13 +47,6 @@
             />
 
             <UAlert
-              v-if="didSave"
-              color="success"
-              variant="subtle"
-              title="Account updated"
-            />
-
-            <UAlert
               v-if="institutionsQuery.isError.value"
               color="error"
               variant="subtle"
@@ -152,11 +145,16 @@
               />
             </UFormField>
 
-            <div class="flex justify-end">
+            <div class="flex items-center justify-end gap-3">
+              <Transition name="save-status-fade">
+                <span v-if="didSave && !form?.dirty" class="text-sm text-success">
+                  Changes saved
+                </span>
+              </Transition>
               <UButton
                 type="submit"
                 color="primary"
-                loading-auto
+                :disabled="form?.loading"
               >
                 Save changes
               </UButton>
@@ -256,6 +254,7 @@ watch(() => accountQuery.data, (account) => {
 
 watch(accountId, () => {
   hasHydrated.value = false;
+  didSave.value = false;
 });
 
 usePreventRouteNavigation({

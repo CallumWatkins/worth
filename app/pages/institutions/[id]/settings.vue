@@ -46,13 +46,6 @@
               :title="submitError"
             />
 
-            <UAlert
-              v-if="didSave"
-              color="success"
-              variant="subtle"
-              title="Institution updated"
-            />
-
             <UFormField label="Institution name" name="name">
               <UInput
                 v-model="state.name"
@@ -60,11 +53,16 @@
               />
             </UFormField>
 
-            <div class="flex justify-end">
+            <div class="flex items-center justify-end gap-3">
+              <Transition name="save-status-fade">
+                <span v-if="didSave && !form?.dirty" class="text-sm text-success">
+                  Changes saved
+                </span>
+              </Transition>
               <UButton
                 type="submit"
                 color="primary"
-                loading-auto
+                :disabled="form?.loading"
               >
                 Save changes
               </UButton>
@@ -138,6 +136,7 @@ const { state, hydrateFromInstitution } = useInstitutionUpsertForm();
 
 watch(institutionId, () => {
   hasHydrated.value = false;
+  didSave.value = false;
 });
 
 watch(() => institutionQuery.data, (institution) => {
