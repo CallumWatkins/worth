@@ -96,9 +96,9 @@ async function onSelect(item: SearchResultDto | undefined) {
   menuOpen.value = false;
 
   if (item.kind === "account") {
-    await navigateTo(`/accounts/${item.id}`);
+    await navigateTo({ name: "accounts-id", params: { id: item.id } });
   } else if (item.kind === "institution") {
-    await navigateTo(`/institutions/${item.id}`);
+    await navigateTo({ name: "institutions-id", params: { id: item.id } });
   } else {
     assertNever(item);
   }

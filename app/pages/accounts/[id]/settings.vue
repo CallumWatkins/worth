@@ -16,7 +16,7 @@
 
     <UPageBody class="space-y-6">
       <UAlert
-        v-if="invalidId"
+        v-if="accountId == null"
         color="error"
         variant="subtle"
         title="Invalid account id"
@@ -197,27 +197,18 @@ import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbCon
 import { useQuery } from "@tanstack/vue-query";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 
-const route = useRoute();
+const route = useRoute("accounts-id-settings");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 const { updateAccount } = useAccountMutations();
 const form = useTemplateRef("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
-const rawId = computed(() => {
-  const p = (route.params as any)?.id;
-  if (Array.isArray(p)) return p[0];
-  return p;
-});
-
 const accountId = computed<number | null>(() => {
-  const s = String(rawId.value ?? "");
-  const n = Number.parseInt(s, 10);
+  const n = Number.parseInt(route.params.id);
   if (!Number.isFinite(n)) return null;
   return n;
 });
-
-const invalidId = computed(() => rawId.value != null && accountId.value == null);
 
 const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
@@ -273,16 +264,16 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const context = accountBreadcrumbContext.value;
   if (context && context.accountId === account.id && context.institutionId === account.institution.id) {
     return [
-      { label: "Institutions", to: "/institutions", icon: "i-lucide-building-2" },
-      { label: account.institution.name, to: `/institutions/${account.institution.id}` },
-      { label: account.name, to: `/accounts/${account.id}` },
+      { label: "Institutions", to: { name: "institutions" }, icon: "i-lucide-building-2" },
+      { label: account.institution.name, to: { name: "institutions-id", params: { id: account.institution.id } } },
+      { label: account.name, to: { name: "accounts-id", params: { id: account.id } } },
       { label: "Settings" }
     ];
   }
 
   return [
-    { label: "Accounts", to: "/accounts", icon: "i-lucide-wallet" },
-    { label: account.name, to: `/accounts/${account.id}` },
+    { label: "Accounts", to: { name: "accounts" }, icon: "i-lucide-wallet" },
+    { label: account.name, to: { name: "accounts-id", params: { id: account.id } } },
     { label: "Settings" }
   ];
 });

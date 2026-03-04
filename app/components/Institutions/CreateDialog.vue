@@ -80,7 +80,7 @@ async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
     });
 
     open.value = false;
-    await navigateTo(`/institutions/${id}`);
+    await navigateTo({ name: "institutions-id", params: { id } });
   } catch (error) {
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to create institution";

@@ -16,7 +16,7 @@
 
     <UPageBody class="space-y-6">
       <UAlert
-        v-if="invalidId"
+        v-if="institutionId == null"
         color="error"
         variant="subtle"
         title="Invalid institution id"
@@ -102,26 +102,17 @@
 import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
 import { useQuery } from "@tanstack/vue-query";
 
-const route = useRoute();
+const route = useRoute("institutions-id-settings");
 const api = useApi();
 const { updateInstitution } = useInstitutionMutations();
 const form = useTemplateRef("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
-const rawId = computed(() => {
-  const p = (route.params as any)?.id;
-  if (Array.isArray(p)) return p[0];
-  return p;
-});
-
 const institutionId = computed<number | null>(() => {
-  const s = String(rawId.value ?? "");
-  const n = Number.parseInt(s, 10);
+  const n = Number.parseInt(route.params.id);
   if (!Number.isFinite(n)) return null;
   return n;
 });
-
-const invalidId = computed(() => rawId.value != null && institutionId.value == null);
 
 const institutionQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.institutions.get(institutionId.value!)),
@@ -157,8 +148,8 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const institution = institutionQuery.data;
   if (!institution) return [];
   return [
-    { label: "Institutions", to: "/institutions", icon: "i-lucide-building-2" },
-    { label: institution.name, to: `/institutions/${institution.id}` },
+    { label: "Institutions", to: { name: "institutions" }, icon: "i-lucide-building-2" },
+    { label: institution.name, to: { name: "institutions-id", params: { id: institution.id } } },
     { label: "Settings" }
   ];
 });

@@ -498,12 +498,12 @@ const columns = computed<TableColumn<Account>[]>(() => {
   return out;
 });
 
-function onSelect(_e: Event, row: TableRow<Account>) {
+async function onSelect(_e: Event, row: TableRow<Account>) {
   if (row.getIsGrouped()) {
     row.toggleExpanded();
     return;
   }
 
-  void navigateTo(`/accounts/${row.original.id}`);
+  await navigateTo({ name: "accounts-id", params: { id: row.original.id } });
 }
 </script>

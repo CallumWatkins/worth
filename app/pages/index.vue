@@ -47,7 +47,7 @@
             }"
           />
           <UPageCard
-            to="/accounts"
+            :to="{ name: 'accounts' }"
             title="Accounts"
             :description="String(dashboardQuery.data?.active_accounts ?? 0)"
             variant="subtle"
@@ -57,7 +57,7 @@
             }"
           />
           <UPageCard
-            to="/institutions"
+            :to="{ name: 'institutions' }"
             title="Institutions"
             :description="String(dashboardQuery.data?.active_institutions ?? 0)"
             variant="subtle"

@@ -115,8 +115,8 @@ function formatGBP(minor: number) {
   return gbp.format(minor / 100);
 }
 
-function onSelect(_e: Event, row: TableRow<Institution>) {
-  void navigateTo(`/institutions/${row.original.id}`);
+async function onSelect(_e: Event, row: TableRow<Institution>) {
+  await navigateTo({ name: "institutions-id", params: { id: row.original.id } });
 }
 
 function sortableHeader(column: any, label: string) {

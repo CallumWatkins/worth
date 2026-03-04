@@ -8,7 +8,7 @@
   >
     <template #left>
       <NuxtLink
-        to="/"
+        :to="{ name: 'index' }"
         class="flex items-center gap-x-2"
         aria-label="Go to dashboard"
       >
@@ -58,22 +58,22 @@ const items = ref<NavigationMenuItem[]>([
   {
     label: "Dashboard",
     icon: "i-lucide-layout-dashboard",
-    to: "/"
+    to: { name: "index" }
   },
   {
     label: "Accounts",
     icon: "i-lucide-wallet",
-    to: "/accounts"
+    to: { name: "accounts" }
   },
   {
     label: "Institutions",
     icon: "i-lucide-building-2",
-    to: "/institutions"
+    to: { name: "institutions" }
   },
   {
     label: "Settings",
     icon: "i-lucide-settings",
-    to: "/settings"
+    to: { name: "settings" }
   }
 ]);
 </script>

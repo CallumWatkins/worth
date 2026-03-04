@@ -19,7 +19,7 @@
           icon="i-lucide-settings"
           color="neutral"
           variant="subtle"
-          :to="`/institutions/${institutionQuery.data.id}/settings`"
+          :to="{ name: 'institutions-id-settings', params: { id: institutionQuery.data.id } }"
         />
         <UButton
           label="Add account"
@@ -33,7 +33,7 @@
 
     <UPageBody class="space-y-8">
       <UAlert
-        v-if="invalidId"
+        v-if="institutionId == null"
         color="error"
         variant="subtle"
         title="Invalid institution id"
@@ -87,7 +87,7 @@ import { useQuery } from "@tanstack/vue-query";
 
 type Institution = InstitutionDetailDto;
 
-const route = useRoute();
+const route = useRoute("institutions-id");
 const api = useApi();
 const hideColumns = ref<AccountsHideColumn[]>(["institution"]);
 const createAccountOpen = ref(false);
@@ -101,20 +101,11 @@ const {
   hideColumns
 });
 
-const rawId = computed(() => {
-  const p = (route.params as any)?.id;
-  if (Array.isArray(p)) return p[0];
-  return p;
-});
-
 const institutionId = computed<number | null>(() => {
-  const s = String(rawId.value ?? "");
-  const n = Number.parseInt(s, 10);
+  const n = Number.parseInt(route.params.id);
   if (!Number.isFinite(n)) return null;
   return n;
 });
-
-const invalidId = computed(() => rawId.value != null && institutionId.value == null);
 
 const institutionQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.institutions.get(institutionId.value!)),
@@ -125,7 +116,7 @@ const institutionQuery = proxyRefs(useQuery({
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const institution = institutionQuery.data;
   return [
-    { label: "Institutions", to: "/institutions", icon: "i-lucide-building-2" },
+    { label: "Institutions", to: { name: "institutions" }, icon: "i-lucide-building-2" },
     { label: institution?.name ?? "" }
   ];
 });

@@ -19,14 +19,14 @@
           icon="i-lucide-settings"
           color="neutral"
           variant="subtle"
-          :to="`/accounts/${accountQuery.data.id}/settings`"
+          :to="{ name: 'accounts-id-settings', params: { id: accountQuery.data.id } }"
         />
       </template>
     </UPageHeader>
 
     <UPageBody class="space-y-8">
       <UAlert
-        v-if="invalidId"
+        v-if="accountId == null"
         color="error"
         variant="subtle"
         title="Invalid account id"
@@ -322,26 +322,17 @@ const darkTooltipBase = {
   extraCssText: "border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); padding: 10px 12px;"
 } as const;
 
-const route = useRoute();
+const route = useRoute("accounts-id");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 
 const UButton = resolveComponent("UButton");
 
-const rawId = computed(() => {
-  const p = (route.params as any)?.id;
-  if (Array.isArray(p)) return p[0];
-  return p;
-});
-
 const accountId = computed<number | null>(() => {
-  const s = String(rawId.value ?? "");
-  const n = Number.parseInt(s, 10);
+  const n = Number.parseInt(route.params.id);
   if (!Number.isFinite(n)) return null;
   return n;
 });
-
-const invalidId = computed(() => rawId.value != null && accountId.value == null);
 
 const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
@@ -380,14 +371,14 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const context = accountBreadcrumbContext.value;
   if (context && context.accountId === account.id && context.institutionId === account.institution.id) {
     return [
-      { label: "Institutions", to: "/institutions", icon: "i-lucide-building-2" },
-      { label: account.institution.name, to: `/institutions/${account.institution.id}` },
+      { label: "Institutions", to: { name: "institutions" }, icon: "i-lucide-building-2" },
+      { label: account.institution.name, to: { name: "institutions-id", params: { id: account.institution.id } } },
       { label: account.name }
     ];
   }
 
   return [
-    { label: "Accounts", to: "/accounts", icon: "i-lucide-wallet" },
+    { label: "Accounts", to: { name: "accounts" }, icon: "i-lucide-wallet" },
     { label: account.name }
   ];
 });
