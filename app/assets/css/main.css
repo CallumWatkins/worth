@@ -35,6 +35,7 @@
 
 	body {
 		margin-right: calc(100% - 100vw);
+		overflow: unset !important;  /* Prevent Reka scroll body lock causing sticky header to disappear */
 	}
 
 	/* Background glow */
