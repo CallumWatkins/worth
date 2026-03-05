@@ -2,7 +2,6 @@
   <UModal
     v-model:open="open"
     title="Create institution"
-    description="Add a new institution to your account list."
     :dismissible="!form?.loading && !form?.dirty"
     :close="!form?.loading"
   >
