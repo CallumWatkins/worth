@@ -34,19 +34,29 @@
     <UPageBody class="space-y-8">
       <template v-if="institutionQuery.isSuccess">
         <UPageCard
-          title="Accounts"
-          description="Accounts at this institution"
-          :ui="{ body: 'min-w-full' }"
+          :ui="{
+            body: 'w-full'
+          }"
         >
-          <div class="flex items-center justify-end gap-4 mb-4">
-            <AccountsTableViewOptions
-              v-model:group-by="groupBy"
-              v-model:activity-period="activityPeriod"
-              v-model:show-empty="showEmpty"
-              :group-by-items="groupByItems"
-              :activity-period-items="activityPeriodItems"
-            />
-          </div>
+          <template #body>
+            <div class="flex flex-row items-center justify-between">
+              <div>
+                <div class="text-base text-pretty font-semibold text-highlighted">
+                  Accounts
+                </div>
+                <div class="text-[15px] text-pretty text-muted mt-1">
+                  Accounts at this institution
+                </div>
+              </div>
+              <AccountsTableViewOptions
+                v-model:group-by="groupBy"
+                v-model:activity-period="activityPeriod"
+                v-model:show-empty="showEmpty"
+                :group-by-items="groupByItems"
+                :activity-period-items="activityPeriodItems"
+              />
+            </div>
+          </template>
 
           <AccountsTable
             :accounts="institutionQuery.data.accounts"
