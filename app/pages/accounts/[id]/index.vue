@@ -165,116 +165,123 @@
         </UPageCard>
 
         <UPageCard
-          title="Balances"
-          :description="balancesDescription"
-          :ui="{
-            title: 'text-highlighted',
-            description: 'mt-1',
-            body: 'min-w-full'
-          }"
+          :ui="{ body: 'w-full' }"
         >
-          <div class="flex items-center justify-between gap-4 mb-4">
-            <UTabs
-              v-model="tableView"
-              :items="tableViewItems"
-              :content="false"
-              color="neutral"
-              size="sm"
+          <template #body>
+            <div class="flex flex-row items-center justify-between">
+              <div>
+                <div class="text-base text-pretty font-semibold text-highlighted">
+                  Balances
+                </div>
+                <div class="text-[15px] text-pretty text-muted mt-1">
+                  {{ balancesDescription }}
+                </div>
+              </div>
+              <div class="flex flex-row gap-3 items-center">
+                <UFormField name="viewType" label="View" :ui="{ label: 'text-muted' }">
+                  <UTabs
+                    v-model="tableView"
+                    :items="tableViewItems"
+                    :content="false"
+                    color="neutral"
+                    size="sm"
+                  />
+                </UFormField>
+                <div class="flex items-center gap-2">
+                  <UFormField name="groupBy" label="Group by" :ui="{ label: 'text-muted' }">
+                    <USelect
+                      v-model="balanceGroupBy"
+                      :items="balanceGroupByItems"
+                      class="w-44"
+                      color="neutral"
+                      variant="subtle"
+                      :ui="{ base: 'min-h-9 ring-0' }"
+                    />
+                  </UFormField>
+                </div>
+              </div>
+            </div>
+
+            <UAlert
+              v-if="snapshotsQuery.isError"
+              class="mb-4"
+              color="error"
+              variant="subtle"
+              :title="snapshotsQuery.error!.message ?? 'Failed to load balances'"
             />
 
-            <div class="flex items-center gap-2">
-              <div class="text-sm text-muted">
-                Group by
-              </div>
-              <USelect
-                v-model="balanceGroupBy"
-                :items="balanceGroupByItems"
-                class="w-44"
-                color="neutral"
-                variant="subtle"
-              />
-            </div>
-          </div>
-
-          <UAlert
-            v-if="snapshotsQuery.isError"
-            class="mb-4"
-            color="error"
-            variant="subtle"
-            :title="snapshotsQuery.error!.message ?? 'Failed to load balances'"
-          />
-
-          <UTable
-            v-model:sorting="tableSorting"
-            v-model:column-visibility="balanceColumnVisibility"
-            :data="balanceTableData"
-            :columns="balanceTableColumns"
-            :grouping="balanceGrouping"
-            :grouping-options="balanceGroupingOptions"
-            :empty="balanceTableEmpty"
-            :ui="{ root: 'min-w-full', td: 'empty:p-0' }"
-            sticky
-            class="max-h-[500px] overflow-auto"
-          >
-            <template #date-cell="{ row }">
-              <div class="flex items-center gap-2">
-                <span
-                  class="inline-block"
-                  :style="{ width: `calc(${row.depth} * 1rem)` }"
-                />
-
-                <template v-if="row.getIsGrouped()">
-                  <UButton
-                    variant="outline"
-                    color="neutral"
-                    size="xs"
-                    class="shrink-0"
-                    :icon="row.getIsExpanded() ? 'i-lucide-minus' : 'i-lucide-plus'"
-                    :class="!row.getCanExpand() ? 'invisible' : ''"
-                    :ui="{ base: 'p-0 rounded-sm', leadingIcon: 'size-4' }"
-                    @click.stop="row.toggleExpanded()"
+            <UTable
+              v-model:sorting="tableSorting"
+              v-model:column-visibility="balanceColumnVisibility"
+              :data="balanceTableData"
+              :columns="balanceTableColumns"
+              :grouping="balanceGrouping"
+              :grouping-options="balanceGroupingOptions"
+              :empty="balanceTableEmpty"
+              :ui="{ root: 'min-w-full', td: 'empty:p-0' }"
+              sticky
+              class="max-h-[500px] overflow-auto"
+            >
+              <template #date-cell="{ row }">
+                <div class="flex items-center gap-2">
+                  <span
+                    class="inline-block"
+                    :style="{ width: `calc(${row.depth} * 1rem)` }"
                   />
 
-                  <span class="font-semibold text-highlighted">
-                    {{ balanceGroupLabel(row) }}
+                  <template v-if="row.getIsGrouped()">
+                    <UButton
+                      variant="outline"
+                      color="neutral"
+                      size="xs"
+                      class="shrink-0"
+                      :icon="row.getIsExpanded() ? 'i-lucide-minus' : 'i-lucide-plus'"
+                      :class="!row.getCanExpand() ? 'invisible' : ''"
+                      :ui="{ base: 'p-0 rounded-sm', leadingIcon: 'size-4' }"
+                      @click.stop="row.toggleExpanded()"
+                    />
+
+                    <span class="font-semibold text-highlighted">
+                      {{ balanceGroupLabel(row) }}
+                    </span>
+                    <UBadge v-if="tableView === 'snapshots'" variant="subtle" color="neutral" size="sm">
+                      {{ row.subRows?.length || 0 }}
+                    </UBadge>
+                  </template>
+
+                  <span v-else class="text-highlighted">
+                    {{ formatShortDate(row.original.date) }}
                   </span>
-                  <UBadge v-if="tableView === 'snapshots'" variant="subtle" color="neutral" size="sm">
-                    {{ row.subRows?.length || 0 }}
-                  </UBadge>
+                </div>
+              </template>
+
+              <template #balance-cell="{ row }">
+                <span v-if="row.getIsGrouped()" class="font-semibold text-highlighted">
+                  <span v-if="!groupedEndBalanceMinor(row)" class="text-muted">—</span>
+                  <span v-else>{{ formatMoneyMinor(groupedEndBalanceMinor(row)!) }}</span>
+                </span>
+                <span v-else>
+                  {{ formatMoneyMinor(row.original.balance_minor) }}
+                </span>
+              </template>
+
+              <template #change-cell="{ row }">
+                <template v-if="row.getIsGrouped()">
+                  <span v-if="!groupedChangeMinor(row)" class="text-muted">—</span>
+                  <span v-else :class="groupedChangeMinor(row)! >= 0 ? 'text-success' : 'text-error'">
+                    {{ formatSignedMoneyMinor(groupedChangeMinor(row)!) }}
+                  </span>
                 </template>
 
-                <span v-else class="text-highlighted">
-                  {{ formatShortDate(row.original.date) }}
-                </span>
-              </div>
-            </template>
-
-            <template #balance-cell="{ row }">
-              <span v-if="row.getIsGrouped()" class="font-semibold text-highlighted">
-                <span v-if="!groupedEndBalanceMinor(row)" class="text-muted">—</span>
-                <span v-else>{{ formatMoneyMinor(groupedEndBalanceMinor(row)!) }}</span>
-              </span>
-              <span v-else>
-                {{ formatMoneyMinor(row.original.balance_minor) }}
-              </span>
-            </template>
-
-            <template #change-cell="{ row }">
-              <template v-if="row.getIsGrouped()">
-                <span v-if="!groupedChangeMinor(row)" class="text-muted">—</span>
-                <span v-else :class="groupedChangeMinor(row)! >= 0 ? 'text-success' : 'text-error'">
-                  {{ formatSignedMoneyMinor(groupedChangeMinor(row)!) }}
-                </span>
+                <template v-else>
+                  <span v-if="!row.original.change_minor" class="text-muted">—</span>
+                  <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
+                    {{ formatSignedMoneyMinor(row.original.change_minor) }}
+                  </span>
+                </template>
               </template>
-
-              <template v-else>
-                <span v-if="!row.original.change_minor" class="text-muted">—</span>
-                <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
-                  {{ formatSignedMoneyMinor(row.original.change_minor) }}
-                </span>
-              </template>
-            </template>
-          </UTable>
+            </UTable>
+          </template>
         </UPageCard>
       </template>
     </UPageBody>
