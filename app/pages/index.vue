@@ -13,7 +13,7 @@
         v-if="dashboardQuery.isError"
         color="error"
         variant="subtle"
-        :title="dashboardQuery.error!.message ?? 'Failed to load dashboard'"
+        :title="dashboardQuery.error.message"
       />
       <UPageCard
         title="Total Current Balance"

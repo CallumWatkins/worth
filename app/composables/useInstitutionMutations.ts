@@ -15,21 +15,21 @@ export const useInstitutionMutations = () => {
     ]);
   };
 
-  const createInstitution = useMutation({
+  const createInstitution = proxyRefs(useMutation({
     mutationFn: (input: InstitutionUpsertInput) => api.institutionsCreate(input),
     onSuccess: invalidateInstitutionWrites
-  });
+  }));
 
-  const updateInstitution = useMutation({
+  const updateInstitution = proxyRefs(useMutation({
     mutationFn: ({ institutionId, input }: { institutionId: number, input: InstitutionUpsertInput }) =>
       api.institutionsUpdate(institutionId, input),
     onSuccess: invalidateInstitutionWrites
-  });
+  }));
 
-  const deleteInstitution = useMutation({
+  const deleteInstitution = proxyRefs(useMutation({
     mutationFn: (institutionId: number) => api.institutionsDelete(institutionId),
     onSuccess: invalidateInstitutionWrites
-  });
+  }));
 
   return {
     createInstitution,

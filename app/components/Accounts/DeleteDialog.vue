@@ -25,7 +25,7 @@
           v-if="deletePreviewQuery.isError"
           color="error"
           variant="subtle"
-          :title="deletePreviewQuery.error.message ?? 'Failed to load delete preview'"
+          :title="deletePreviewQuery.error.message"
         />
 
         <template v-if="deletePreviewQuery.isSuccess">
@@ -63,7 +63,7 @@
           <UButton
             color="neutral"
             variant="ghost"
-            :disabled="deleteAccount.isPending.value"
+            :disabled="deleteAccount.isPending"
             @click="open = false"
           >
             Cancel
@@ -105,7 +105,7 @@ const deletePreviewQuery = proxyRefs(useQuery({
 }));
 
 const canDelete = computed(() => {
-  if (deleteAccount.isPending.value) return false;
+  if (deleteAccount.isPending) return false;
   if (!deletePreviewQuery.isSuccess) return false;
   return confirmationInput.value.trim().toLowerCase() === CONFIRM_PHRASE;
 });

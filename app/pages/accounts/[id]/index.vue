@@ -145,7 +145,7 @@
             class="mb-4"
             color="error"
             variant="subtle"
-            :title="balanceOverTimeQuery.error!.message ?? 'Failed to load balance series'"
+            :title="balanceOverTimeQuery.error.message"
           />
 
           <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
@@ -211,7 +211,7 @@
               class="mb-4"
               color="error"
               variant="subtle"
-              :title="snapshotsQuery.error!.message ?? 'Failed to load balances'"
+              :title="snapshotsQuery.error.message"
             />
 
             <UTable

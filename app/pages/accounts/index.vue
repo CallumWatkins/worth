@@ -31,7 +31,7 @@
         v-if="accountsQuery.isError"
         color="error"
         variant="subtle"
-        :title="accountsQuery.error!.message ?? 'Failed to load accounts'"
+        :title="accountsQuery.error.message"
       />
       <AccountsTable
         :accounts="accountsQuery.data ?? []"

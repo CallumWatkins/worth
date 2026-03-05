@@ -24,7 +24,7 @@
         v-if="institutionsQuery.isError"
         color="error"
         variant="subtle"
-        :title="institutionsQuery.error!.message ?? 'Failed to load institutions'"
+        :title="institutionsQuery.error.message"
       />
 
       <UTable

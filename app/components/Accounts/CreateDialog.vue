@@ -22,10 +22,10 @@
         />
 
         <UAlert
-          v-if="institutionsQuery.isError.value"
+          v-if="institutionsQuery.isError"
           color="error"
           variant="subtle"
-          :title="institutionsQuery.error.value?.message ?? 'Failed to load institutions'"
+          :title="institutionsQuery.error.message"
         />
 
         <UFormField
@@ -40,8 +40,8 @@
             :create-item="institutionCreateItem"
             placeholder="Select or create institution"
             class="w-full"
-            :loading="institutionsQuery.isPending.value"
-            :disabled="institutionsQuery.isPending.value"
+            :loading="institutionsQuery.isPending"
+            :disabled="institutionsQuery.isPending"
             :ui="{
               base: typeof institutionMenuValue === 'string' ? 'ps-13' : 'ps-2.5',
               leading: typeof institutionMenuValue === 'string' ? undefined : 'hidden'
@@ -159,10 +159,10 @@ const setBackendValidationErrors = useBackendValidationErrors(form);
 
 const submitError = ref<string | null>(null);
 
-const institutionsQuery = useQuery({
+const institutionsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.institutions.list(),
   queryFn: api.institutionsList
-});
+}));
 
 const {
   state,
@@ -175,7 +175,7 @@ const {
   normalBalanceSignItems,
   reset
 } = useAccountUpsertForm({
-  institutions: computed(() => institutionsQuery.data.value),
+  institutions: computed(() => institutionsQuery.data),
   getDefaultInstitutionId: () => props.defaultInstitutionId
 });
 

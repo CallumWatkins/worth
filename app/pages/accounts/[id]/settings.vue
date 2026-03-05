@@ -33,10 +33,10 @@
             />
 
             <UAlert
-              v-if="institutionsQuery.isError.value"
+              v-if="institutionsQuery.isError"
               color="error"
               variant="subtle"
-              :title="institutionsQuery.error.value?.message ?? 'Failed to load institutions'"
+              :title="institutionsQuery.error.message"
             />
 
             <UFormField
@@ -51,8 +51,8 @@
                 :create-item="institutionCreateItem"
                 placeholder="Select or create institution"
                 class="w-full"
-                :loading="institutionsQuery.isPending.value"
-                :disabled="institutionsQuery.isPending.value"
+                :loading="institutionsQuery.isPending"
+                :disabled="institutionsQuery.isPending"
                 :ui="{
                   base: typeof institutionMenuValue === 'string' ? 'ps-13' : 'ps-2.5',
                   leading: typeof institutionMenuValue === 'string' ? undefined : 'hidden'
@@ -206,11 +206,11 @@ useResourcePageError({
   fallbackErrorMessage: "Failed to load account"
 });
 
-const institutionsQuery = useQuery({
+const institutionsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.institutions.list(),
   enabled: computed(() => !!accountQuery.data),
   queryFn: api.institutionsList
-});
+}));
 
 const submitError = ref<string | null>(null);
 const didSave = ref(false);
@@ -227,7 +227,7 @@ const {
   normalBalanceSignItems,
   hydrateFromAccount
 } = useAccountUpsertForm({
-  institutions: computed(() => institutionsQuery.data.value)
+  institutions: computed(() => institutionsQuery.data)
 });
 
 watch(() => accountQuery.data, (account) => {
