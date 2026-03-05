@@ -56,7 +56,10 @@
           <UPageCard
             title="Account Type"
             variant="subtle"
-            :ui="{ title: 'text-muted text-sm whitespace-nowrap' }"
+            :ui="{
+              title: 'text-muted text-sm whitespace-nowrap',
+              description: 'mt-2'
+            }"
           >
             <template #description>
               <div class="flex items-center gap-2">
