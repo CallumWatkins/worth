@@ -45,6 +45,7 @@
           <UPageCard
             title="Institution"
             :description="accountQuery.data.institution.name"
+            :to="{ name: 'institutions-id', params: { id: accountQuery.data.institution.id } }"
             variant="subtle"
             :ui="{
               title: 'text-muted text-sm whitespace-nowrap',
