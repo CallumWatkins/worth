@@ -72,6 +72,21 @@ pub struct InstitutionAccountTypeRow {
     pub type_name: String,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountDeletePreviewRow {
+    pub id: i64,
+    pub name: String,
+    pub institution_name: String,
+    pub snapshot_count: i64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct InstitutionAccountDeletePreviewRow {
+    pub id: i64,
+    pub name: String,
+    pub snapshot_count: i64,
+}
+
 #[derive(Debug, Clone)]
 pub enum GlobalSearchRow {
     Account {
@@ -1054,6 +1069,98 @@ pub async fn account_update_tx(
     .bind(input.opened_date)
     .bind(account_id)
     .execute(&mut **tx)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn account_delete_preview(
+    pool: &SqlitePool,
+    account_id: i64,
+) -> Result<Option<AccountDeletePreviewRow>, sqlx::Error> {
+    let row = sqlx::query_as::<_, AccountDeletePreviewRow>(
+        r"
+        SELECT
+            a.id,
+            a.name,
+            i.name AS institution_name,
+            COUNT(s.id) AS snapshot_count
+        FROM
+            accounts AS a
+            INNER JOIN institutions AS i ON i.id = a.institution_id
+            LEFT JOIN account_balance_snapshots AS s ON s.account_id = a.id
+        WHERE
+            a.id = ?
+        GROUP BY
+            a.id,
+            a.name,
+            i.name
+        ",
+    )
+    .bind(account_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}
+
+pub async fn institution_accounts_delete_preview(
+    pool: &SqlitePool,
+    institution_id: i64,
+) -> Result<Vec<InstitutionAccountDeletePreviewRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, InstitutionAccountDeletePreviewRow>(
+        r"
+        SELECT
+            a.id,
+            a.name,
+            COUNT(s.id) AS snapshot_count
+        FROM
+            accounts AS a
+            LEFT JOIN account_balance_snapshots AS s ON s.account_id = a.id
+        WHERE
+            a.institution_id = ?
+        GROUP BY
+            a.id,
+            a.name
+        ORDER BY
+            a.name ASC
+        ",
+    )
+    .bind(institution_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+pub async fn account_delete(pool: &SqlitePool, account_id: i64) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        DELETE FROM accounts
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(account_id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn institution_delete(
+    pool: &SqlitePool,
+    institution_id: i64,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        DELETE FROM institutions
+        WHERE
+            id = ?
+        ",
+    )
+    .bind(institution_id)
+    .execute(pool)
     .await?;
 
     Ok(result.rows_affected() > 0)

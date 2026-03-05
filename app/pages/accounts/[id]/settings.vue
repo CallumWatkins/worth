@@ -146,7 +146,6 @@
 
         <UPageCard
           title="Actions"
-          description="Additional actions are planned for this page."
         >
           <div class="flex flex-wrap gap-2">
             <UButton
@@ -161,12 +160,17 @@
               color="error"
               variant="subtle"
               icon="i-lucide-trash-2"
-              disabled
+              @click="deleteOpen = true"
             >
-              Delete (coming soon)
+              Delete account
             </UButton>
           </div>
         </UPageCard>
+
+        <AccountsDeleteDialog
+          v-model:open="deleteOpen"
+          :account-id="accountId"
+        />
       </template>
     </UPageBody>
   </UContainer>
@@ -211,6 +215,7 @@ const institutionsQuery = useQuery({
 const submitError = ref<string | null>(null);
 const didSave = ref(false);
 const hasHydrated = ref(false);
+const deleteOpen = ref(false);
 const {
   state,
   institutionItems,

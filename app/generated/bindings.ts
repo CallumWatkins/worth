@@ -29,6 +29,22 @@ async accountsUpdate(accountId: number, input: AccountUpsertInput) : Promise<Res
     else return { status: "error", error: e  as any };
 }
 },
+async accountsDeletePreview(accountId: number) : Promise<Result<AccountDeletePreviewDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("accounts_delete_preview", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountsDelete(accountId: number) : Promise<Result<null, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("accounts_delete", { accountId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async institutionsList() : Promise<Result<InstitutionSummaryDto[], ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("institutions_list") };
@@ -48,6 +64,22 @@ async institutionsCreate(input: InstitutionUpsertInput) : Promise<Result<Created
 async institutionsUpdate(institutionId: number, input: InstitutionUpsertInput) : Promise<Result<null, ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("institutions_update", { institutionId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async institutionsDeletePreview(institutionId: number) : Promise<Result<InstitutionDeletePreviewDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("institutions_delete_preview", { institutionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async institutionsDelete(institutionId: number) : Promise<Result<null, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("institutions_delete", { institutionId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -122,6 +154,7 @@ async search(query: string) : Promise<Result<SearchResultDto[], ApiError>> {
 /** user-defined types **/
 
 export type AccountBalanceSnapshotDto = { id: number; date: string; balance_minor: number; created_at: string }
+export type AccountDeletePreviewDto = { id: number; name: string; institution_name: string; snapshot_count: number }
 export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: CurrencyCode; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string; latest_snapshot_date: string; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
 export type AccountTypeDto = { id: number; name: AccountTypeName }
 export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan"
@@ -136,6 +169,8 @@ export type CurrencyCode = "GBP"
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
 export type DashboardDto = { total_balance_minor: number; change_vs_last_month_pct: number; monthly_yield_minor: number; active_accounts: number; active_institutions: number; allocation_by_type: DashboardAllocationDto[] }
+export type InstitutionDeletePreviewAccountDto = { id: number; name: string; snapshot_count: number }
+export type InstitutionDeletePreviewDto = { institution: InstitutionDto; accounts: InstitutionDeletePreviewAccountDto[]; total_snapshots: number }
 export type InstitutionDetailDto = { id: number; name: string; accounts: AccountDto[] }
 export type InstitutionDto = { id: number; name: string }
 export type InstitutionRef = { kind: "existing"; id: number } | { kind: "new"; input: InstitutionUpsertInput }

@@ -8,6 +8,7 @@ export const queryKeys = {
     },
     list: () => ["accounts", "list"] as const,
     get: (accountId: number) => ["accounts", accountId, "get"] as const,
+    deletePreview: (accountId: number) => ["accounts", accountId, "deletePreview"] as const,
     snapshots: (accountId: number) => ["accounts", accountId, "snapshots"] as const,
     balanceOverTime: (accountId: number, period: BalanceOverTimePeriod) => ["accounts", accountId, "balanceOverTime", period] as const
   },
@@ -17,7 +18,8 @@ export const queryKeys = {
       institution: (institutionId: number) => ["institutions", institutionId] as const
     },
     list: () => ["institutions", "list"] as const,
-    get: (institutionId: number) => ["institutions", institutionId, "get"] as const
+    get: (institutionId: number) => ["institutions", institutionId, "get"] as const,
+    deletePreview: (institutionId: number) => ["institutions", institutionId, "deletePreview"] as const
   },
   dashboard: {
     prefixes: {

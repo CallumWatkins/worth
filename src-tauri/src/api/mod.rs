@@ -108,6 +108,28 @@ pub struct AccountDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AccountDeletePreviewDto {
+    pub id: i64,
+    pub name: String,
+    pub institution_name: String,
+    pub snapshot_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct InstitutionDeletePreviewAccountDto {
+    pub id: i64,
+    pub name: String,
+    pub snapshot_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct InstitutionDeletePreviewDto {
+    pub institution: InstitutionDto,
+    pub accounts: Vec<InstitutionDeletePreviewAccountDto>,
+    pub total_snapshots: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CreatedIdDto {
     pub id: i64,
 }
@@ -310,6 +332,44 @@ pub async fn accounts_get(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn accounts_delete_preview(
+    state: State<'_, AppState>,
+    account_id: i64,
+) -> Result<AccountDeletePreviewDto, ApiError> {
+    let pool = &state.pool;
+    let Some(row) = db::account_delete_preview(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    Ok(AccountDeletePreviewDto {
+        id: row.id,
+        name: row.name,
+        institution_name: row.institution_name,
+        snapshot_count: u32::try_from(row.snapshot_count)
+            .expect("snapshot count should fit in u32"),
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn accounts_delete(state: State<'_, AppState>, account_id: i64) -> Result<(), ApiError> {
+    let pool = &state.pool;
+    let deleted = db::account_delete(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    if !deleted {
+        return Err(ApiError::NotFound);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn accounts_create(
     state: State<'_, AppState>,
     input: AccountUpsertInput,
@@ -457,6 +517,62 @@ pub async fn account_snapshots_list(
             created_at: r.created_at,
         })
         .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn institutions_delete_preview(
+    state: State<'_, AppState>,
+    institution_id: i64,
+) -> Result<InstitutionDeletePreviewDto, ApiError> {
+    let pool = &state.pool;
+    let Some(institution) = db::institution_get(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    let accounts = db::institution_accounts_delete_preview(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .map(|row| InstitutionDeletePreviewAccountDto {
+            id: row.id,
+            name: row.name,
+            snapshot_count: u32::try_from(row.snapshot_count)
+                .expect("snapshot count should fit in u32"),
+        })
+        .collect::<Vec<_>>();
+
+    let total_snapshots = accounts.iter().map(|account| account.snapshot_count).sum();
+
+    Ok(InstitutionDeletePreviewDto {
+        institution: InstitutionDto {
+            id: institution.id,
+            name: institution.name,
+        },
+        accounts,
+        total_snapshots,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn institutions_delete(
+    state: State<'_, AppState>,
+    institution_id: i64,
+) -> Result<(), ApiError> {
+    let pool = &state.pool;
+    let deleted = db::institution_delete(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+
+    if !deleted {
+        return Err(ApiError::NotFound);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -1057,9 +1173,13 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         accounts_list,
         accounts_create,
         accounts_update,
+        accounts_delete_preview,
+        accounts_delete,
         institutions_list,
         institutions_create,
         institutions_update,
+        institutions_delete_preview,
+        institutions_delete,
         institutions_get,
         accounts_get,
         account_snapshots_list,

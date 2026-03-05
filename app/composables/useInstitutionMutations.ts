@@ -10,6 +10,7 @@ export const useInstitutionMutations = () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.institutions.prefixes.root() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.prefixes.root() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.prefixes.root() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.search.prefixes.root() })
     ]);
   };
@@ -25,8 +26,14 @@ export const useInstitutionMutations = () => {
     onSuccess: invalidateInstitutionWrites
   });
 
+  const deleteInstitution = useMutation({
+    mutationFn: (institutionId: number) => api.institutionsDelete(institutionId),
+    onSuccess: invalidateInstitutionWrites
+  });
+
   return {
     createInstitution,
-    updateInstitution
+    updateInstitution,
+    deleteInstitution
   };
 };

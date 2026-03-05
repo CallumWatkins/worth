@@ -58,7 +58,6 @@
 
         <UPageCard
           title="Actions"
-          description="Additional actions are planned for this page."
         >
           <div class="flex flex-wrap gap-2">
             <UButton
@@ -73,12 +72,17 @@
               color="error"
               variant="subtle"
               icon="i-lucide-trash-2"
-              disabled
+              @click="deleteOpen = true"
             >
-              Delete (coming soon)
+              Delete institution
             </UButton>
           </div>
         </UPageCard>
+
+        <InstitutionsDeleteDialog
+          v-model:open="deleteOpen"
+          :institution-id="institutionId"
+        />
       </template>
     </UPageBody>
   </UContainer>
@@ -113,6 +117,7 @@ useResourcePageError({
 const submitError = ref<string | null>(null);
 const didSave = ref(false);
 const hasHydrated = ref(false);
+const deleteOpen = ref(false);
 const { state, hydrateFromInstitution } = useInstitutionUpsertForm();
 
 watch(institutionId, () => {

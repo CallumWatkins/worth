@@ -26,8 +26,14 @@ export const useAccountMutations = () => {
     onSuccess: invalidateAccountWrites
   });
 
+  const deleteAccount = useMutation({
+    mutationFn: (accountId: number) => api.accountsDelete(accountId),
+    onSuccess: invalidateAccountWrites
+  });
+
   return {
     createAccount,
-    updateAccount
+    updateAccount,
+    deleteAccount
   };
 };
