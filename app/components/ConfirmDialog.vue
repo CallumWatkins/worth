@@ -37,6 +37,6 @@ withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-  close: [value: boolean]
+  close: [boolean]
 }>();
 </script>

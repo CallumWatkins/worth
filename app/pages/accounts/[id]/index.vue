@@ -67,9 +67,9 @@
                   variant="subtle"
                   color="neutral"
                   size="xl"
-                  :class="accountTypeBadgeClass(accountQuery.data.account_type.name)"
+                  :class="ACCOUNT_TYPE_META[accountQuery.data.account_type.name].badgeClass"
                 >
-                  {{ accountTypeLabel(accountQuery.data.account_type.name) }}
+                  {{ ACCOUNT_TYPE_META[accountQuery.data.account_type.name].label }}
                 </UBadge>
               </div>
             </template>
@@ -249,7 +249,7 @@
                       {{ balanceGroupLabel(row) }}
                     </span>
                     <UBadge v-if="tableView === 'snapshots'" variant="subtle" color="neutral" size="sm">
-                      {{ row.subRows?.length || 0 }}
+                      {{ row.subRows.length }}
                     </UBadge>
                   </template>
 
@@ -293,9 +293,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { BreadcrumbItem, SelectItem, TableColumn, TabsItem } from "@nuxt/ui";
-import type { GroupingOptions } from "@tanstack/vue-table";
-import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto } from "~/generated/bindings";
+import type { BreadcrumbItem, SelectItem, TableColumn, TableRow, TabsItem } from "@nuxt/ui";
+import type { Column, GroupingOptions } from "@tanstack/vue-table";
+import type { BalanceOverTimePeriod, BalancePointDto } from "~/generated/bindings";
 import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
 import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
@@ -329,7 +329,7 @@ const accountId = useRouteParamInt(route, "id");
 const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
   enabled: computed(() => accountId.value !== null),
-  queryFn: () => api.accountsGet(accountId.value!)
+  queryFn: async () => api.accountsGet(accountId.value!)
 }));
 
 useResourcePageError({
@@ -343,7 +343,7 @@ useResourcePageError({
 const snapshotsQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.snapshots(accountId.value!)),
   enabled: computed(() => accountQuery.isSuccess),
-  queryFn: () => api.accountSnapshotsList(accountId.value!)
+  queryFn: async () => api.accountSnapshotsList(accountId.value!)
 }));
 
 const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
@@ -351,7 +351,7 @@ const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
 const balanceOverTimeQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.balanceOverTime(accountId.value!, balanceOverTimePeriod.value)),
   enabled: computed(() => accountQuery.isSuccess),
-  queryFn: () => api.accountBalanceOverTime(accountId.value!, balanceOverTimePeriod.value)
+  queryFn: async () => api.accountBalanceOverTime(accountId.value!, balanceOverTimePeriod.value)
 }));
 
 const balanceOverTimePeriodItems = computed<TabsItem[]>(() => {
@@ -386,7 +386,7 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
 const headerDescription = computed(() => {
   const account = accountQuery.data;
   if (!account) return "";
-  return `${account.institution.name} • ${accountTypeLabel(account.account_type.name)}`;
+  return `${account.institution.name} • ${ACCOUNT_TYPE_META[account.account_type.name].label}`;
 });
 
 const moneyFormatter = computed(() => {
@@ -411,8 +411,12 @@ function parseIsoDate(iso: string) {
   return new Date(`${iso}T00:00:00`);
 }
 
-function utcTodayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+function todayIsoDate() {
+  const today = new Date();
+  const year = String(today.getFullYear());
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function isoDateToUtcMs(iso: string) {
@@ -665,7 +669,7 @@ const derivedDailyPoints = computed<BalancePointDto[]>(() => {
   let minDate: string | null = null;
   let maxDate: string | null = null;
 
-  for (const s of snaps as AccountBalanceSnapshotDto[]) {
+  for (const s of snaps) {
     const date = String(s.date ?? "");
     if (!date) continue;
 
@@ -684,7 +688,7 @@ const derivedDailyPoints = computed<BalancePointDto[]>(() => {
 
   if (minDate == null) return [];
 
-  const today = utcTodayIsoDate();
+  const today = todayIsoDate();
   let endDate = today;
   if (maxDate != null && maxDate > endDate) endDate = maxDate;
 
@@ -818,22 +822,22 @@ const balanceGroupStatsByKey = computed(() => {
   return out;
 });
 
-function groupKeyFromTableRow(row: any) {
-  const id = row?.groupingColumnId as string | undefined;
-  if (!id) return null;
-  const key = String(row.getValue(id) ?? "");
+function groupKeyFromTableRow(row: TableRow<BalanceRow>) {
+  const id = row.groupingColumnId;
+  if (id == null) return null;
+  const key = row.getValue<string>(id);
   if (!key) return null;
   return { id, key };
 }
 
-function balanceGroupLabel(row: any) {
+function balanceGroupLabel(row: TableRow<BalanceRow>) {
   const k = groupKeyFromTableRow(row);
   if (!k) return "";
 
   if (k.id === "month_group") {
     const [y, m] = k.key.split("-");
-    const year = Number.parseInt(String(y ?? ""), 10);
-    const month = Number.parseInt(String(m ?? ""), 10);
+    const year = Number(y);
+    const month = Number(m);
 
     if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
       return k.key;
@@ -844,13 +848,13 @@ function balanceGroupLabel(row: any) {
   return k.key;
 }
 
-function groupedEndBalanceMinor(row: any) {
+function groupedEndBalanceMinor(row: TableRow<BalanceRow>) {
   const k = groupKeyFromTableRow(row);
   if (!k) return null;
   return balanceGroupStatsByKey.value.get(k.key)?.endBalance_minor ?? null;
 }
 
-function groupedChangeMinor(row: any) {
+function groupedChangeMinor(row: TableRow<BalanceRow>) {
   const k = groupKeyFromTableRow(row);
   if (!k) return null;
   return balanceGroupStatsByKey.value.get(k.key)?.changeFromPrevGroup_minor ?? null;
@@ -863,15 +867,15 @@ const tableSorting = ref([
   }
 ]);
 
-function sortableHeader(column: any, label: string) {
+function sortableHeader(column: Column<BalanceRow, unknown>, label: string) {
   const isSorted = column.getIsSorted();
 
   return h(UButton, {
     color: "neutral",
     variant: "ghost",
     label,
-    trailing: !!isSorted,
-    trailingIcon: isSorted
+    trailing: isSorted !== false,
+    trailingIcon: isSorted !== false
       ? (isSorted === "asc"
         ? "i-lucide-arrow-up-narrow-wide"
         : "i-lucide-arrow-down-wide-narrow")

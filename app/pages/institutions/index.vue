@@ -62,9 +62,9 @@
               :key="accountType"
               variant="subtle"
               color="neutral"
-              :class="accountTypeBadgeClass(accountType)"
+              :class="ACCOUNT_TYPE_META[accountType].badgeClass"
             >
-              {{ accountTypeLabel(accountType) }}
+              {{ ACCOUNT_TYPE_META[accountType].label }}
             </UBadge>
           </div>
           <span v-else class="text-muted">-</span>
@@ -82,6 +82,7 @@
 
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
+import type { Column } from "@tanstack/vue-table";
 import type { InstitutionSummaryDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 
@@ -119,15 +120,15 @@ async function onSelect(_e: Event, row: TableRow<Institution>) {
   await navigateTo({ name: "institutions-id", params: { id: row.original.id } });
 }
 
-function sortableHeader(column: any, label: string) {
+function sortableHeader(column: Column<Institution, unknown>, label: string) {
   const isSorted = column.getIsSorted();
 
   return h(UButton, {
     color: "neutral",
     variant: "ghost",
     label,
-    trailing: !!isSorted,
-    trailingIcon: isSorted
+    trailing: isSorted !== false,
+    trailingIcon: isSorted !== false
       ? (isSorted === "asc"
         ? "i-lucide-arrow-up-narrow-wide"
         : "i-lucide-arrow-down-wide-narrow")
@@ -179,7 +180,7 @@ const columns = computed<TableColumn<Institution>[]>(() => [
   },
   {
     id: "accountTypes",
-    accessorFn: (row) => row.account_types.map(accountTypeLabel).join(", "),
+    accessorFn: (row) => row.account_types.map((t) => ACCOUNT_TYPE_META[t].label).join(", "),
     header: () => staticHeader("Account Types"),
     enableSorting: false,
     meta: {

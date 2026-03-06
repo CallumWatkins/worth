@@ -78,10 +78,7 @@
 
 <script lang="ts" setup>
 import type { BreadcrumbItem } from "@nuxt/ui";
-import type { InstitutionDetailDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
-
-type Institution = InstitutionDetailDto;
 
 const route = useRoute("institutions-id");
 const api = useApi();
@@ -102,7 +99,7 @@ const institutionId = useRouteParamInt(route, "id");
 const institutionQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.institutions.get(institutionId.value!)),
   enabled: computed(() => institutionId.value !== null),
-  queryFn: () => api.institutionsGet(institutionId.value!)
+  queryFn: async () => api.institutionsGet(institutionId.value!)
 }));
 
 useResourcePageError({
@@ -122,7 +119,7 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
 });
 
 const headerDescription = computed(() => {
-  const institution = institutionQuery.data as Institution | undefined;
+  const institution = institutionQuery.data;
   if (!institution) return "";
   return `${institution.accounts.length} account${institution.accounts.length === 1 ? "" : "s"}`;
 });

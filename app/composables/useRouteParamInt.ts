@@ -9,8 +9,8 @@ export const useRouteParamInt = <
     const raw = route.params[key];
     if (typeof raw !== "string") return null;
 
-    const n = Number.parseInt(raw);
-    if (!Number.isFinite(n)) return null;
+    const n = Number(raw);
+    if (!Number.isSafeInteger(n)) return null;
     return n;
   });
 };

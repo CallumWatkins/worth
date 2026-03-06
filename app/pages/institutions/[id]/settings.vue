@@ -90,12 +90,14 @@
 
 <script lang="ts" setup>
 import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
+import type { ComponentExposed } from "vue-component-type-helpers";
+import { UForm } from "#components";
 import { useQuery } from "@tanstack/vue-query";
 
 const route = useRoute("institutions-id-settings");
 const api = useApi();
 const { updateInstitution } = useInstitutionMutations();
-const form = useTemplateRef("form");
+const form = useTemplateRef<ComponentExposed<typeof UForm<typeof institutionFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
 const institutionId = useRouteParamInt(route, "id");
@@ -103,7 +105,7 @@ const institutionId = useRouteParamInt(route, "id");
 const institutionQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.institutions.get(institutionId.value!)),
   enabled: computed(() => institutionId.value !== null),
-  queryFn: () => api.institutionsGet(institutionId.value!)
+  queryFn: async () => api.institutionsGet(institutionId.value!)
 }));
 
 useResourcePageError({
@@ -150,7 +152,7 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
 });
 
 async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
-  if (!institutionId.value) return;
+  if (institutionId.value == null) return;
 
   submitError.value = null;
   didSave.value = false;

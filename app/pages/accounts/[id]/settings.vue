@@ -178,8 +178,10 @@
 
 <script lang="ts" setup>
 import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
+import type { ComponentExposed } from "vue-component-type-helpers";
 import type { AccountUpsertInput } from "~/generated/bindings";
 import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
+import { UForm } from "#components";
 import { useQuery } from "@tanstack/vue-query";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 
@@ -187,7 +189,7 @@ const route = useRoute("accounts-id-settings");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 const { updateAccount } = useAccountMutations();
-const form = useTemplateRef("form");
+const form = useTemplateRef<ComponentExposed<typeof UForm<typeof accountFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
 const accountId = useRouteParamInt(route, "id");
@@ -195,7 +197,7 @@ const accountId = useRouteParamInt(route, "id");
 const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
   enabled: computed(() => accountId.value !== null),
-  queryFn: () => api.accountsGet(accountId.value!)
+  queryFn: async () => api.accountsGet(accountId.value!)
 }));
 
 useResourcePageError({
@@ -271,7 +273,7 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
 });
 
 async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
-  if (!accountId.value) return;
+  if (accountId.value == null) return;
 
   submitError.value = null;
   didSave.value = false;

@@ -142,7 +142,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
       "loan"
     ];
     return values.map((value) => ({
-      label: accountTypeLabel(value),
+      label: ACCOUNT_TYPE_META[value].label,
       value
     }));
   });

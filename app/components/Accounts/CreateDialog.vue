@@ -139,7 +139,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { UForm } from "#components";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import type { ComponentExposed } from "vue-component-type-helpers";
 import type { AccountUpsertInput } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 import { supportedCurrencyCodes } from "~/utils/currencies";
@@ -151,7 +153,7 @@ const props = withDefaults(defineProps<{
 });
 
 const open = defineModel<boolean>("open", { required: true });
-const form = useTemplateRef("form");
+const form = useTemplateRef<ComponentExposed<typeof UForm<typeof accountFormSchema>>>("form");
 
 const api = useApi();
 const { createAccount } = useAccountMutations();

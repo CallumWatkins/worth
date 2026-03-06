@@ -16,18 +16,18 @@ export const useInstitutionMutations = () => {
   };
 
   const createInstitution = proxyRefs(useMutation({
-    mutationFn: (input: InstitutionUpsertInput) => api.institutionsCreate(input),
+    mutationFn: async (input: InstitutionUpsertInput) => api.institutionsCreate(input),
     onSuccess: invalidateInstitutionWrites
   }));
 
   const updateInstitution = proxyRefs(useMutation({
-    mutationFn: ({ institutionId, input }: { institutionId: number, input: InstitutionUpsertInput }) =>
+    mutationFn: async ({ institutionId, input }: { institutionId: number, input: InstitutionUpsertInput }) =>
       api.institutionsUpdate(institutionId, input),
     onSuccess: invalidateInstitutionWrites
   }));
 
   const deleteInstitution = proxyRefs(useMutation({
-    mutationFn: (institutionId: number) => api.institutionsDelete(institutionId),
+    mutationFn: async (institutionId: number) => api.institutionsDelete(institutionId),
     onSuccess: invalidateInstitutionWrites
   }));
 

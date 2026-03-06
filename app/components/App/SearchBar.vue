@@ -46,9 +46,9 @@
         variant="subtle"
         color="neutral"
         size="sm"
-        :class="accountTypeBadgeClass(item.account_type)"
+        :class="ACCOUNT_TYPE_META[item.account_type].badgeClass"
       >
-        {{ accountTypeLabel(item.account_type) }}
+        {{ ACCOUNT_TYPE_META[item.account_type].label }}
       </UBadge>
     </template>
 
@@ -83,7 +83,7 @@ watch(hasSearchTerm, (hasValue) => {
 const searchQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.search.get(trimmedSearchTerm.value)),
   enabled: hasSearchTerm,
-  queryFn: () => api.search(trimmedSearchTerm.value),
+  queryFn: async () => api.search(trimmedSearchTerm.value),
   // Prevent "no results" flash while typing by keeping previous data until the new query completes
   placeholderData: keepPreviousData
 }));

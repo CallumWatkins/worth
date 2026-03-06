@@ -31,9 +31,6 @@ export default defineNuxtConfig({
   },
   ssr: false,
   devtools: { enabled: true },
-  dir: {
-    modules: "app/modules"
-  },
   echarts: {
     renderer: ["canvas", "svg"],
     charts: [

@@ -15,11 +15,11 @@ export default defineNuxtRouteMiddleware((to, from) => {
     return;
   }
 
-  const toAccountId = Number.parseInt(toAccountMatch[1]!);
+  const toAccountId = Number(toAccountMatch[1]);
 
   const fromInstitutionMatch = from.path.match(/^\/institutions\/(\d+)/);
   if (fromInstitutionMatch) {
-    const fromInstitutionId = Number.parseInt(fromInstitutionMatch[1]!);
+    const fromInstitutionId = Number(fromInstitutionMatch[1]);
     // Navigating from an institution page to an account page
     context.value = {
       institutionId: fromInstitutionId,
@@ -30,7 +30,7 @@ export default defineNuxtRouteMiddleware((to, from) => {
 
   const fromAccountMatch = from.path.match(/^\/accounts\/(\d+)/);
   if (fromAccountMatch) {
-    const fromAccountId = Number.parseInt(fromAccountMatch[1]!);
+    const fromAccountId = Number(fromAccountMatch[1]);
     if (fromAccountId === toAccountId) {
       // Preserve institution context since we are navigating within the same account
       return;

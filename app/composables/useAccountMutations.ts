@@ -16,18 +16,18 @@ export const useAccountMutations = () => {
   };
 
   const createAccount = proxyRefs(useMutation({
-    mutationFn: (input: AccountUpsertInput) => api.accountsCreate(input),
+    mutationFn: async (input: AccountUpsertInput) => api.accountsCreate(input),
     onSuccess: invalidateAccountWrites
   }));
 
   const updateAccount = proxyRefs(useMutation({
-    mutationFn: ({ accountId, input }: { accountId: number, input: AccountUpsertInput }) =>
+    mutationFn: async ({ accountId, input }: { accountId: number, input: AccountUpsertInput }) =>
       api.accountsUpdate(accountId, input),
     onSuccess: invalidateAccountWrites
   }));
 
   const deleteAccount = proxyRefs(useMutation({
-    mutationFn: (accountId: number) => api.accountsDelete(accountId),
+    mutationFn: async (accountId: number) => api.accountsDelete(accountId),
     onSuccess: invalidateAccountWrites
   }));
 

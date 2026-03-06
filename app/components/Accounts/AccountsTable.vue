@@ -41,7 +41,7 @@
             {{ getGroupLabel(row) }}
           </span>
           <UBadge variant="subtle" color="neutral">
-            {{ row.subRows?.length || 0 }}
+            {{ row.subRows.length }}
           </UBadge>
         </div>
 
@@ -73,9 +73,9 @@
         v-else
         variant="subtle"
         color="neutral"
-        :class="accountTypeBadgeClass(row.original.account_type.name)"
+        :class="ACCOUNT_TYPE_META[row.original.account_type.name].badgeClass"
       >
-        {{ accountTypeLabel(row.original.account_type.name) }}
+        {{ ACCOUNT_TYPE_META[row.original.account_type.name].label }}
       </UBadge>
     </template>
 
@@ -134,7 +134,7 @@
 
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
-import type { GroupingOptions } from "@tanstack/vue-table";
+import type { Column, GroupingOptions } from "@tanstack/vue-table";
 import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 
@@ -229,7 +229,7 @@ function leafAccountsFromRow(row: TableRow<Account>) {
 
   const walk = (r: TableRow<Account>) => {
     if (r.getIsGrouped()) {
-      (r.subRows || []).forEach(walk);
+      r.subRows.forEach(walk);
       return;
     }
 
@@ -242,7 +242,7 @@ function leafAccountsFromRow(row: TableRow<Account>) {
 
 function aggregateSeries(seriesList: Array<Array<number | null>>) {
   const length = seriesList[0]?.length ?? 0;
-  const out = Array.from({ length }, () => null as number | null);
+  const out: Array<number | null> = Array.from({ length }, () => null);
 
   for (let i = 0; i < length; i++) {
     let sum = 0;
@@ -270,19 +270,19 @@ function getRowActivityValues(row: TableRow<Account>) {
   const accounts = leafAccountsFromRow(row);
   const seriesList = accounts
     .map((a) => activityValues(a, props.activityPeriod))
-    .filter((v) => v.length > 0) as Array<Array<number | null>>;
+    .filter((v) => v.length > 0);
 
   return aggregateSeries(seriesList);
 }
 
 function getRowActivityColor(row: TableRow<Account>) {
   if (!row.getIsGrouped()) {
-    return accountTypeLineColor(row.original.account_type.name);
+    return ACCOUNT_TYPE_META[row.original.account_type.name].lineColor;
   }
 
-  const groupingId = row.groupingColumnId as string | undefined;
+  const groupingId = row.groupingColumnId;
   if (groupingId === "type_group") {
-    return accountTypeLineColor(row.getValue("type_group") as AccountTypeName);
+    return ACCOUNT_TYPE_META[row.getValue<AccountTypeName>("type_group")].lineColor;
   }
 
   // Institution (or unknown) groups: neutral line
@@ -362,33 +362,33 @@ function formatShortDate(iso: string) {
 }
 
 function getGroupLabel(row: TableRow<Account>) {
-  const id = row.groupingColumnId as string | undefined;
+  const id = row.groupingColumnId;
   if (id === "institution_group") {
-    return String(row.getValue("institution_group") ?? "");
+    return row.getValue<string>("institution_group") ?? "";
   }
   if (id === "type_group") {
-    return accountTypeLabel(row.getValue("type_group") as AccountTypeName);
+    return ACCOUNT_TYPE_META[row.getValue<AccountTypeName>("type_group")].label;
   }
-  return String(id ? row.getValue(id) : "");
+  return (id != null) ? String(row.getValue(id)) : "";
 }
 
 function getGroupedBalance(row: TableRow<Account>) {
-  return Number(row.getValue("balance") ?? 0);
+  return row.getValue<number>("balance");
 }
 
 function getGroupedLastChange(row: TableRow<Account>) {
-  return String(row.getValue("lastChange") ?? "");
+  return row.getValue<string>("lastChange");
 }
 
-function sortableHeader(column: any, label: string) {
+function sortableHeader(column: Column<Account, unknown>, label: string) {
   const isSorted = column.getIsSorted();
 
   return h(UButton, {
     color: "neutral",
     variant: "ghost",
     label,
-    trailing: !!isSorted,
-    trailingIcon: isSorted
+    trailing: isSorted !== false,
+    trailingIcon: isSorted !== false
       ? (isSorted === "asc"
         ? "i-lucide-arrow-up-narrow-wide"
         : "i-lucide-arrow-down-wide-narrow")
@@ -446,15 +446,7 @@ const columns = computed<TableColumn<Account>[]>(() => {
       id: "firstChange",
       header: ({ column }) => sortableHeader(column, "First change"),
       accessorKey: "first_snapshot_date",
-      aggregationFn: (_columnId, leafRows: any[]) => {
-        const dates = leafRows
-          .map((r) => String(r?.original?.first_snapshot_date ?? ""))
-          .filter(Boolean);
-
-        return dates.length
-          ? dates.reduce((min: string, d: string) => (d < min ? d : min), dates[0]!)
-          : "";
-      }
+      aggregationFn: "min"
     },
     {
       id: "lastChange",
@@ -466,11 +458,11 @@ const columns = computed<TableColumn<Account>[]>(() => {
       id: "activity",
       header: ({ column }) => sortableHeader(column, `Activity (${props.activityPeriod})`),
       accessorFn: (row) => row.activity_by_period?.[props.activityPeriod]?.delta_minor ?? 0,
-      aggregationFn: (_columnId, leafRows: any[]) => {
+      aggregationFn: (_columnId, leafRows: TableRow<Account>[]) => {
         const period = props.activityPeriod;
         const seriesList = leafRows
-          .map((r) => r?.original?.activity_by_period?.[period]?.values)
-          .filter(Boolean) as Array<Array<number | null>>;
+          .map((r) => r.original.activity_by_period?.[period]?.values)
+          .filter((values): values is Array<number | null> => (values?.length ?? 0) > 0);
 
         return deltaFromValues(aggregateSeries(seriesList));
       },

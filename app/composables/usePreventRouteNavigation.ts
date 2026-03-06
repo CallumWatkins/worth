@@ -11,7 +11,7 @@ export function usePreventRouteNavigation(options: UsePreventRouteNavigationOpti
   const confirm = useConfirmDialog();
   let pendingConfirmation: Promise<boolean> | null = null;
 
-  const requestDiscardConfirmation = () => {
+  const requestDiscardConfirmation = async () => {
     if (!pendingConfirmation) {
       pendingConfirmation = confirm({
         title: options.title ?? "Discard unsaved changes?",
@@ -30,13 +30,13 @@ export function usePreventRouteNavigation(options: UsePreventRouteNavigationOpti
     if (options.isSubmitting.value) return false;
     if (!options.isDirty.value) return true;
 
-    return await requestDiscardConfirmation();
+    return requestDiscardConfirmation();
   });
 
   onBeforeRouteUpdate(async () => {
     if (options.isSubmitting.value) return false;
     if (!options.isDirty.value) return true;
 
-    return await requestDiscardConfirmation();
+    return requestDiscardConfirmation();
   });
 }

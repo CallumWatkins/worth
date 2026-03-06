@@ -101,7 +101,7 @@ const submitError = ref<string | null>(null);
 const deletePreviewQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.deletePreview(props.accountId!)),
   enabled: computed(() => open.value && props.accountId !== null),
-  queryFn: () => api.accountsDeletePreview(props.accountId!)
+  queryFn: async () => api.accountsDeletePreview(props.accountId!)
 }));
 
 const canDelete = computed(() => {

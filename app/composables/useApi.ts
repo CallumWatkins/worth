@@ -4,7 +4,7 @@ import { commands } from "~/generated/bindings";
 export const formatApiError = (error: ApiError): string => {
   if (error === "Db") return "Database error";
   if (error === "NotFound") return "Not found";
-  if (typeof error === "object" && error && "Validation" in error) {
+  if (typeof error === "object" && "Validation" in error) {
     const joined = error.Validation.map((issue) => issue.message).join("; ");
     return joined.length ? `Validation error: ${joined}` : "Validation error";
   }
@@ -13,7 +13,7 @@ export const formatApiError = (error: ApiError): string => {
 };
 
 export const validationIssuesFromApiError = (error: ApiError): ValidationIssue[] => {
-  if (typeof error === "object" && error && "Validation" in error) {
+  if (typeof error === "object" && "Validation" in error) {
     return error.Validation;
   }
   return [];
@@ -36,24 +36,6 @@ export const extractValidationIssues = (error: unknown): ValidationIssue[] => {
   return [];
 };
 
-export const validationIssuesToFieldMap = (
-  issues: ValidationIssue[]
-): Record<string, string> => {
-  const out: Record<string, string> = {};
-  for (const issue of issues) {
-    if (!out[issue.field]) {
-      out[issue.field] = issue.message;
-    }
-  }
-  return out;
-};
-
-export const extractValidationFieldErrors = (
-  error: unknown
-): Record<string, string> => {
-  return validationIssuesToFieldMap(extractValidationIssues(error));
-};
-
 export const unwrapResult = <T>(result: Result<T, ApiError>): T => {
   if (result.status === "ok")
     return result.data;
@@ -65,24 +47,22 @@ export const invokeResult = async <T>(promise: Promise<Result<T, ApiError>>): Pr
   return unwrapResult(await promise);
 };
 
-type UnwrapCommand<F>
-  = F extends (...args: infer A) => Promise<Result<infer T, ApiError>>
+export type Api = {
+  [K in keyof typeof commands]:
+  (typeof commands)[K] extends (...args: infer A) => Promise<Result<infer T, ApiError>>
     ? (...args: A) => Promise<T>
     : never;
-
-export type Api = {
-  [K in keyof typeof commands]: UnwrapCommand<(typeof commands)[K]>
 };
 
-const api: Api = new Proxy(commands as any, {
+type ResultCommand = (...args: unknown[]) => Promise<Result<unknown, ApiError>>;
+
+const api = new Proxy(commands, {
   get(target, prop) {
-    const fn = target[prop];
-    if (typeof fn !== "function") return fn;
+    if (!(prop in target)) return undefined;
 
-    return (...args: any[]) => invokeResult(fn(...args));
+    const command = target[prop as keyof typeof target] as ResultCommand;
+    return async (...args: unknown[]) => invokeResult(command(...args));
   }
-});
+}) as unknown as Api;
 
-export const useApi = (): Api => {
-  return api;
-};
+export const useApi = () => api;

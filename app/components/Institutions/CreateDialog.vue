@@ -52,11 +52,13 @@
 </template>
 
 <script lang="ts" setup>
+import type { UForm } from "#components";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import type { ComponentExposed } from "vue-component-type-helpers";
 
 const open = defineModel<boolean>("open", { required: true });
 const submitError = ref<string | null>(null);
-const form = useTemplateRef("form");
+const form = useTemplateRef<ComponentExposed<typeof UForm<typeof institutionFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 const { state, reset } = useInstitutionUpsertForm();
 

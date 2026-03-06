@@ -203,7 +203,7 @@ const dashboardQuery = proxyRefs(useQuery({
 
 const balanceOverTimeQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.dashboard.balanceOverTime(balanceOverTimePeriod.value)),
-  queryFn: () => api.dashboardBalanceOverTime(balanceOverTimePeriod.value)
+  queryFn: async () => api.dashboardBalanceOverTime(balanceOverTimePeriod.value)
 }));
 
 const balanceOverTimePeriodItems = computed(() => {
@@ -395,13 +395,13 @@ watchEffect(() => {
 
 const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: AllocationDatum[]): ECOption => {
   const totalVisible = data.reduce((sum, d) => sum + (selected[d.accountType] === false ? 0 : d.value), 0);
-  const percentByKind = Object.fromEntries(
-    data.map((d) => {
+  const percentByKind = new Map<string, number>(
+    data.map<[string, number]>((d) => {
       const value = selected[d.accountType] === false ? 0 : d.value;
       const pct = totalVisible > 0 ? Math.round((value / totalVisible) * 100) : 0;
       return [d.accountType, pct];
     })
-  ) as Record<string, number>;
+  );
 
   return {
     backgroundColor: "transparent",
@@ -425,9 +425,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         color: "#a3a3a3"
       },
       formatter: (kind: string) => {
-        const meta = accountTypeMetaLoose(kind);
-        const label = meta?.label ?? kind;
-        return `${label}  ${percentByKind[kind] ?? 0}%`;
+        return `${ACCOUNT_TYPE_META[kind as AccountTypeName].label}  ${percentByKind.get(kind) ?? 0}%`;
       }
     },
     graphic: [

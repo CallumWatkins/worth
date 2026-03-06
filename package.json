@@ -58,11 +58,11 @@
     "json-schema-to-zod": "^2.7.0",
     "typescript": "^5.9.3"
   },
-  "resolutions": {
-    "typescript": "npm:tslite@latest"
-  },
   "overrides": {
     "@internationalized/date": "3.10.1"
+  },
+  "resolutions": {
+    "typescript": "npm:tslite@latest"
   },
   "trustedDependencies": [
     "@parcel/watcher",

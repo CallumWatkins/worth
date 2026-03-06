@@ -9,7 +9,10 @@ export default eslintConfig(
       "app/generated/**",
       "**/*.md"
     ],
-    typescript: true,
+    typescript: {
+      filesTypeAware: ["app/**/*.{ts,tsx,vue}"],
+      tsconfigPath: "tsconfig.json"
+    },
     vue: true,
     stylistic: {
       indent: 2,
