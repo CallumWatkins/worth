@@ -80,19 +80,19 @@
     </template>
 
     <template #firstChange-cell="{ row }">
-      <span v-if="row.getIsGrouped()">
-        {{ formatShortDate(getGroupedFirstChange(row)) }}
+      <span v-if="row.getIsGrouped()" :class="(row.getValue<string | undefined>('firstChange')) == null ? 'text-muted' : undefined">
+        {{ formatShortDate(row.getValue<string | undefined>('firstChange')) }}
       </span>
-      <span v-else>
+      <span v-else :class="!row.original.first_snapshot_date ? 'text-muted' : undefined">
         {{ formatShortDate(row.original.first_snapshot_date) }}
       </span>
     </template>
 
     <template #lastChange-cell="{ row }">
-      <span v-if="row.getIsGrouped()">
-        {{ formatShortDate(getGroupedLastChange(row)) }}
+      <span v-if="row.getIsGrouped()" :class="(row.getValue<string | undefined>('lastChange')) == null ? 'text-muted' : undefined">
+        {{ formatShortDate(row.getValue<string | undefined>('lastChange')) }}
       </span>
-      <span v-else>
+      <span v-else :class="!row.original.latest_snapshot_date ? 'text-muted' : undefined">
         {{ formatShortDate(row.original.latest_snapshot_date) }}
       </span>
     </template>
@@ -119,7 +119,7 @@
     <template #balance-cell="{ row }">
       <div v-if="row.getIsGrouped()" class="text-right">
         <div class="font-semibold text-highlighted">
-          {{ formatGBP(getGroupedBalance(row)) }}
+          {{ formatGBP(row.getValue<number>("balance")) }}
         </div>
         <div class="text-xs text-muted">
           Group total
@@ -203,10 +203,6 @@ const gbp = new Intl.NumberFormat("en-GB", {
 
 function formatGBP(minor: number) {
   return gbp.format(minor / 100);
-}
-
-function getGroupedFirstChange(row: TableRow<Account>) {
-  return String(row.getValue("firstChange") ?? "");
 }
 
 function activityValues(account: Account, period: ActivityPeriod): Array<number | null> {
@@ -353,7 +349,11 @@ function parseIsoDate(iso: string) {
   return new Date(`${iso}T00:00:00`);
 }
 
-function formatShortDate(iso: string) {
+function formatShortDate(iso: string | null | undefined) {
+  if (iso == null || iso === "") {
+    return "—";
+  }
+
   return parseIsoDate(iso).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -372,12 +372,17 @@ function getGroupLabel(row: TableRow<Account>) {
   return (id != null) ? String(row.getValue(id)) : "";
 }
 
-function getGroupedBalance(row: TableRow<Account>) {
-  return row.getValue<number>("balance");
-}
+function aggregateSnapshotDate(
+  leafRows: TableRow<Account>[],
+  getDate: (account: Account) => string | null,
+  pick: "first" | "last"
+) {
+  const dates = leafRows
+    .map((row) => getDate(row.original))
+    .filter((date): date is string => typeof date === "string" && date.length > 0)
+    .sort();
 
-function getGroupedLastChange(row: TableRow<Account>) {
-  return row.getValue<string>("lastChange");
+  return pick === "first" ? dates[0] : dates.at(-1);
 }
 
 function sortableHeader(column: Column<Account, unknown>, label: string) {
@@ -445,14 +450,20 @@ const columns = computed<TableColumn<Account>[]>(() => {
     {
       id: "firstChange",
       header: ({ column }) => sortableHeader(column, "First change"),
-      accessorKey: "first_snapshot_date",
-      aggregationFn: "min"
+      accessorFn: (row) => row.first_snapshot_date ?? undefined,
+      aggregationFn: (_columnId, leafRows: TableRow<Account>[]) => {
+        return aggregateSnapshotDate(leafRows, (account) => account.first_snapshot_date, "first");
+      },
+      sortUndefined: "last"
     },
     {
       id: "lastChange",
-      accessorKey: "latest_snapshot_date",
+      accessorFn: (row) => row.latest_snapshot_date ?? undefined,
       header: ({ column }) => sortableHeader(column, "Last change"),
-      aggregationFn: "max"
+      aggregationFn: (_columnId, leafRows: TableRow<Account>[]) => {
+        return aggregateSnapshotDate(leafRows, (account) => account.latest_snapshot_date, "last");
+      },
+      sortUndefined: "last"
     },
     {
       id: "activity",

@@ -101,8 +101,8 @@ pub struct AccountDto {
     pub normal_balance_sign: i32, // {-1, 1}
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
-    pub first_snapshot_date: NaiveDate,
-    pub latest_snapshot_date: NaiveDate,
+    pub first_snapshot_date: Option<NaiveDate>,
+    pub latest_snapshot_date: Option<NaiveDate>,
     pub latest_balance_minor: i64,
     pub activity_by_period: BTreeMap<ActivityPeriod, ActivityDataDto>,
 }
@@ -1034,8 +1034,6 @@ async fn build_account_dtos(
             name: account_type_name,
         };
 
-        let first_snapshot_date = a.first_snapshot_date.unwrap_or(today);
-        let latest_snapshot_date = a.latest_snapshot_date.unwrap_or(today);
         let latest_balance_minor = a.latest_balance_minor.unwrap_or(0);
 
         let date_map = snapshots_by_account.get(&a.id).unwrap_or(&empty_dates);
@@ -1078,8 +1076,8 @@ async fn build_account_dtos(
             normal_balance_sign: a.normal_balance_sign,
             opened_date: a.opened_date,
             closed_date: a.closed_date,
-            first_snapshot_date,
-            latest_snapshot_date,
+            first_snapshot_date: a.first_snapshot_date,
+            latest_snapshot_date: a.latest_snapshot_date,
             latest_balance_minor,
             activity_by_period,
         });

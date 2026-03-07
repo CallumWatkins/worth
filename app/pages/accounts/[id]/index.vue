@@ -36,7 +36,7 @@
               <div class="text-xl font-bold text-default whitespace-nowrap">
                 {{ formatMoneyMinor(accountQuery.data.latest_balance_minor) }}
               </div>
-              <div class="text-xs text-muted mt-1">
+              <div v-if="accountQuery.data.latest_snapshot_date != null" class="text-xs text-muted mt-1">
                 As of {{ formatShortDate(accountQuery.data.latest_snapshot_date) }}
               </div>
             </template>

@@ -155,7 +155,7 @@ async search(query: string) : Promise<Result<SearchResultDto[], ApiError>> {
 
 export type AccountBalanceSnapshotDto = { id: number; date: string; balance_minor: number; created_at: string }
 export type AccountDeletePreviewDto = { id: number; name: string; institution_name: string; snapshot_count: number }
-export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: CurrencyCode; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string; latest_snapshot_date: string; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
+export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: CurrencyCode; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string | null; latest_snapshot_date: string | null; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
 export type AccountTypeDto = { id: number; name: AccountTypeName }
 export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan"
 export type AccountUpsertInput = { institution: InstitutionRef; name: string; account_type: AccountTypeName; currency_code: CurrencyCode; normal_balance_sign: number; opened_date?: string | null }
