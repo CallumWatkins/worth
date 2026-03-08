@@ -119,14 +119,14 @@
     <template #balance-cell="{ row }">
       <div v-if="row.getIsGrouped()" class="text-right">
         <div class="font-semibold text-highlighted">
-          {{ formatGBP(row.getValue<number>("balance")) }}
+          {{ formatCurrencyMinor(row.getValue<number>("balance"), "GBP") }}
         </div>
         <div class="text-xs text-muted">
           Group total
         </div>
       </div>
       <span v-else>
-        {{ formatGBP(row.original.latest_balance_minor) }}
+        {{ formatCurrencyMinor(row.original.latest_balance_minor, "GBP") }}
       </span>
     </template>
   </UTable>
@@ -137,6 +137,7 @@ import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { Column, GroupingOptions } from "@tanstack/vue-table";
 import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
+import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
 type Account = AccountDto;
 type GroupBy = "none" | "institution" | "type";
@@ -195,15 +196,7 @@ const sorting = ref([
     desc: false
   }
 ]);
-
-const gbp = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP"
-});
-
-function formatGBP(minor: number) {
-  return gbp.format(minor / 100);
-}
+const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 
 function activityValues(account: Account, period: ActivityPeriod): Array<number | null> {
   return account.activity_by_period?.[period]?.values ?? [];
@@ -342,23 +335,6 @@ function sparklinePath(values: Array<number | null>) {
   }
 
   return d;
-}
-
-function parseIsoDate(iso: string) {
-  // Avoid timezone shifts for date-only strings.
-  return new Date(`${iso}T00:00:00`);
-}
-
-function formatShortDate(iso: string | null | undefined) {
-  if (iso == null || iso === "") {
-    return "—";
-  }
-
-  return parseIsoDate(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
 }
 
 function getGroupLabel(row: TableRow<Account>) {

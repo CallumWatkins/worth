@@ -1,8 +1,8 @@
 <template>
-  <Html class="overflow-x-hidden select-none">
+  <Html :lang="lang" :dir="dir" class="overflow-x-hidden select-none">
     <Body class="font-sans antialiased">
       <UApp
-        :locale="locales[locale]"
+        :locale="uiLocale"
         :scroll-body="{ padding: false, margin: false }"
       >
         <AppNavbar />
@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import * as locales from "@nuxt/ui/locale";
+import { useAppLocale } from "~/composables/useAppLocale";
 
-const { locale } = useI18n();
+const { dir, lang, uiLocale } = useAppLocale();
 </script>

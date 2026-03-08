@@ -71,7 +71,7 @@
         </template>
 
         <template #balance-cell="{ row }">
-          {{ formatGBP(row.original.total_balance_minor) }}
+          {{ formatCurrencyMinor(row.original.total_balance_minor, "GBP") }}
         </template>
       </UTable>
     </UPageBody>
@@ -85,6 +85,7 @@ import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { Column } from "@tanstack/vue-table";
 import type { InstitutionSummaryDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
+import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
 type Institution = InstitutionSummaryDto;
 
@@ -99,6 +100,7 @@ const institutionsQuery = proxyRefs(useQuery({
 }));
 
 const institutionsData = computed<Institution[]>(() => institutionsQuery.data ?? []);
+const { formatCurrencyMinor } = useLocaleFormatters();
 
 const sorting = ref([
   {
@@ -106,15 +108,6 @@ const sorting = ref([
     desc: false
   }
 ]);
-
-const gbp = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP"
-});
-
-function formatGBP(minor: number) {
-  return gbp.format(minor / 100);
-}
 
 async function onSelect(_e: Event, row: TableRow<Institution>) {
   await navigateTo({ name: "institutions-id", params: { id: row.original.id } });

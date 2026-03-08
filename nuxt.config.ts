@@ -1,3 +1,5 @@
+import { APP_I18N_CONFIG } from "./app/utils/i18n";
+
 export default defineNuxtConfig({
   modules: [
     "@vueuse/nuxt",
@@ -24,11 +26,7 @@ export default defineNuxtConfig({
   css: [
     "@/assets/css/main.css"
   ],
-  i18n: {
-    defaultLocale: "en_gb",
-    locales: ["en_gb"],
-    strategy: "no_prefix"
-  },
+  i18n: APP_I18N_CONFIG,
   ssr: false,
   devtools: { enabled: true },
   echarts: {

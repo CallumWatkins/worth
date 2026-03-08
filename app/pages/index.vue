@@ -28,7 +28,7 @@
       >
         <template #description>
           <div>
-            <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ formatGBPMinor(dashboardQuery.data?.total_balance_minor ?? 0) }}</span>
+            <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ formatCurrencyMinor(dashboardQuery.data?.total_balance_minor ?? 0, "GBP") }}</span>
             <span class="inline-flex gap-1 leading-none">
               <UIcon :name="changeIcon" class="size-4" :class="[changeClass]" />
               <span :class="changeClass">{{ changePctLabel }}</span>
@@ -163,26 +163,9 @@
 <script lang="ts" setup>
 import type { AccountTypeName, BalanceOverTimePeriod } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
+import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
-const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-
-const gbp = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP"
-});
-
-const formatGBPMinor = (minor: number) => {
-  return gbp.format(minor / 100);
-};
-
-const formatShortGBP = (value: number) => {
-  const abs = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
-  if (abs >= 1_000_000_000) return `${sign}£${Math.round(abs / 1_000_000_000)}b`;
-  if (abs >= 1_000_000) return `${sign}£${Math.round(abs / 1_000_000)}m`;
-  if (abs >= 1_000) return `${sign}£${Math.round(abs / 1_000)}k`;
-  return `${sign}£${Math.round(abs)}`;
-};
+const { formatCurrency, formatCurrencyMinor, formatDate } = useLocaleFormatters();
 
 const darkTooltipBase = {
   backgroundColor: "rgba(10, 10, 10, 0.95)",
@@ -234,7 +217,7 @@ const changePctLabel = computed(() => {
 const monthlyYieldLabel = computed(() => {
   if (dashboardQuery.data?.monthly_yield_minor == null) return "—";
   const sign = dashboardQuery.data?.monthly_yield_minor >= 0 ? "+" : "-";
-  return `${sign}${formatGBPMinor(Math.abs(dashboardQuery.data?.monthly_yield_minor))}`;
+  return `${sign}${formatCurrencyMinor(Math.abs(dashboardQuery.data?.monthly_yield_minor), "GBP")}`;
 });
 
 const monthlyYieldDescriptionClass = computed(() => {
@@ -277,12 +260,12 @@ const balanceOverTimeOption = computed<ECOption>(() => {
 
     switch (balanceOverTimePeriod.value) {
     case "1M":
-      return `${monthShort[m - 1] ?? ""} ${d}`.trim();
+      return formatDate(value, { day: "numeric", month: "short" }, value);
     case "6M":
     case "1Y":
-      return monthShort[m - 1] ?? "";
+      return formatDate(value, { month: "short" }, value);
     case "MAX":
-      return String(y);
+      return formatDate(value, { year: "numeric" }, value);
     }
   };
 
@@ -410,7 +393,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
       trigger: "item",
       valueFormatter: (value: unknown) => {
         const n = typeof value === "number" ? value : Number(value);
-        if (Number.isFinite(n)) return `£${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
+        if (Number.isFinite(n)) return formatCurrency(n, "GBP", { maximumFractionDigits: 0 });
         return String(value);
       }
     },
@@ -434,7 +417,11 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         left: "center",
         top: "39%",
         style: {
-          text: formatShortGBP(totalVisible),
+          text: formatCurrency(totalVisible, "GBP", {
+            notation: "compact",
+            compactDisplay: "short",
+            maximumFractionDigits: 1
+          }),
           fontSize: 28,
           fontWeight: 700,
           fill: "#e5e5e5",

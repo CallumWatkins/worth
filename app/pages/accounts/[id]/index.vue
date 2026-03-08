@@ -34,7 +34,7 @@
           >
             <template #description>
               <div class="text-xl font-bold text-default whitespace-nowrap">
-                {{ formatMoneyMinor(accountQuery.data.latest_balance_minor) }}
+                {{ formatCurrencyMinor(accountQuery.data.latest_balance_minor, accountQuery.data.currency_code) }}
               </div>
               <div v-if="accountQuery.data.latest_snapshot_date != null" class="text-xs text-muted mt-1">
                 As of {{ formatShortDate(accountQuery.data.latest_snapshot_date) }}
@@ -83,14 +83,18 @@
             }"
           >
             <template #description>
-              <div class="flex items-center gap-2 whitespace-nowrap">
-                <UIcon :name="monthlyChangeIcon" class="size-4" :class="monthlyChangeClass" />
-                <span class="text-xl font-bold" :class="monthlyChangeClass">
-                  {{ monthlyChangeLabel }}
-                </span>
+              <div
+                v-if="monthlyChangeMinor != null"
+                class="text-xl font-bold whitespace-nowrap"
+                :class="monthlyChangeMinor >= 0 ? 'text-success' : 'text-error'"
+              >
+                {{ formatCurrencyMinor(monthlyChangeMinor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
+              </div>
+              <div v-else class="text-xl font-bold text-default whitespace-nowrap">
+                No change
               </div>
               <div class="text-xs text-muted mt-1">
-                Change over 30 days
+                Over the last 30 days
               </div>
             </template>
           </UPageCard>
@@ -262,10 +266,10 @@
               <template #balance-cell="{ row }">
                 <span v-if="row.getIsGrouped()" class="font-semibold text-highlighted">
                   <span v-if="!groupedEndBalanceMinor(row)" class="text-muted">—</span>
-                  <span v-else>{{ formatMoneyMinor(groupedEndBalanceMinor(row)!) }}</span>
+                  <span v-else>{{ formatCurrencyMinor(groupedEndBalanceMinor(row)!, accountQuery.data.currency_code) }}</span>
                 </span>
                 <span v-else>
-                  {{ formatMoneyMinor(row.original.balance_minor) }}
+                  {{ formatCurrencyMinor(row.original.balance_minor, accountQuery.data.currency_code) }}
                 </span>
               </template>
 
@@ -273,14 +277,14 @@
                 <template v-if="row.getIsGrouped()">
                   <span v-if="!groupedChangeMinor(row)" class="text-muted">—</span>
                   <span v-else :class="groupedChangeMinor(row)! >= 0 ? 'text-success' : 'text-error'">
-                    {{ formatSignedMoneyMinor(groupedChangeMinor(row)!) }}
+                    {{ formatCurrencyMinor(groupedChangeMinor(row)!, accountQuery.data.currency_code, { signDisplay: "always" }) }}
                   </span>
                 </template>
 
                 <template v-else>
                   <span v-if="!row.original.change_minor" class="text-muted">—</span>
                   <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
-                    {{ formatSignedMoneyMinor(row.original.change_minor) }}
+                    {{ formatCurrencyMinor(row.original.change_minor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
                   </span>
                 </template>
               </template>
@@ -299,6 +303,7 @@ import type { BalanceOverTimePeriod, BalancePointDto } from "~/generated/binding
 import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
 import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
+import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
 interface BalanceRow {
   date: string
@@ -307,8 +312,6 @@ interface BalanceRow {
 }
 
 type BalanceGroupBy = "none" | "month" | "year";
-
-const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
 const darkTooltipBase = {
   backgroundColor: "rgba(10, 10, 10, 0.95)",
@@ -321,6 +324,7 @@ const darkTooltipBase = {
 const route = useRoute("accounts-id");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
+const { formatCurrency, formatCurrencyMinor, formatDate, formatShortDate } = useLocaleFormatters();
 
 const UButton = resolveComponent("UButton");
 
@@ -331,6 +335,8 @@ const accountQuery = proxyRefs(useQuery({
   enabled: computed(() => accountId.value !== null),
   queryFn: async () => api.accountsGet(accountId.value!)
 }));
+
+const accountCurrencyCode = computed(() => accountQuery.data?.currency_code ?? "GBP");
 
 useResourcePageError({
   resourceName: "Account",
@@ -389,28 +395,6 @@ const headerDescription = computed(() => {
   return `${account.institution.name} • ${ACCOUNT_TYPE_META[account.account_type.name].label}`;
 });
 
-const moneyFormatter = computed(() => {
-  const code = accountQuery.data?.currency_code ?? "GBP";
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: code
-  });
-});
-
-function formatMoneyMinor(minor: number) {
-  return moneyFormatter.value.format(minor / 100);
-}
-
-function formatSignedMoneyMinor(minor: number) {
-  const sign = minor >= 0 ? "+" : "-";
-  return `${sign}${formatMoneyMinor(Math.abs(minor))}`;
-}
-
-function parseIsoDate(iso: string) {
-  // Avoid timezone shifts for date-only strings.
-  return new Date(`${iso}T00:00:00`);
-}
-
 function todayIsoDate() {
   const today = new Date();
   const year = String(today.getFullYear());
@@ -442,14 +426,6 @@ function isCreatedAtAfter(a: string, b: string) {
   return a > b;
 }
 
-function formatShortDate(iso: string) {
-  return parseIsoDate(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
-}
-
 const chartMeta = computed(() => {
   const kind = accountQuery.data?.account_type.name;
   if (!kind) {
@@ -471,24 +447,12 @@ const monthlyChangeMinor = computed(() => {
   const first = points[0]?.balance_minor;
 
   if (typeof last !== "number") return null;
-  if (typeof monthAgo === "number") return last - monthAgo;
-  if (typeof first === "number") return last - first;
-  return null;
-});
+  let change = null;
+  if (typeof monthAgo === "number") change = last - monthAgo;
+  else if (typeof first === "number") change = last - first;
 
-const monthlyChangeClass = computed(() => {
-  if (monthlyChangeMinor.value == null) return "text-muted";
-  return monthlyChangeMinor.value >= 0 ? "text-success" : "text-error";
-});
-
-const monthlyChangeIcon = computed(() => {
-  if (monthlyChangeMinor.value == null) return "i-lucide-minus";
-  return monthlyChangeMinor.value >= 0 ? "i-lucide-arrow-up" : "i-lucide-arrow-down";
-});
-
-const monthlyChangeLabel = computed(() => {
-  if (monthlyChangeMinor.value == null) return "—";
-  return formatSignedMoneyMinor(monthlyChangeMinor.value);
+  if (change === 0) return null;
+  return change;
 });
 
 const balanceOverTimeOption = computed<ECOption>(() => {
@@ -541,12 +505,12 @@ const balanceOverTimeOption = computed<ECOption>(() => {
 
     switch (balanceOverTimePeriod.value) {
     case "1M":
-      return `${monthShort[m - 1] ?? ""} ${d}`.trim();
+      return formatDate(value, { day: "numeric", month: "short" }, value);
     case "6M":
     case "1Y":
-      return monthShort[m - 1] ?? "";
+      return formatDate(value, { month: "short" }, value);
     case "MAX":
-      return String(y);
+      return formatDate(value, { year: "numeric" }, value);
     }
   };
 
@@ -562,8 +526,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       valueFormatter: (value: unknown) => {
         const n = typeof value === "number" ? value : Number(value);
         if (!Number.isFinite(n)) return String(value);
-        // `n` is in major units (e.g. pounds) here.
-        return moneyFormatter.value.format(n);
+        return formatCurrency(n, accountCurrencyCode.value);
       }
     },
     grid: {
@@ -597,7 +560,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       axisLabel: {
         color: "#a3a3a3",
         formatter: (value: number) => {
-          return moneyFormatter.value.format(value);
+          return formatCurrency(value, accountCurrencyCode.value);
         }
       },
       splitLine: {
@@ -843,7 +806,7 @@ function balanceGroupLabel(row: TableRow<BalanceRow>) {
       return k.key;
     }
 
-    return `${monthShort[month - 1] ?? ""} ${year}`.trim();
+    return formatDate(`${k.key}-01`, { month: "short", year: "numeric" }, k.key);
   }
   return k.key;
 }
