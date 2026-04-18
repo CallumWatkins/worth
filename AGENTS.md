@@ -84,3 +84,4 @@ Problems running `cargo` commands ("rustup could not choose a version of cargo t
 - TanStack Query must be used for all data fetching.
 - In Rust, prefer iterators over loops.
 - In Vue, prefer existing Nuxt UI components over custom elements (where possible). View the available components and a link to their docs at https://ui.nuxt.com/llms.txt.
+- This is a greenfield project, so there is no need to maintain backwards compatibility.
