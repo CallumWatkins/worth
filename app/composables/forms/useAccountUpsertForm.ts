@@ -174,7 +174,14 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
   });
 
   watch(institutionItems, (items) => {
-    if (state.institution?.kind === "new") return;
+    if (state.institution?.kind === "new") {
+      const createdInstitutionId = findExistingInstitutionId(state.institution.input.name);
+      if (createdInstitutionId != null) {
+        setExistingInstitution(createdInstitutionId);
+      }
+      return;
+    }
+
     if (state.institution?.kind === "existing" && state.institution.id != null) return;
     const firstInstitutionId = items.find((institution) => (
       typeof institution.value === "number"
