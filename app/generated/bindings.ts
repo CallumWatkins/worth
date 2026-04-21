@@ -109,6 +109,30 @@ async accountSnapshotsList(accountId: number) : Promise<Result<AccountBalanceSna
     else return { status: "error", error: e  as any };
 }
 },
+async accountSnapshotsCreate(accountId: number, input: AccountSnapshotsCreateInput) : Promise<Result<null, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_snapshots_create", { accountId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountSnapshotUpdate(accountId: number, snapshotId: number, input: AccountSnapshotUpdateInput) : Promise<Result<null, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_snapshot_update", { accountId, snapshotId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountSnapshotsDelete(accountId: number, input: AccountSnapshotsDeleteInput) : Promise<Result<null, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_snapshots_delete", { accountId, input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async accountBalanceOverTime(accountId: number, period: BalanceOverTimePeriod) : Promise<Result<BalancePointDto[], ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("account_balance_over_time", { accountId, period }) };
@@ -156,6 +180,10 @@ async search(query: string) : Promise<Result<SearchResultDto[], ApiError>> {
 export type AccountBalanceSnapshotDto = { id: number; date: string; balance_minor: number; created_at: string }
 export type AccountDeletePreviewDto = { id: number; name: string; institution_name: string; snapshot_count: number }
 export type AccountDto = { id: number; name: string; institution: InstitutionDto; account_type: AccountTypeDto; currency_code: CurrencyCode; normal_balance_sign: number; opened_date: string | null; closed_date: string | null; first_snapshot_date: string | null; latest_snapshot_date: string | null; latest_balance_minor: number; activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }> }
+export type AccountSnapshotUpdateInput = { date: string; balance_minor: number; overwrite_existing: boolean }
+export type AccountSnapshotWriteInput = { date: string; balance_minor: number; overwrite_existing: boolean }
+export type AccountSnapshotsCreateInput = { snapshots: AccountSnapshotWriteInput[] }
+export type AccountSnapshotsDeleteInput = { snapshot_ids: number[] }
 export type AccountTypeDto = { id: number; name: AccountTypeName }
 export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan"
 export type AccountUpsertInput = { institution: InstitutionRef; name: string; account_type: AccountTypeName; currency_code: CurrencyCode; normal_balance_sign: number; opened_date?: string | null }

@@ -228,7 +228,7 @@ const monthlyYieldDescriptionClass = computed(() => {
 const balanceOverTimeOption = computed<ECOption>(() => {
   const points = balanceOverTimeQuery.data ?? [];
   const dates = points.map((p) => p.date);
-  const values = points.map((p) => p.balance_minor / 100);
+  const values = points.map((p) => convertCurrencyMinorUnitsToMajorAmount(p.balance_minor));
 
   const labelInterval = (idx: number, value: string) => {
     if (idx === 0 || idx === dates.length - 1) return true;
@@ -358,7 +358,7 @@ const allocationData = computed<AllocationDatum[]>(() => {
     const meta = ACCOUNT_TYPE_META[r.account_type];
     return {
       accountType: r.account_type,
-      value: r.balance_minor / 100,
+      value: convertCurrencyMinorUnitsToMajorAmount(r.balance_minor),
       color: meta.color,
       glow: meta.glow,
       glowEmphasis: meta.glowEmphasis

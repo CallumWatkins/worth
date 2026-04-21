@@ -185,7 +185,7 @@
                   {{ balancesDescription }}
                 </div>
               </div>
-              <div class="flex flex-row gap-3 items-center">
+              <div class="flex flex-row flex-wrap gap-3 items-end">
                 <UFormField name="viewType" label="View" :ui="{ label: 'text-muted' }">
                   <UTabs
                     v-model="tableView"
@@ -206,6 +206,24 @@
                       :ui="{ base: 'min-h-9 ring-0' }"
                     />
                   </UFormField>
+                </div>
+                <div v-if="tableView === 'snapshots'" class="flex items-center gap-2">
+                  <UButton
+                    icon="i-lucide-plus"
+                    :disabled="!accountQuery.data"
+                    @click="addSnapshotsOpen = true"
+                  >
+                    Add snapshots
+                  </UButton>
+                  <UButton
+                    v-if="selectedSnapshotCount"
+                    color="error"
+                    variant="subtle"
+                    icon="i-lucide-trash-2"
+                    @click="openSnapshotDeleteDialog(selectedSnapshotIds)"
+                  >
+                    Delete selected ({{ selectedSnapshotCount }})
+                  </UButton>
                 </div>
               </div>
             </div>
@@ -289,8 +307,34 @@
                 </template>
               </template>
             </UTable>
+
+            <div v-if="tableView === 'snapshots' && selectedSnapshotCount" class="mt-3 text-sm text-muted">
+              {{ selectedSnapshotCount }} snapshot{{ selectedSnapshotCount === 1 ? '' : 's' }} selected
+            </div>
           </template>
         </UPageCard>
+
+        <AccountsSnapshotsAddDialog
+          v-model:open="addSnapshotsOpen"
+          :account-id="accountId"
+          :currency-code="accountCurrencyCode"
+          :snapshots="snapshotsQuery.data ?? []"
+        />
+
+        <AccountsSnapshotEditDialog
+          v-model:open="editSnapshotOpen"
+          :account-id="accountId"
+          :snapshot-id="editSnapshotId"
+          :currency-code="accountCurrencyCode"
+          :snapshots="snapshotsQuery.data ?? []"
+        />
+
+        <AccountsSnapshotsDeleteDialog
+          v-model:open="deleteSnapshotsOpen"
+          :account-id="accountId"
+          :currency-code="accountCurrencyCode"
+          :snapshots="deleteDialogSnapshots"
+        />
       </template>
     </UPageBody>
   </UContainer>
@@ -299,17 +343,30 @@
 <script lang="ts" setup>
 import type { BreadcrumbItem, SelectItem, TableColumn, TableRow, TabsItem } from "@nuxt/ui";
 import type { Column, GroupingOptions } from "@tanstack/vue-table";
-import type { BalanceOverTimePeriod, BalancePointDto } from "~/generated/bindings";
+import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto } from "~/generated/bindings";
 import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
 import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
+import { h, resolveComponent } from "vue";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
-interface BalanceRow {
+interface BalanceRowBase {
   date: string
   balance_minor: number
   change_minor: number | null
 }
+
+interface SnapshotBalanceRow extends BalanceRowBase {
+  kind: "snapshot"
+  snapshot_id: number
+  created_at: string
+}
+
+interface DailyBalanceRow extends BalanceRowBase {
+  kind: "daily"
+}
+
+type BalanceRow = SnapshotBalanceRow | DailyBalanceRow;
 
 type BalanceGroupBy = "none" | "month" | "year";
 
@@ -327,6 +384,8 @@ const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("acco
 const { formatCurrency, formatCurrencyMinor, formatDate, formatShortDate } = useLocaleFormatters();
 
 const UButton = resolveComponent("UButton");
+const UCheckbox = resolveComponent("UCheckbox");
+const UDropdownMenu = resolveComponent("UDropdownMenu");
 
 const accountId = useRouteParamInt(route, "id");
 
@@ -337,6 +396,12 @@ const accountQuery = proxyRefs(useQuery({
 }));
 
 const accountCurrencyCode = computed(() => accountQuery.data?.currency_code ?? "GBP");
+const addSnapshotsOpen = ref(false);
+const editSnapshotOpen = ref(false);
+const editSnapshotId = ref<number | null>(null);
+const deleteSnapshotsOpen = ref(false);
+const deleteSnapshotIds = ref<number[]>([]);
+const selectedSnapshotRowIds = ref<Record<string, boolean>>({});
 
 useResourcePageError({
   resourceName: "Account",
@@ -395,30 +460,6 @@ const headerDescription = computed(() => {
   return `${account.institution.name} • ${ACCOUNT_TYPE_META[account.account_type.name].label}`;
 });
 
-function todayIsoDate() {
-  const today = new Date();
-  const year = String(today.getFullYear());
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function isoDateToUtcMs(iso: string) {
-  const parts = iso.split("-");
-  if (parts.length !== 3) return Number.NaN;
-
-  const y = Number.parseInt(parts[0] ?? "", 10);
-  const m = Number.parseInt(parts[1] ?? "", 10);
-  const d = Number.parseInt(parts[2] ?? "", 10);
-
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return Number.NaN;
-  return Date.UTC(y, m - 1, d);
-}
-
-function utcMsToIsoDate(ms: number) {
-  return new Date(ms).toISOString().slice(0, 10);
-}
-
 function isCreatedAtAfter(a: string, b: string) {
   const ams = Date.parse(a);
   const bms = Date.parse(b);
@@ -458,7 +499,7 @@ const monthlyChangeMinor = computed(() => {
 const balanceOverTimeOption = computed<ECOption>(() => {
   const points = balanceOverTimeQuery.data ?? [];
   const dates = points.map((p) => p.date);
-  const values = points.map((p) => p.balance_minor / 100);
+  const values = points.map((p) => convertCurrencyMinorUnitsToMajorAmount(p.balance_minor));
 
   const invertAreaGradient = (() => {
     if (accountQuery.data?.normal_balance_sign !== -1) return false;
@@ -616,6 +657,109 @@ const tableViewItems = ref<TabsItem[]>([
   { label: "Daily", value: "daily" }
 ]);
 
+const selectedSnapshotIds = computed(() => {
+  return Object.entries(selectedSnapshotRowIds.value)
+    .filter(([, selected]) => selected)
+    .map(([snapshotId]) => Number.parseInt(snapshotId, 10))
+    .filter((snapshotId) => Number.isFinite(snapshotId));
+});
+
+const selectedSnapshotCount = computed(() => selectedSnapshotIds.value.length);
+const allSnapshotsSelected = computed(() => {
+  const totalSnapshots = (snapshotsQuery.data ?? []).length;
+  return totalSnapshots > 0 && selectedSnapshotCount.value === totalSnapshots;
+});
+const someSnapshotsSelected = computed(() => {
+  return selectedSnapshotCount.value > 0 && !allSnapshotsSelected.value;
+});
+
+const deleteDialogSnapshots = computed<AccountBalanceSnapshotDto[]>(() => {
+  const byId = new Map((snapshotsQuery.data ?? []).map((snapshot) => [snapshot.id, snapshot]));
+  return deleteSnapshotIds.value
+    .map((snapshotId) => byId.get(snapshotId) ?? null)
+    .filter((snapshot): snapshot is AccountBalanceSnapshotDto => snapshot != null)
+    .sort((left, right) => left.date.localeCompare(right.date));
+});
+
+watch([() => snapshotsQuery.data, tableView], () => {
+  if (tableView.value !== "snapshots") {
+    selectedSnapshotRowIds.value = {};
+    return;
+  }
+
+  const validIds = new Set((snapshotsQuery.data ?? []).map((snapshot) => String(snapshot.id)));
+  selectedSnapshotRowIds.value = Object.fromEntries(
+    Object.entries(selectedSnapshotRowIds.value).filter(([snapshotId, selected]) => selected && validIds.has(snapshotId))
+  );
+}, { immediate: true });
+
+function isSnapshotSelected(snapshotId: number) {
+  return !!selectedSnapshotRowIds.value[String(snapshotId)];
+}
+
+function setSnapshotSelected(snapshotId: number, selected: boolean) {
+  const key = String(snapshotId);
+  if (selected) {
+    selectedSnapshotRowIds.value = { ...selectedSnapshotRowIds.value, [key]: true };
+    return;
+  }
+
+  const next = { ...selectedSnapshotRowIds.value };
+  delete next[key];
+  selectedSnapshotRowIds.value = next;
+}
+
+function toggleAllSnapshots(selected: boolean) {
+  if (!selected) {
+    selectedSnapshotRowIds.value = {};
+    return;
+  }
+
+  selectedSnapshotRowIds.value = Object.fromEntries(
+    (snapshotsQuery.data ?? []).map((snapshot) => [String(snapshot.id), true])
+  );
+}
+
+function groupedSnapshotIds(row: TableRow<BalanceRow>) {
+  return row.getLeafRows()
+    .map((leafRow) => leafRow.original)
+    .filter(isSnapshotBalanceRow)
+    .map((snapshotRow) => snapshotRow.snapshot_id);
+}
+
+function groupedSnapshotSelectionState(row: TableRow<BalanceRow>) {
+  const snapshotIds = groupedSnapshotIds(row);
+  if (!snapshotIds.length) return false;
+
+  const selectedCount = snapshotIds.filter((snapshotId) => isSnapshotSelected(snapshotId)).length;
+  if (selectedCount === 0) return false;
+  if (selectedCount === snapshotIds.length) return true;
+  return "indeterminate" as const;
+}
+
+function setGroupedSnapshotsSelected(row: TableRow<BalanceRow>, selected: boolean) {
+  const snapshotIds = groupedSnapshotIds(row);
+  if (!snapshotIds.length) return;
+
+  const next = { ...selectedSnapshotRowIds.value };
+  for (const snapshotId of snapshotIds) {
+    const key = String(snapshotId);
+    if (selected) next[key] = true;
+    else delete next[key];
+  }
+  selectedSnapshotRowIds.value = next;
+}
+
+function openSnapshotEditor(snapshotId: number) {
+  editSnapshotId.value = snapshotId;
+  editSnapshotOpen.value = true;
+}
+
+function openSnapshotDeleteDialog(snapshotIds: number[]) {
+  deleteSnapshotIds.value = [...new Set(snapshotIds)];
+  deleteSnapshotsOpen.value = deleteSnapshotIds.value.length > 0;
+}
+
 const balanceGroupByItems = ref<SelectItem[]>([
   { label: "None", value: "none" },
   { label: "Month", value: "month" },
@@ -651,18 +795,18 @@ const derivedDailyPoints = computed<BalancePointDto[]>(() => {
 
   if (minDate == null) return [];
 
-  const today = todayIsoDate();
+  const today = getTodayCalendarDateIsoString();
   let endDate = today;
   if (maxDate != null && maxDate > endDate) endDate = maxDate;
 
-  const startMs = isoDateToUtcMs(minDate);
-  const endMs = isoDateToUtcMs(endDate);
+  const startMs = getUtcMillisecondsFromCalendarDateIsoString(minDate);
+  const endMs = getUtcMillisecondsFromCalendarDateIsoString(endDate);
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return [];
 
   const out: BalancePointDto[] = [];
   let last: number | null = null;
   for (let ms = startMs; ms <= endMs; ms += 86400000) {
-    const iso = utcMsToIsoDate(ms);
+    const iso = getCalendarDateIsoStringFromUtcMilliseconds(ms);
     const v = byDate.get(iso)?.balance_minor;
     if (typeof v === "number") last = v;
     out.push({ date: iso, balance_minor: last ?? 0 });
@@ -698,13 +842,16 @@ const balanceColumnVisibility = ref<Record<string, boolean>>({
   year_group: false
 });
 
-const snapshotTableRows = computed<BalanceRow[]>(() => {
+const snapshotTableRows = computed<SnapshotBalanceRow[]>(() => {
   const snaps = snapshotsQuery.data ?? [];
   // Backend returns DESC by date; compute change vs previous snapshot in time (older snapshot).
   return snaps.map((s, idx) => {
     const next = snaps[idx + 1];
     const change_minor = next ? (s.balance_minor - next.balance_minor) : null;
     return {
+      kind: "snapshot",
+      snapshot_id: s.id,
+      created_at: s.created_at,
       date: s.date,
       balance_minor: s.balance_minor,
       change_minor
@@ -712,16 +859,17 @@ const snapshotTableRows = computed<BalanceRow[]>(() => {
   });
 });
 
-const dailyTableRows = computed<BalanceRow[]>(() => {
+const dailyTableRows = computed<DailyBalanceRow[]>(() => {
   const points = derivedDailyPoints.value ?? [];
   if (!points.length) return [];
 
-  const out: BalanceRow[] = [];
+  const out: DailyBalanceRow[] = [];
   for (let i = points.length - 1; i >= 0; i--) {
     const p = points[i]!;
     const prev = i > 0 ? points[i - 1] : undefined;
     const change_minor = prev ? (p.balance_minor - prev.balance_minor) : null;
     out.push({
+      kind: "daily",
       date: p.date,
       balance_minor: p.balance_minor,
       change_minor
@@ -823,6 +971,10 @@ function groupedChangeMinor(row: TableRow<BalanceRow>) {
   return balanceGroupStatsByKey.value.get(k.key)?.changeFromPrevGroup_minor ?? null;
 }
 
+function isSnapshotBalanceRow(row: BalanceRow): row is SnapshotBalanceRow {
+  return row.kind === "snapshot";
+}
+
 const tableSorting = ref([
   {
     id: "date",
@@ -855,6 +1007,26 @@ function sortableHeader(column: Column<BalanceRow, unknown>, label: string) {
   });
 }
 
+function snapshotRowActions(row: SnapshotBalanceRow) {
+  return [
+    {
+      type: "label" as const,
+      label: "Actions"
+    },
+    {
+      label: "Edit snapshot",
+      icon: "i-lucide-pencil",
+      onSelect: () => openSnapshotEditor(row.snapshot_id)
+    },
+    {
+      label: "Delete snapshot",
+      icon: "i-lucide-trash-2",
+      color: "error" as const,
+      onSelect: () => openSnapshotDeleteDialog([row.snapshot_id])
+    }
+  ];
+}
+
 const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
   {
     id: "month_group",
@@ -866,6 +1038,41 @@ const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
     accessorFn: (row) => row.date.slice(0, 4),
     enableSorting: false
   },
+  ...(tableView.value === "snapshots"
+    ? [{
+      id: "select",
+      enableSorting: false,
+      meta: {
+        class: {
+          th: "w-auto",
+          td: "w-auto"
+        }
+      },
+      header: () => h(UCheckbox, {
+        modelValue: someSnapshotsSelected.value ? "indeterminate" : allSnapshotsSelected.value,
+        "onUpdate:modelValue": (value: boolean | "indeterminate") => toggleAllSnapshots(value === true),
+        "aria-label": "Select all snapshots"
+      }),
+      cell: ({ row }: { row: TableRow<BalanceRow> }) => {
+        if (row.getIsGrouped()) {
+          return h(UCheckbox, {
+            modelValue: groupedSnapshotSelectionState(row),
+            "onUpdate:modelValue": (value: boolean | "indeterminate") => setGroupedSnapshotsSelected(row, value === true),
+            "aria-label": "Select grouped snapshots"
+          });
+        }
+
+        const originalRow = row.original;
+        if (!isSnapshotBalanceRow(originalRow)) return null;
+
+        return h(UCheckbox, {
+          modelValue: isSnapshotSelected(originalRow.snapshot_id),
+          "onUpdate:modelValue": (value: boolean | "indeterminate") => setSnapshotSelected(originalRow.snapshot_id, value === true),
+          "aria-label": `Select snapshot ${originalRow.snapshot_id}`
+        });
+      }
+    } satisfies TableColumn<BalanceRow>]
+    : []),
   {
     accessorKey: "date",
     header: ({ column }) => sortableHeader(column, "Date"),
@@ -897,6 +1104,34 @@ const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
         td: "text-right w-auto"
       }
     }
-  }
+  },
+  ...(tableView.value === "snapshots"
+    ? [{
+      id: "actions",
+      enableSorting: false,
+      meta: {
+        class: {
+          th: "w-auto",
+          td: "text-right w-auto"
+        }
+      },
+      header: "",
+      cell: ({ row }: { row: TableRow<BalanceRow> }) => {
+        const originalRow = row.original;
+        if (row.getIsGrouped() || !isSnapshotBalanceRow(originalRow)) return null;
+
+        return h(UDropdownMenu, {
+          items: snapshotRowActions(originalRow),
+          content: { align: "end" },
+          "aria-label": "Snapshot actions"
+        }, () => h(UButton, {
+          icon: "i-lucide-ellipsis-vertical",
+          color: "neutral",
+          variant: "ghost",
+          "aria-label": "Snapshot actions"
+        }));
+      }
+    } satisfies TableColumn<BalanceRow>]
+    : [])
 ]);
 </script>

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AccountSnapshotsDeleteInput",
+  "type": "object",
+  "properties": {
+    "snapshot_ids": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "snapshot_ids"
+  ]
+}

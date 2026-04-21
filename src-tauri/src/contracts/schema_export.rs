@@ -25,8 +25,7 @@ pub fn export_all(output_dir: &Path) -> Result<()> {
         let json = (schema_export.schema_json)()
             .with_context(|| format!("generate schema {}", schema_export.type_name))?;
         let path = output_dir.join(schema_export.file_name);
-        std::fs::write(&path, json)
-            .with_context(|| format!("write schema {}", path.display()))?;
+        std::fs::write(&path, json).with_context(|| format!("write schema {}", path.display()))?;
     }
 
     Ok(())

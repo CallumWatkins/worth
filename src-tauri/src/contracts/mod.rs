@@ -143,6 +143,42 @@ pub struct AccountUpsertInput {
     pub opened_date: Option<NaiveDate>,
 }
 
+#[crate::export_schema]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
+pub struct AccountSnapshotWriteInput {
+    #[garde(skip)]
+    pub date: NaiveDate,
+    #[garde(skip)]
+    pub balance_minor: i64,
+    #[garde(skip)]
+    pub overwrite_existing: bool,
+}
+
+#[crate::export_schema]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
+pub struct AccountSnapshotsCreateInput {
+    #[garde(length(min = 1), dive)]
+    pub snapshots: Vec<AccountSnapshotWriteInput>,
+}
+
+#[crate::export_schema]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
+pub struct AccountSnapshotUpdateInput {
+    #[garde(skip)]
+    pub date: NaiveDate,
+    #[garde(skip)]
+    pub balance_minor: i64,
+    #[garde(skip)]
+    pub overwrite_existing: bool,
+}
+
+#[crate::export_schema]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
+pub struct AccountSnapshotsDeleteInput {
+    #[garde(length(min = 1))]
+    pub snapshot_ids: Vec<i64>,
+}
+
 fn validate_normal_balance_sign(value: &i32, _ctx: &()) -> garde::Result {
     if !matches!(*value, -1 | 1) {
         return Err(garde::Error::new("Normal balance sign must be 1 or -1"));

@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use tauri::State;
 
 use crate::contracts::{
+    AccountSnapshotUpdateInput, AccountSnapshotsCreateInput, AccountSnapshotsDeleteInput,
     AccountTypeName, AccountUpsertInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput,
 };
 use crate::state::AppState;
@@ -521,6 +522,147 @@ pub async fn account_snapshots_list(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn account_snapshots_create(
+    state: State<'_, AppState>,
+    account_id: i64,
+    input: AccountSnapshotsCreateInput,
+) -> Result<(), ApiError> {
+    let pool = &state.pool;
+
+    let exists = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .is_some();
+    if !exists {
+        return Err(ApiError::NotFound);
+    }
+
+    validate_account_snapshots_create(pool, account_id, &input).await?;
+    let snapshot_dates = input
+        .snapshots
+        .iter()
+        .map(|snapshot| snapshot.date)
+        .collect::<Vec<_>>();
+    let existing_by_date = db::snapshots_for_account_dates(pool, account_id, &snapshot_dates)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .map(|row| (row.balance_date, row.id))
+        .collect::<HashMap<_, _>>();
+
+    let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+    for snapshot in input.snapshots {
+        if let Some(existing_id) = existing_by_date.get(&snapshot.date) {
+            db::account_snapshot_update_tx(
+                &mut tx,
+                account_id,
+                *existing_id,
+                snapshot.date,
+                snapshot.balance_minor,
+            )
+            .await
+            .map_err(map_account_snapshot_write_error)?;
+            continue;
+        }
+
+        db::account_snapshot_create_tx(&mut tx, account_id, snapshot.date, snapshot.balance_minor)
+            .await
+            .map_err(map_account_snapshot_write_error)?;
+    }
+
+    tx.commit().await.map_err(|_| ApiError::Db)?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn account_snapshot_update(
+    state: State<'_, AppState>,
+    account_id: i64,
+    snapshot_id: i64,
+    input: AccountSnapshotUpdateInput,
+) -> Result<(), ApiError> {
+    let pool = &state.pool;
+
+    let exists = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .is_some();
+    if !exists {
+        return Err(ApiError::NotFound);
+    }
+
+    let current = db::account_snapshot_get(pool, account_id, snapshot_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    if current.is_none() {
+        return Err(ApiError::NotFound);
+    }
+
+    validate_account_snapshot_update(pool, account_id, snapshot_id, &input).await?;
+    let conflicting = db::snapshots_for_account_dates(pool, account_id, &[input.date])
+        .await
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .find(|snapshot| snapshot.id != snapshot_id);
+
+    let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+    if let Some(conflicting) = conflicting {
+        db::account_snapshot_delete_many_tx(&mut tx, account_id, &[conflicting.id])
+            .await
+            .map_err(|_| ApiError::Db)?;
+    }
+
+    let updated = db::account_snapshot_update_tx(
+        &mut tx,
+        account_id,
+        snapshot_id,
+        input.date,
+        input.balance_minor,
+    )
+    .await
+    .map_err(map_account_snapshot_write_error)?;
+    if !updated {
+        return Err(ApiError::NotFound);
+    }
+
+    tx.commit().await.map_err(|_| ApiError::Db)?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn account_snapshots_delete(
+    state: State<'_, AppState>,
+    account_id: i64,
+    input: AccountSnapshotsDeleteInput,
+) -> Result<(), ApiError> {
+    let pool = &state.pool;
+
+    let exists = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .is_some();
+    if !exists {
+        return Err(ApiError::NotFound);
+    }
+
+    let snapshot_ids = validate_account_snapshots_delete(&input)?;
+
+    let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+    let deleted = db::account_snapshot_delete_many_tx(&mut tx, account_id, &snapshot_ids)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    if deleted != snapshot_ids.len() as u64 {
+        return Err(ApiError::NotFound);
+    }
+
+    tx.commit().await.map_err(|_| ApiError::Db)?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn institutions_delete_preview(
     state: State<'_, AppState>,
     institution_id: i64,
@@ -904,6 +1046,135 @@ async fn validate_account_upsert(
     })
 }
 
+async fn validate_account_snapshots_create(
+    pool: &SqlitePool,
+    account_id: i64,
+    input: &AccountSnapshotsCreateInput,
+) -> Result<(), ApiError> {
+    let mut issues = validation_issues_from_garde_report(input.validate().err());
+    let mut seen_dates = HashMap::<NaiveDate, usize>::new();
+    let mut unique_dates = Vec::<NaiveDate>::new();
+    let mut previous_date = None;
+
+    for (index, snapshot) in input.snapshots.iter().enumerate() {
+        if snapshot.date > Utc::now().date_naive() {
+            issues.push(validation_issue(
+                &format!("snapshots.{index}.date"),
+                "Snapshot date cannot be in the future",
+            ));
+        }
+
+        if let Some(last_date) = previous_date {
+            if snapshot.date <= last_date {
+                issues.push(validation_issue(
+                    &format!("snapshots.{index}.date"),
+                    "Snapshots must be in ascending date order",
+                ));
+            }
+        }
+        previous_date = Some(snapshot.date);
+
+        if let Some(existing_index) = seen_dates.insert(snapshot.date, index) {
+            issues.push(validation_issue(
+                &format!("snapshots.{existing_index}.date"),
+                "Duplicate snapshot date",
+            ));
+            issues.push(validation_issue(
+                &format!("snapshots.{index}.date"),
+                "Duplicate snapshot date",
+            ));
+        } else {
+            unique_dates.push(snapshot.date);
+        }
+    }
+
+    if !unique_dates.is_empty() {
+        let existing_by_date = db::snapshots_for_account_dates(pool, account_id, &unique_dates)
+            .await
+            .map_err(|_| ApiError::Db)?
+            .into_iter()
+            .map(|row| (row.balance_date, row.id))
+            .collect::<HashMap<_, _>>();
+
+        for (index, snapshot) in input.snapshots.iter().enumerate() {
+            if existing_by_date.contains_key(&snapshot.date) && !snapshot.overwrite_existing {
+                issues.push(validation_issue(
+                    &format!("snapshots.{index}.overwrite_existing"),
+                    "This date already exists. Confirm overwrite to continue",
+                ));
+            }
+        }
+    }
+
+    if !issues.is_empty() {
+        return Err(ApiError::Validation(issues));
+    }
+
+    Ok(())
+}
+
+async fn validate_account_snapshot_update(
+    pool: &SqlitePool,
+    account_id: i64,
+    snapshot_id: i64,
+    input: &AccountSnapshotUpdateInput,
+) -> Result<(), ApiError> {
+    let mut issues = validation_issues_from_garde_report(input.validate().err());
+
+    if input.date > Utc::now().date_naive() {
+        issues.push(validation_issue(
+            "date",
+            "Snapshot date cannot be in the future",
+        ));
+    }
+
+    let conflicting = db::snapshots_for_account_dates(pool, account_id, &[input.date])
+        .await
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .find(|snapshot| snapshot.id != snapshot_id);
+    if conflicting.is_some() && !input.overwrite_existing {
+        issues.push(validation_issue(
+            "overwrite_existing",
+            "This date already exists. Confirm overwrite to continue",
+        ));
+    }
+
+    if !issues.is_empty() {
+        return Err(ApiError::Validation(issues));
+    }
+
+    Ok(())
+}
+
+fn validate_account_snapshots_delete(
+    input: &AccountSnapshotsDeleteInput,
+) -> Result<Vec<i64>, ApiError> {
+    let mut issues = validation_issues_from_garde_report(input.validate().err());
+    let mut snapshot_ids = Vec::with_capacity(input.snapshot_ids.len());
+    let mut seen = HashSet::new();
+
+    for (index, snapshot_id) in input.snapshot_ids.iter().enumerate() {
+        if *snapshot_id < 1 {
+            issues.push(validation_issue(
+                &format!("snapshot_ids.{index}"),
+                "Snapshot id must be greater than 0",
+            ));
+            continue;
+        }
+
+        if seen.insert(*snapshot_id) {
+            snapshot_ids.push(*snapshot_id);
+        }
+    }
+
+    if !issues.is_empty() {
+        return Err(ApiError::Validation(issues));
+    }
+
+    Ok(snapshot_ids)
+}
+
 fn validation_issue(field: &str, message: &str) -> ValidationIssue {
     ValidationIssue {
         field: field.to_string(),
@@ -976,6 +1247,20 @@ fn map_account_write_error(error: sqlx::Error) -> ApiError {
         return ApiError::Validation(vec![validation_issue(
             "name",
             "An account with this name already exists for this institution",
+        )]);
+    }
+
+    ApiError::Db
+}
+
+fn map_account_snapshot_write_error(error: sqlx::Error) -> ApiError {
+    if is_unique_constraint(
+        &error,
+        "account_balance_snapshots.account_id, account_balance_snapshots.balance_date",
+    ) {
+        return ApiError::Validation(vec![validation_issue(
+            "date",
+            "A snapshot already exists for this date",
         )]);
     }
 
@@ -1181,6 +1466,9 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         institutions_get,
         accounts_get,
         account_snapshots_list,
+        account_snapshots_create,
+        account_snapshot_update,
+        account_snapshots_delete,
         account_balance_over_time,
         dashboard_get,
         dashboard_balance_over_time,

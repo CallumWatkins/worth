@@ -29,14 +29,6 @@ function getDateFormatter(locale: string, options: Intl.DateTimeFormatOptions) {
   return formatter;
 }
 
-function parseIsoDateOnly(iso: string | null | undefined) {
-  if (iso == null || iso === "") {
-    return null;
-  }
-
-  return new Date(`${iso}T00:00:00`);
-}
-
 export function useLocaleFormatters() {
   const { code } = useAppLocale();
 
@@ -49,11 +41,11 @@ export function useLocaleFormatters() {
   }
 
   function formatCurrencyMinor(minor: number, currencyCode: CurrencyCode, options: Intl.NumberFormatOptions = {}) {
-    return formatCurrency(minor / 100, currencyCode, options);
+    return formatCurrency(convertCurrencyMinorUnitsToMajorAmount(minor), currencyCode, options);
   }
 
   function formatDate(iso: string | null | undefined, options: Intl.DateTimeFormatOptions, fallback = "—") {
-    const date = parseIsoDateOnly(iso);
+    const date = getDateObjectFromCalendarDateIsoString(iso);
 
     if (date == null || Number.isNaN(date.getTime())) {
       return fallback;

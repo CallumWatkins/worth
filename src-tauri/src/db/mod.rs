@@ -578,6 +578,149 @@ pub async fn snapshots_for_account(
     Ok(rows)
 }
 
+pub async fn snapshots_for_account_dates(
+    pool: &SqlitePool,
+    account_id: i64,
+    dates: &[NaiveDate],
+) -> Result<Vec<rows::AccountBalanceSnapshotRow>, sqlx::Error> {
+    if dates.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        r"
+        SELECT
+            id,
+            account_id,
+            balance_date,
+            balance_minor,
+            created_at
+        FROM
+            account_balance_snapshots
+        WHERE
+            account_id = ",
+    );
+    qb.push_bind(account_id);
+    qb.push(" AND balance_date IN (");
+    {
+        let mut separated = qb.separated(", ");
+        for date in dates {
+            separated.push_bind(date);
+        }
+    }
+    qb.push(") ORDER BY balance_date ASC");
+
+    qb.build_query_as::<rows::AccountBalanceSnapshotRow>()
+        .fetch_all(pool)
+        .await
+}
+
+pub async fn account_snapshot_get(
+    pool: &SqlitePool,
+    account_id: i64,
+    snapshot_id: i64,
+) -> Result<Option<rows::AccountBalanceSnapshotRow>, sqlx::Error> {
+    sqlx::query_as::<_, rows::AccountBalanceSnapshotRow>(
+        r"
+        SELECT
+            id,
+            account_id,
+            balance_date,
+            balance_minor,
+            created_at
+        FROM
+            account_balance_snapshots
+        WHERE
+            account_id = ?
+            AND id = ?
+        ",
+    )
+    .bind(account_id)
+    .bind(snapshot_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn account_snapshot_create_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    account_id: i64,
+    balance_date: NaiveDate,
+    balance_minor: i64,
+) -> Result<i64, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        INSERT INTO
+            account_balance_snapshots (
+                account_id,
+                balance_date,
+                balance_minor
+            )
+        VALUES
+            (?, ?, ?)
+        ",
+    )
+    .bind(account_id)
+    .bind(balance_date)
+    .bind(balance_minor)
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn account_snapshot_update_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    account_id: i64,
+    snapshot_id: i64,
+    balance_date: NaiveDate,
+    balance_minor: i64,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r"
+        UPDATE account_balance_snapshots
+        SET
+            balance_date = ?,
+            balance_minor = ?
+        WHERE
+            account_id = ?
+            AND id = ?
+        ",
+    )
+    .bind(balance_date)
+    .bind(balance_minor)
+    .bind(account_id)
+    .bind(snapshot_id)
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn account_snapshot_delete_many_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    account_id: i64,
+    snapshot_ids: &[i64],
+) -> Result<u64, sqlx::Error> {
+    if snapshot_ids.is_empty() {
+        return Ok(0);
+    }
+
+    let mut qb =
+        QueryBuilder::<Sqlite>::new("DELETE FROM account_balance_snapshots WHERE account_id = ");
+    qb.push_bind(account_id);
+    qb.push(" AND id IN (");
+    {
+        let mut separated = qb.separated(", ");
+        for snapshot_id in snapshot_ids {
+            separated.push_bind(snapshot_id);
+        }
+    }
+    qb.push(")");
+
+    let result = qb.build().execute(&mut **tx).await?;
+    Ok(result.rows_affected())
+}
+
 pub async fn snapshots_for_accounts_between(
     pool: &SqlitePool,
     account_ids: &[i64],

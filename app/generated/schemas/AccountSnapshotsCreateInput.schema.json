@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AccountSnapshotsCreateInput",
+  "type": "object",
+  "properties": {
+    "snapshots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AccountSnapshotWriteInput"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "snapshots"
+  ],
+  "$defs": {
+    "AccountSnapshotWriteInput": {
+      "type": "object",
+      "properties": {
+        "balance_minor": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "overwrite_existing": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "date",
+        "balance_minor",
+        "overwrite_existing"
+      ]
+    }
+  }
+}

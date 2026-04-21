@@ -1,5 +1,5 @@
-use proc_macro::TokenStream;
 use heck::ToSnakeCase;
+use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse::Parser;
 use syn::{spanned::Spanned, Expr, ExprLit, Item, Lit, Meta};
@@ -18,7 +18,11 @@ pub fn export_schema(attr: TokenStream, item: TokenStream) -> TokenStream {
     for argument in args {
         match argument {
             Meta::NameValue(name_value) if name_value.path.is_ident("file_name") => {
-                let Expr::Lit(ExprLit { lit: Lit::Str(value), .. }) = name_value.value else {
+                let Expr::Lit(ExprLit {
+                    lit: Lit::Str(value),
+                    ..
+                }) = name_value.value
+                else {
                     return syn::Error::new(
                         name_value.value.span(),
                         "expected string literal for `file_name`",
