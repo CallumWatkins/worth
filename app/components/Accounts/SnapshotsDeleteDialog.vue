@@ -1,7 +1,7 @@
 <template>
   <UModal
     v-model:open="open"
-    :dismissible="false"
+    :dismissible="true"
     :title="dialogSnapshots.length === 1 ? 'Delete snapshot' : 'Delete snapshots'"
     :close="false"
     @after:leave="onAfterLeave"

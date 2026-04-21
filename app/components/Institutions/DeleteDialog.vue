@@ -2,7 +2,7 @@
   <UModal
     v-model:open="open"
     title="Delete institution"
-    :dismissible="false"
+    :dismissible="true"
     :close="false"
   >
     <template #body>
