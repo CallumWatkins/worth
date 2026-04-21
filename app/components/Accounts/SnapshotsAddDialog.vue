@@ -31,7 +31,7 @@
                 <th class="px-3 py-2">
                   Change
                 </th>
-                <th class="min-w-60" />
+                <th class="min-w-40" />
                 <th />
               </tr>
             </thead>
@@ -85,7 +85,7 @@
                     </div>
                   </div>
                   <div v-else class="text-muted">
-                    No previous snapshot
+                    None
                   </div>
                 </td>
 
@@ -114,8 +114,7 @@
                 <td class="p-3">
                   <div class="space-y-2">
                     <div v-if="rowState(index).conflictExisting" class="text-warning">
-                      Overwrites the existing snapshot from {{ formatShortDate(row.date) }}
-                      at {{ formatCurrencyMinor(rowState(index).conflictExisting!.balance_minor, props.currencyCode) }}.
+                      Overwrites the existing snapshot of {{ formatCurrencyMinor(rowState(index).conflictExisting!.balance_minor, props.currencyCode) }}.
                     </div>
                     <div v-if="rowState(index).sameBalanceWarning" class="text-warning">
                       Balance is the same as the previous snapshot.
