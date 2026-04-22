@@ -33,7 +33,19 @@
         variant="subtle"
         :title="accountsQuery.error.message"
       />
+
+      <EmptyPageState
+        v-if="accountsQuery.isSuccess && accountsQuery.data.length === 0"
+        icon="i-lucide-wallet"
+        title="No accounts yet"
+        description="Create an account to start tracking balance snapshots over time."
+        action-label="Create account"
+        action-icon="i-lucide-plus"
+        @action="createDialogOpen = true"
+      />
+
       <AccountsTable
+        v-else
         :accounts="accountsQuery.data ?? []"
         :group-by="groupBy"
         :show-empty="showEmpty"

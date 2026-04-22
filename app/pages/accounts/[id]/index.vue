@@ -100,219 +100,231 @@
           </UPageCard>
         </div>
 
-        <UPageCard
-          :ui="{
-            body: 'w-full',
-            spotlight: 'bg-default/95'
-          }"
-        >
-          <template #body>
-            <div class="flex flex-row items-center justify-between">
-              <div>
-                <div class="text-base text-pretty font-semibold text-highlighted">
-                  Balance Over Time
-                </div>
-                <div class="text-[15px] text-pretty text-muted mt-1">
-                  Growth trajectory over
-                  <template v-if="balanceOverTimePeriod === '1M'">
-                    the last month
-                  </template>
-                  <template v-else-if="balanceOverTimePeriod === '6M'">
-                    the last 6 months
-                  </template>
-                  <template v-else-if="balanceOverTimePeriod === '1Y'">
-                    the last year
-                  </template>
-                  <template v-else-if="balanceOverTimePeriod === 'MAX'">
-                    all time
-                  </template>
-                </div>
-              </div>
-              <div class="mt-4 sm:mt-0 sm:ml-6 shrink-0">
-                <UTabs
-                  v-model="balanceOverTimePeriod"
-                  :items="balanceOverTimePeriodItems"
-                  :content="false"
-                  color="neutral"
-                  size="sm"
-                  :ui="{
-                    indicator: 'bg-neutral-700',
-                    label: 'text-neutral-300'
-                  }"
-                />
-              </div>
-            </div>
-          </template>
+        <EmptyPageState
+          v-if="snapshotsQuery.isSuccess && snapshotsQuery.data.length === 0"
+          icon="i-lucide-chart-line"
+          title="No snapshots yet"
+          description="Add balance snapshots to start building this account's history."
+          action-label="Add snapshots"
+          action-icon="i-lucide-plus"
+          @action="addSnapshotsOpen = true"
+        />
 
-          <UAlert
-            v-if="balanceOverTimeQuery.isError"
-            class="mb-4"
-            color="error"
-            variant="subtle"
-            :title="balanceOverTimeQuery.error.message"
-          />
-
-          <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
-            <div class="inline-flex items-center gap-2">
-              <UIcon
-                v-if="balanceOverTimeQuery.isFetching"
-                name="i-lucide-loader-2"
-                class="size-4 animate-spin text-neutral-400"
-              />
-              <span v-else>No data</span>
-            </div>
-          </div>
-
-          <VChart
-            v-else
-            :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data?.length ?? 0}`"
-            :option="balanceOverTimeOption"
-            autoresize
-            style="height: 300px; width: 100%"
-          />
-        </UPageCard>
-
-        <UPageCard
-          :ui="{ body: 'w-full' }"
-        >
-          <template #body>
-            <div class="flex flex-row items-center justify-between">
-              <div>
-                <div class="text-base text-pretty font-semibold text-highlighted">
-                  Balances
+        <template v-else>
+          <UPageCard
+            :ui="{
+              body: 'w-full',
+              spotlight: 'bg-default/95'
+            }"
+          >
+            <template #body>
+              <div class="flex flex-row items-center justify-between">
+                <div>
+                  <div class="text-base text-pretty font-semibold text-highlighted">
+                    Balance Over Time
+                  </div>
+                  <div class="text-[15px] text-pretty text-muted mt-1">
+                    Growth trajectory over
+                    <template v-if="balanceOverTimePeriod === '1M'">
+                      the last month
+                    </template>
+                    <template v-else-if="balanceOverTimePeriod === '6M'">
+                      the last 6 months
+                    </template>
+                    <template v-else-if="balanceOverTimePeriod === '1Y'">
+                      the last year
+                    </template>
+                    <template v-else-if="balanceOverTimePeriod === 'MAX'">
+                      all time
+                    </template>
+                  </div>
                 </div>
-                <div class="text-[15px] text-pretty text-muted mt-1">
-                  {{ balancesDescription }}
-                </div>
-              </div>
-              <div class="flex flex-row flex-wrap gap-3 items-end">
-                <UFormField name="viewType" label="View" :ui="{ label: 'text-muted' }">
+                <div class="mt-4 sm:mt-0 sm:ml-6 shrink-0">
                   <UTabs
-                    v-model="tableView"
-                    :items="tableViewItems"
+                    v-model="balanceOverTimePeriod"
+                    :items="balanceOverTimePeriodItems"
                     :content="false"
                     color="neutral"
                     size="sm"
+                    :ui="{
+                      indicator: 'bg-neutral-700',
+                      label: 'text-neutral-300'
+                    }"
                   />
-                </UFormField>
-                <div class="flex items-center gap-2">
-                  <UFormField name="groupBy" label="Group by" :ui="{ label: 'text-muted' }">
-                    <USelect
-                      v-model="balanceGroupBy"
-                      :items="balanceGroupByItems"
-                      class="w-44"
-                      color="neutral"
-                      variant="subtle"
-                      :ui="{ base: 'min-h-9 ring-0' }"
-                    />
-                  </UFormField>
-                </div>
-                <div v-if="tableView === 'snapshots'" class="flex items-center gap-2">
-                  <UButton
-                    icon="i-lucide-plus"
-                    :disabled="!accountQuery.data"
-                    @click="addSnapshotsOpen = true"
-                  >
-                    Add snapshots
-                  </UButton>
-                  <UButton
-                    v-if="selectedSnapshotCount"
-                    color="error"
-                    variant="subtle"
-                    icon="i-lucide-trash-2"
-                    @click="openSnapshotDeleteDialog(selectedSnapshotIds)"
-                  >
-                    Delete selected ({{ selectedSnapshotCount }})
-                  </UButton>
                 </div>
               </div>
-            </div>
+            </template>
 
             <UAlert
-              v-if="snapshotsQuery.isError"
+              v-if="balanceOverTimeQuery.isError"
               class="mb-4"
               color="error"
               variant="subtle"
-              :title="snapshotsQuery.error.message"
+              :title="balanceOverTimeQuery.error.message"
             />
 
-            <UTable
-              v-model:sorting="tableSorting"
-              v-model:column-visibility="balanceColumnVisibility"
-              :data="balanceTableData"
-              :columns="balanceTableColumns"
-              :grouping="balanceGrouping"
-              :grouping-options="balanceGroupingOptions"
-              :empty="balanceTableEmpty"
-              :ui="{ root: 'min-w-full', td: 'empty:p-0' }"
-              sticky
-              class="max-h-[500px] overflow-auto"
-            >
-              <template #date-cell="{ row }">
-                <div class="flex items-center gap-2">
-                  <span
-                    class="inline-block"
-                    :style="{ width: `calc(${row.depth} * 1rem)` }"
-                  />
+            <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
+              <div class="inline-flex items-center gap-2">
+                <UIcon
+                  v-if="balanceOverTimeQuery.isFetching"
+                  name="i-lucide-loader-2"
+                  class="size-4 animate-spin text-neutral-400"
+                />
+                <span v-else>No data</span>
+              </div>
+            </div>
 
-                  <template v-if="row.getIsGrouped()">
-                    <UButton
-                      variant="outline"
+            <VChart
+              v-else
+              :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data?.length ?? 0}`"
+              :option="balanceOverTimeOption"
+              autoresize
+              style="height: 300px; width: 100%"
+            />
+          </UPageCard>
+
+          <UPageCard
+            :ui="{ body: 'w-full' }"
+          >
+            <template #body>
+              <div class="flex flex-row items-center justify-between">
+                <div>
+                  <div class="text-base text-pretty font-semibold text-highlighted">
+                    Balances
+                  </div>
+                  <div class="text-[15px] text-pretty text-muted mt-1">
+                    {{ balancesDescription }}
+                  </div>
+                </div>
+                <div class="flex flex-row flex-wrap gap-3 items-end">
+                  <UFormField name="viewType" label="View" :ui="{ label: 'text-muted' }">
+                    <UTabs
+                      v-model="tableView"
+                      :items="tableViewItems"
+                      :content="false"
                       color="neutral"
-                      size="xs"
-                      class="shrink-0"
-                      :icon="row.getIsExpanded() ? 'i-lucide-minus' : 'i-lucide-plus'"
-                      :class="!row.getCanExpand() ? 'invisible' : ''"
-                      :ui="{ base: 'p-0 rounded-sm', leadingIcon: 'size-4' }"
-                      @click.stop="row.toggleExpanded()"
+                      size="sm"
+                    />
+                  </UFormField>
+                  <div class="flex items-center gap-2">
+                    <UFormField name="groupBy" label="Group by" :ui="{ label: 'text-muted' }">
+                      <USelect
+                        v-model="balanceGroupBy"
+                        :items="balanceGroupByItems"
+                        class="w-44"
+                        color="neutral"
+                        variant="subtle"
+                        :ui="{ base: 'min-h-9 ring-0' }"
+                      />
+                    </UFormField>
+                  </div>
+                  <div v-if="tableView === 'snapshots'" class="flex items-center gap-2">
+                    <UButton
+                      icon="i-lucide-plus"
+                      :disabled="!accountQuery.data"
+                      @click="addSnapshotsOpen = true"
+                    >
+                      Add snapshots
+                    </UButton>
+                    <UButton
+                      v-if="selectedSnapshotCount"
+                      color="error"
+                      variant="subtle"
+                      icon="i-lucide-trash-2"
+                      @click="openSnapshotDeleteDialog(selectedSnapshotIds)"
+                    >
+                      Delete selected ({{ selectedSnapshotCount }})
+                    </UButton>
+                  </div>
+                </div>
+              </div>
+
+              <UAlert
+                v-if="snapshotsQuery.isError"
+                class="mb-4"
+                color="error"
+                variant="subtle"
+                :title="snapshotsQuery.error.message"
+              />
+
+              <UTable
+                v-model:sorting="tableSorting"
+                v-model:column-visibility="balanceColumnVisibility"
+                :data="balanceTableData"
+                :columns="balanceTableColumns"
+                :grouping="balanceGrouping"
+                :grouping-options="balanceGroupingOptions"
+                :empty="balanceTableEmpty"
+                :ui="{ root: 'min-w-full', td: 'empty:p-0' }"
+                sticky
+                class="max-h-[500px] overflow-auto"
+              >
+                <template #date-cell="{ row }">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="inline-block"
+                      :style="{ width: `calc(${row.depth} * 1rem)` }"
                     />
 
-                    <span class="font-semibold text-highlighted">
-                      {{ balanceGroupLabel(row) }}
+                    <template v-if="row.getIsGrouped()">
+                      <UButton
+                        variant="outline"
+                        color="neutral"
+                        size="xs"
+                        class="shrink-0"
+                        :icon="row.getIsExpanded() ? 'i-lucide-minus' : 'i-lucide-plus'"
+                        :class="!row.getCanExpand() ? 'invisible' : ''"
+                        :ui="{ base: 'p-0 rounded-sm', leadingIcon: 'size-4' }"
+                        @click.stop="row.toggleExpanded()"
+                      />
+
+                      <span class="font-semibold text-highlighted">
+                        {{ balanceGroupLabel(row) }}
+                      </span>
+                      <UBadge v-if="tableView === 'snapshots'" variant="subtle" color="neutral" size="sm">
+                        {{ row.subRows.length }}
+                      </UBadge>
+                    </template>
+
+                    <span v-else class="text-highlighted">
+                      {{ formatShortDate(row.original.date) }}
                     </span>
-                    <UBadge v-if="tableView === 'snapshots'" variant="subtle" color="neutral" size="sm">
-                      {{ row.subRows.length }}
-                    </UBadge>
+                  </div>
+                </template>
+
+                <template #balance-cell="{ row }">
+                  <span v-if="row.getIsGrouped()" class="font-semibold text-highlighted">
+                    <span v-if="!groupedEndBalanceMinor(row)" class="text-muted">—</span>
+                    <span v-else>{{ formatCurrencyMinor(groupedEndBalanceMinor(row)!, accountQuery.data.currency_code) }}</span>
+                  </span>
+                  <span v-else>
+                    {{ formatCurrencyMinor(row.original.balance_minor, accountQuery.data.currency_code) }}
+                  </span>
+                </template>
+
+                <template #change-cell="{ row }">
+                  <template v-if="row.getIsGrouped()">
+                    <span v-if="!groupedChangeMinor(row)" class="text-muted">—</span>
+                    <span v-else :class="groupedChangeMinor(row)! >= 0 ? 'text-success' : 'text-error'">
+                      {{ formatCurrencyMinor(groupedChangeMinor(row)!, accountQuery.data.currency_code, { signDisplay: "always" }) }}
+                    </span>
                   </template>
 
-                  <span v-else class="text-highlighted">
-                    {{ formatShortDate(row.original.date) }}
-                  </span>
-                </div>
-              </template>
-
-              <template #balance-cell="{ row }">
-                <span v-if="row.getIsGrouped()" class="font-semibold text-highlighted">
-                  <span v-if="!groupedEndBalanceMinor(row)" class="text-muted">—</span>
-                  <span v-else>{{ formatCurrencyMinor(groupedEndBalanceMinor(row)!, accountQuery.data.currency_code) }}</span>
-                </span>
-                <span v-else>
-                  {{ formatCurrencyMinor(row.original.balance_minor, accountQuery.data.currency_code) }}
-                </span>
-              </template>
-
-              <template #change-cell="{ row }">
-                <template v-if="row.getIsGrouped()">
-                  <span v-if="!groupedChangeMinor(row)" class="text-muted">—</span>
-                  <span v-else :class="groupedChangeMinor(row)! >= 0 ? 'text-success' : 'text-error'">
-                    {{ formatCurrencyMinor(groupedChangeMinor(row)!, accountQuery.data.currency_code, { signDisplay: "always" }) }}
-                  </span>
+                  <template v-else>
+                    <span v-if="!row.original.change_minor" class="text-muted">—</span>
+                    <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
+                      {{ formatCurrencyMinor(row.original.change_minor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
+                    </span>
+                  </template>
                 </template>
+              </UTable>
 
-                <template v-else>
-                  <span v-if="!row.original.change_minor" class="text-muted">—</span>
-                  <span v-else :class="row.original.change_minor >= 0 ? 'text-success' : 'text-error'">
-                    {{ formatCurrencyMinor(row.original.change_minor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
-                  </span>
-                </template>
-              </template>
-            </UTable>
-
-            <div v-if="tableView === 'snapshots' && selectedSnapshotCount" class="mt-3 text-sm text-muted">
-              {{ selectedSnapshotCount }} snapshot{{ selectedSnapshotCount === 1 ? '' : 's' }} selected
-            </div>
-          </template>
-        </UPageCard>
+              <div v-if="tableView === 'snapshots' && selectedSnapshotCount" class="mt-3 text-sm text-muted">
+                {{ selectedSnapshotCount }} snapshot{{ selectedSnapshotCount === 1 ? '' : 's' }} selected
+              </div>
+            </template>
+          </UPageCard>
+        </template>
 
         <AccountsSnapshotsAddDialog
           v-model:open="addSnapshotsOpen"

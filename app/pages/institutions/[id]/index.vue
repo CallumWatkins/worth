@@ -33,7 +33,18 @@
 
     <UPageBody class="space-y-8">
       <template v-if="institutionQuery.isSuccess">
+        <EmptyPageState
+          v-if="institutionQuery.data.accounts.length === 0"
+          icon="i-lucide-wallet"
+          title="No accounts in this institution yet"
+          description="Create an account to start tracking balance snapshots over time."
+          action-label="Create account"
+          action-icon="i-lucide-plus"
+          @action="createAccountOpen = true"
+        />
+
         <UPageCard
+          v-else
           :ui="{
             body: 'w-full'
           }"

@@ -27,7 +27,18 @@
         :title="institutionsQuery.error.message"
       />
 
+      <EmptyPageState
+        v-if="institutionsQuery.isSuccess && institutionsData.length === 0"
+        icon="i-lucide-building-2"
+        title="No institutions yet"
+        description="Create an institution to start organizing your accounts."
+        action-label="Create institution"
+        action-icon="i-lucide-plus"
+        @action="createDialogOpen = true"
+      />
+
       <UTable
+        v-else
         v-model:sorting="sorting"
         :data="institutionsData"
         :columns="columns"
