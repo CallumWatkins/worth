@@ -26,7 +26,7 @@
 
     <UPageBody class="space-y-8">
       <template v-if="accountQuery.isSuccess">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-4 gap-4">
           <UPageCard
             title="Current Balance"
             variant="subtle"
@@ -139,7 +139,7 @@
                     </template>
                   </div>
                 </div>
-                <div class="mt-4 sm:mt-0 sm:ml-6 shrink-0">
+                <div class="ml-6 shrink-0">
                   <UTabs
                     v-model="balanceOverTimePeriod"
                     :items="balanceOverTimePeriodItems"

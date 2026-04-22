@@ -27,7 +27,7 @@
             :title="submitError"
           />
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 gap-3">
             <div class="rounded-lg border border-default p-3">
               <div class="text-xs uppercase tracking-wide text-muted mb-1">
                 Previous snapshot
