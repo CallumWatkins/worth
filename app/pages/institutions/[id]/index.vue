@@ -62,7 +62,7 @@
               <AccountsTableViewOptions
                 v-model:group-by="groupBy"
                 v-model:activity-period="activityPeriod"
-                v-model:show-empty="showEmpty"
+                v-model:hide-empty="hideEmpty"
                 :group-by-items="groupByItems"
                 :activity-period-items="activityPeriodItems"
               />
@@ -72,7 +72,7 @@
           <AccountsTable
             :accounts="institutionQuery.data.accounts"
             :group-by="groupBy"
-            :show-empty="showEmpty"
+            :hide-empty="hideEmpty"
             :activity-period="activityPeriod"
             :hide-columns="hideColumns"
           />
@@ -98,7 +98,7 @@ const createAccountOpen = ref(false);
 const {
   groupBy,
   groupByItems,
-  showEmpty,
+  hideEmpty,
   activityPeriod,
   activityPeriodItems
 } = useAccountsTableOptions({

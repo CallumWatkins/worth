@@ -146,7 +146,7 @@ type HideColumn = "institution";
 const props = withDefaults(defineProps<{
   accounts: Account[]
   groupBy: GroupBy
-  showEmpty: boolean
+  hideEmpty: boolean
   activityPeriod: ActivityPeriod
   hideColumns?: HideColumn[]
 }>(), {
@@ -163,11 +163,11 @@ const resolvedGroupBy = computed<GroupBy>(() => (
 ));
 
 const accountsData = computed(() => {
-  if (props.showEmpty) {
-    return props.accounts;
+  if (props.hideEmpty) {
+    return props.accounts.filter((a) => a.latest_balance_minor !== 0);
   }
 
-  return props.accounts.filter((a) => a.latest_balance_minor !== 0);
+  return props.accounts;
 });
 
 const grouping = computed(() => {

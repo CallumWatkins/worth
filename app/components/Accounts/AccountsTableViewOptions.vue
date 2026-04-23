@@ -46,12 +46,12 @@
         </UFormField>
 
         <UFormField
-          name="showEmpty"
-          label="Show empty accounts"
+          name="hideEmpty"
+          label="Hide empty accounts"
           orientation="horizontal"
           class="items-center"
         >
-          <UCheckbox v-model="showEmpty" color="neutral" />
+          <UCheckbox v-model="hideEmpty" color="neutral" />
         </UFormField>
       </div>
     </template>
@@ -69,5 +69,5 @@ defineProps<{
 
 const groupBy = defineModel<AccountGroupBy>("groupBy", { required: true });
 const activityPeriod = defineModel<ActivityPeriod>("activityPeriod", { required: true });
-const showEmpty = defineModel<boolean>("showEmpty", { required: true });
+const hideEmpty = defineModel<boolean>("hideEmpty", { required: true });
 </script>

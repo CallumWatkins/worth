@@ -10,7 +10,7 @@ interface UseAccountsTableOptionsArgs {
 
 export function useAccountsTableOptions(args: UseAccountsTableOptionsArgs = {}) {
   const groupBy = ref<AccountGroupBy>("none");
-  const showEmpty = ref(false);
+  const hideEmpty = ref(false);
   const activityPeriod = ref<ActivityPeriod>("1M");
 
   const hiddenColumns = computed<Set<AccountsHideColumn>>(() => (
@@ -46,7 +46,7 @@ export function useAccountsTableOptions(args: UseAccountsTableOptionsArgs = {}) 
   return {
     groupBy,
     groupByItems,
-    showEmpty,
+    hideEmpty,
     activityPeriod,
     activityPeriodItems
   };
