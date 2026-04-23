@@ -8,7 +8,7 @@
       :title="dashboardQuery.error.message"
     />
 
-    <EmptyAppOnboarding v-else-if="dashboardQuery.isSuccess && dashboardQuery.data.active_accounts === 0" />
+    <EmptyAppOnboarding v-else-if="dashboardQuery.isSuccess && dashboardQuery.data.total_accounts === 0" />
 
     <template v-else-if="dashboardQuery.isSuccess">
       <UPageHeader
@@ -53,7 +53,7 @@
             />
             <UPageCard
               :to="{ name: 'accounts' }"
-              title="Accounts"
+              title="Active Accounts"
               :description="String(dashboardQuery.data?.active_accounts ?? 0)"
               variant="subtle"
               :ui="{

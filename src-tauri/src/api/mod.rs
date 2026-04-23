@@ -166,6 +166,7 @@ pub struct DashboardDto {
     pub total_balance_minor: i64,
     pub change_vs_last_month_pct: f64,
     pub monthly_yield_minor: i64,
+    pub total_accounts: u32,
     pub active_accounts: u32,
     pub active_institutions: u32,
     pub allocation_by_type: Vec<DashboardAllocationDto>,
@@ -845,6 +846,7 @@ pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, A
         total_balance_minor,
         change_vs_last_month_pct,
         monthly_yield_minor,
+        total_accounts: u32::try_from(accounts.len()).expect("account count should fit in u32"),
         active_accounts,
         active_institutions: u32::try_from(active_institution_ids.len())
             .expect("active institution count should fit in u32"),
