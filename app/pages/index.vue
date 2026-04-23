@@ -1,162 +1,168 @@
 <template>
   <UContainer>
-    <UPageHeader
-      title="Balance Overview"
-      description="A summary of your balances across all accounts"
-      :ui="{
-        root: 'pb-0 border-none',
-        description: 'mt-1'
-      }"
+    <UAlert
+      v-if="dashboardQuery.isError"
+      class="pt-6"
+      color="error"
+      variant="subtle"
+      :title="dashboardQuery.error.message"
     />
-    <UPageBody class="space-y-8">
-      <UAlert
-        v-if="dashboardQuery.isError"
-        color="error"
-        variant="subtle"
-        :title="dashboardQuery.error.message"
-      />
-      <UPageCard
-        title="Total Current Balance"
-        orientation="horizontal"
-        variant="outline"
-        spotlight
+
+    <EmptyAppOnboarding v-else-if="dashboardQuery.isSuccess && dashboardQuery.data.active_accounts === 0" />
+
+    <template v-else-if="dashboardQuery.isSuccess">
+      <UPageHeader
+        title="Balance Overview"
+        description="A summary of your balances across all accounts"
         :ui="{
-          container: 'lg:grid-cols-[1fr_auto]',
-          title: 'text-muted text-sm',
-          spotlight: 'bg-default/95'
+          root: 'pb-0 border-none',
+          description: 'mt-1'
         }"
-      >
-        <template #description>
-          <div>
-            <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ formatCurrencyMinor(dashboardQuery.data?.total_balance_minor ?? 0, "GBP") }}</span>
-            <span class="inline-flex gap-1 leading-none">
-              <UIcon :name="changeIcon" class="size-4" :class="[changeClass]" />
-              <span :class="changeClass">{{ changePctLabel }}</span>
-              <span class="text-muted text-xs self">vs last month</span>
-            </span>
-          </div>
-        </template>
-        <div class="flex gap-4 *:min-w-32">
-          <UPageCard
-            title="Monthly Yield"
-            :description="monthlyYieldLabel"
-            variant="subtle"
-            :ui="{
-              title: 'text-muted text-sm whitespace-nowrap',
-              description: monthlyYieldDescriptionClass
-            }"
-          />
-          <UPageCard
-            :to="{ name: 'accounts' }"
-            title="Accounts"
-            :description="String(dashboardQuery.data?.active_accounts ?? 0)"
-            variant="subtle"
-            :ui="{
-              title: 'text-muted text-sm whitespace-nowrap',
-              description: 'text-xl font-bold text-default whitespace-nowrap'
-            }"
-          />
-          <UPageCard
-            :to="{ name: 'institutions' }"
-            title="Institutions"
-            :description="String(dashboardQuery.data?.active_institutions ?? 0)"
-            variant="subtle"
-            :ui="{
-              title: 'text-muted text-sm whitespace-nowrap',
-              description: 'text-xl font-bold text-default whitespace-nowrap'
-            }"
-          />
-        </div>
-      </UPageCard>
-      <UPageGrid>
+      />
+      <UPageBody class="space-y-8">
         <UPageCard
-          title="Balance by Account Type"
-          description="Portfolio allocation"
+          title="Total Current Balance"
+          orientation="horizontal"
+          variant="outline"
           spotlight
           :ui="{
-            body: 'w-full',
+            container: 'grid-cols-[1fr_auto]',
+            title: 'text-muted text-sm',
             spotlight: 'bg-default/95'
           }"
         >
-          <VChart
-            :option="balanceAllocationOption"
-            autoresize
-            style="height: 300px; width: 100%"
-            @legendselectchanged="onAllocationLegendSelectChanged"
-          />
-        </UPageCard>
-        <UPageCard
-          class="col-span-2"
-          spotlight
-          :ui="{
-            body: 'w-full',
-            spotlight: 'bg-default/95'
-          }"
-        >
-          <template #body>
-            <div class="flex flex-row items-center justify-between">
-              <div>
-                <div class="text-base text-pretty font-semibold text-highlighted">
-                  Total Balance Over Time
-                </div>
-                <div class="text-[15px] text-pretty text-muted mt-1">
-                  Growth trajectory over
-                  <template v-if="balanceOverTimePeriod === '1M'">
-                    the last month
-                  </template>
-                  <template v-else-if="balanceOverTimePeriod === '6M'">
-                    the last 6 months
-                  </template>
-                  <template v-else-if="balanceOverTimePeriod === '1Y'">
-                    the last year
-                  </template>
-                  <template v-else-if="balanceOverTimePeriod === 'MAX'">
-                    all time
-                  </template>
-                </div>
-              </div>
-              <div class="mt-4 sm:mt-0 sm:ml-6 shrink-0">
-                <UTabs
-                  v-model="balanceOverTimePeriod"
-                  :items="balanceOverTimePeriodItems"
-                  :content="false"
-                  color="neutral"
-                  size="sm"
-                  :ui="{
-                    indicator: 'bg-neutral-700',
-                    label: 'text-neutral-300'
-                  }"
-                />
-              </div>
+          <template #description>
+            <div>
+              <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ formatCurrencyMinor(dashboardQuery.data?.total_balance_minor ?? 0, "GBP") }}</span>
+              <span class="inline-flex gap-1 leading-none">
+                <UIcon :name="changeIcon" class="size-4" :class="[changeClass]" />
+                <span :class="changeClass">{{ changePctLabel }}</span>
+                <span class="text-muted text-xs self">vs last month</span>
+              </span>
             </div>
           </template>
-          <UAlert
-            v-if="balanceOverTimeQuery.isError"
-            class="mb-4"
-            color="error"
-            variant="subtle"
-            :title="balanceOverTimeQuery.error.message"
-          />
-          <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
-            <div class="inline-flex items-center gap-2">
-              <UIcon
-                v-if="balanceOverTimeQuery.isFetching"
-                name="i-lucide-loader-2"
-                class="size-4 animate-spin text-neutral-400"
-              />
-              <span v-else>No data</span>
-            </div>
+          <div class="flex gap-4 *:min-w-32">
+            <UPageCard
+              title="Monthly Yield"
+              :description="monthlyYieldLabel"
+              variant="subtle"
+              :ui="{
+                title: 'text-muted text-sm whitespace-nowrap',
+                description: monthlyYieldDescriptionClass
+              }"
+            />
+            <UPageCard
+              :to="{ name: 'accounts' }"
+              title="Accounts"
+              :description="String(dashboardQuery.data?.active_accounts ?? 0)"
+              variant="subtle"
+              :ui="{
+                title: 'text-muted text-sm whitespace-nowrap',
+                description: 'text-xl font-bold text-default whitespace-nowrap'
+              }"
+            />
+            <UPageCard
+              :to="{ name: 'institutions' }"
+              title="Institutions"
+              :description="String(dashboardQuery.data?.active_institutions ?? 0)"
+              variant="subtle"
+              :ui="{
+                title: 'text-muted text-sm whitespace-nowrap',
+                description: 'text-xl font-bold text-default whitespace-nowrap'
+              }"
+            />
           </div>
-          <VChart
-            v-else
-            :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data?.length ?? 0}`"
-            :option="balanceOverTimeOption"
-            autoresize
-            style="height: 300px; width: 100%"
-          />
         </UPageCard>
-      </UPageGrid>
-    </UPageBody>
+        <UPageGrid>
+          <UPageCard
+            title="Balance by Account Type"
+            description="Portfolio allocation"
+            spotlight
+            :ui="{
+              body: 'w-full',
+              spotlight: 'bg-default/95'
+            }"
+          >
+            <VChart
+              :option="balanceAllocationOption"
+              autoresize
+              style="height: 300px; width: 100%"
+              @legendselectchanged="onAllocationLegendSelectChanged"
+            />
+          </UPageCard>
+          <UPageCard
+            class="col-span-2"
+            spotlight
+            :ui="{
+              body: 'w-full',
+              spotlight: 'bg-default/95'
+            }"
+          >
+            <template #body>
+              <div class="flex flex-row items-center justify-between">
+                <div>
+                  <div class="text-base text-pretty font-semibold text-highlighted">
+                    Total Balance Over Time
+                  </div>
+                  <div class="text-[15px] text-pretty text-muted mt-1">
+                    Growth trajectory over
+                    <template v-if="balanceOverTimePeriod === '1M'">
+                      the last month
+                    </template>
+                    <template v-else-if="balanceOverTimePeriod === '6M'">
+                      the last 6 months
+                    </template>
+                    <template v-else-if="balanceOverTimePeriod === '1Y'">
+                      the last year
+                    </template>
+                    <template v-else-if="balanceOverTimePeriod === 'MAX'">
+                      all time
+                    </template>
+                  </div>
+                </div>
+                <div class="ml-6 shrink-0">
+                  <UTabs
+                    v-model="balanceOverTimePeriod"
+                    :items="balanceOverTimePeriodItems"
+                    :content="false"
+                    color="neutral"
+                    size="sm"
+                    :ui="{
+                      indicator: 'bg-neutral-700',
+                      label: 'text-neutral-300'
+                    }"
+                  />
+                </div>
+              </div>
+            </template>
+            <UAlert
+              v-if="balanceOverTimeQuery.isError"
+              class="mb-4"
+              color="error"
+              variant="subtle"
+              :title="balanceOverTimeQuery.error.message"
+            />
+            <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
+              <div class="inline-flex items-center gap-2">
+                <UIcon
+                  v-if="balanceOverTimeQuery.isFetching"
+                  name="i-lucide-loader-2"
+                  class="size-4 animate-spin text-neutral-400"
+                />
+                <span v-else>No data</span>
+              </div>
+            </div>
+            <VChart
+              v-else
+              :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data?.length ?? 0}`"
+              :option="balanceOverTimeOption"
+              autoresize
+              style="height: 300px; width: 100%"
+            />
+          </UPageCard>
+        </UPageGrid>
+      </UPageBody>
+    </template>
   </UContainer>
 </template>
 
