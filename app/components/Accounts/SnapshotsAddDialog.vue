@@ -39,13 +39,12 @@
             <tbody class="divide-y divide-default align-top">
               <tr v-for="(row, index) in rows" :key="row.key">
                 <td class="p-3">
-                  <UFormField :error="rowState(index).dateError || undefined">
+                  <UFormField :error="rowStates[index]!.dateError || undefined">
                     <UInputDate
                       :model-value="getCalendarDateModelValueFromIsoString(row.date)"
-                      :max-value="todayDate"
                       :disabled="createSnapshots.isPending"
-                      :color="rowState(index).dateError != null ? 'error' : 'neutral'"
-                      :highlight="rowState(index).dateError != null"
+                      :color="rowStates[index]!.dateError != null ? 'error' : 'neutral'"
+                      :highlight="rowStates[index]!.dateError != null"
                       :trailing="false"
                       class="w-full"
                       @update:model-value="onRowDateUpdate(index, $event)"
@@ -54,7 +53,7 @@
                 </td>
 
                 <td class="p-3">
-                  <UFormField :error="rowState(index).showAmountErrorState ? true : undefined">
+                  <UFormField :error="rowStates[index]!.showAmountErrorState ? true : undefined">
                     <div :ref="setNumericFieldRef(row.key, 'amount')">
                       <UInputNumber
                         :model-value="amountModelValue(row)"
@@ -62,8 +61,8 @@
                         :increment="false"
                         :decrement="false"
                         :disabled="createSnapshots.isPending"
-                        :color="rowState(index).showAmountErrorState ? 'error' : 'neutral'"
-                        :highlight="rowState(index).showAmountErrorState"
+                        :color="rowStates[index]!.showAmountErrorState ? 'error' : 'neutral'"
+                        :highlight="rowStates[index]!.showAmountErrorState"
                         :format-options="{ style: 'currency', currency: props.currencyCode, currencySign: 'standard' }"
                         class="w-full"
                         @input="onRowAmountInput(index, $event)"
@@ -76,12 +75,12 @@
                 </td>
 
                 <td class="py-2.5 px-3">
-                  <div v-if="rowState(index).previous">
+                  <div v-if="rowStates[index]!.previous">
                     <div class="font-medium text-highlighted">
-                      {{ formatCurrencyMinor(rowState(index).previous!.balance_minor, props.currencyCode) }}
+                      {{ formatCurrencyMinor(rowStates[index]!.previous!.balance_minor, props.currencyCode) }}
                     </div>
                     <div class="text-xs text-muted">
-                      {{ formatShortDate(rowState(index).previous!.date) }}
+                      {{ formatShortDate(rowStates[index]!.previous!.date) }}
                     </div>
                   </div>
                   <div v-else class="text-muted">
@@ -90,16 +89,16 @@
                 </td>
 
                 <td class="p-3">
-                  <UFormField :error="rowState(index).showChangeErrorState ? true : undefined">
+                  <UFormField :error="rowStates[index]!.showChangeErrorState ? true : undefined">
                     <div :ref="setNumericFieldRef(row.key, 'change')">
                       <UInputNumber
                         :model-value="changeModelValue(row, index)"
                         :step="0.01"
                         :increment="false"
                         :decrement="false"
-                        :disabled="createSnapshots.isPending || rowState(index).previous == null"
-                        :color="rowState(index).showChangeErrorState ? 'error' : 'neutral'"
-                        :highlight="rowState(index).showChangeErrorState"
+                        :disabled="createSnapshots.isPending || rowStates[index]!.previous == null"
+                        :color="rowStates[index]!.showChangeErrorState ? 'error' : 'neutral'"
+                        :highlight="rowStates[index]!.showChangeErrorState"
                         :format-options="{ style: 'currency', currency: props.currencyCode, currencySign: 'standard', signDisplay: 'exceptZero' }"
                         class="w-full"
                         @input="onRowChangeInput(index, $event)"
@@ -113,11 +112,14 @@
 
                 <td class="p-3">
                   <div class="space-y-2">
-                    <div v-if="rowState(index).conflictExisting" class="text-warning">
-                      Overwrites the existing snapshot of {{ formatCurrencyMinor(rowState(index).conflictExisting!.balance_minor, props.currencyCode) }}.
+                    <div v-if="rowStates[index]!.conflictExisting" class="text-warning">
+                      Overwrites the existing snapshot of {{ formatCurrencyMinor(rowStates[index]!.conflictExisting!.balance_minor, props.currencyCode) }}.
                     </div>
-                    <div v-if="rowState(index).sameBalanceWarning" class="text-warning">
+                    <div v-if="rowStates[index]!.sameBalanceWarning" class="text-warning">
                       Balance is the same as the previous snapshot.
+                    </div>
+                    <div v-if="rowStates[index]!.futureDateWarning" class="text-warning">
+                      {{ rowStates[index]!.futureDateWarning }}
                     </div>
                   </div>
                 </td>
@@ -198,7 +200,6 @@ const {
   submitError,
   overwriteExistingConfirmed,
   rows,
-  todayDate,
   getCalendarDateModelValueFromIsoString,
   rowStates,
   hasOverwriteConflicts,
@@ -221,8 +222,4 @@ const {
   accountId: toRef(props, "accountId"),
   snapshots: toRef(props, "snapshots")
 });
-
-function rowState(index: number) {
-  return rowStates.value[index]!;
-}
 </script>

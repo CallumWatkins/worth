@@ -19,6 +19,7 @@ interface SnapshotContext {
 interface SnapshotRowState {
   amountMinor: number | null
   dateError: string | null
+  futureDateWarning: string | null
   previous: SnapshotContext | null
   conflictExisting: AccountBalanceSnapshotDto | null
   changeMinor: number | null
@@ -47,8 +48,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
 
   let nextRowKey = 0;
 
-  const today = getTodayCalendarDateIsoString();
-  const todayDate = getCalendarDateModelValueFromIsoString(today)!;
+  const today = ref(getTodayCalendarDateIsoString());
 
   const snapshotsAsc = computed(() => {
     return [...baselineSnapshots.value].sort((left, right) => left.date.localeCompare(right.date));
@@ -95,8 +95,6 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
       if (isActive) {
         if (row.date === "") {
           dateError = "Enter a date";
-        } else if (row.date > today) {
-          dateError = "Snapshot date cannot be in the future";
         } else if ((duplicateCounts.get(row.date) ?? 0) > 1) {
           dateError = "Duplicate date";
         } else if (index > 0) {
@@ -139,6 +137,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
       return {
         amountMinor,
         dateError,
+        futureDateWarning: futureDateWarning(row, index),
         previous,
         conflictExisting,
         changeMinor,
@@ -162,6 +161,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
   watch(params.open, (isOpen) => {
     if (!isOpen) return;
 
+    today.value = getTodayCalendarDateIsoString();
     baselineSnapshots.value = params.snapshots.value.map((snapshot) => ({ ...snapshot }));
     submitError.value = null;
     overwriteExistingConfirmed.value = false;
@@ -172,6 +172,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
   async function onSubmit() {
     if (params.accountId.value == null) return;
 
+    today.value = getTodayCalendarDateIsoString();
     for (const row of rows.value.slice(0, activeRowCount.value)) {
       row.amountTouched = true;
     }
@@ -340,13 +341,29 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
     return rowStates.value[index]!.changeValue;
   }
 
+  function futureDateWarning(row: SnapshotDraftRow, index: number) {
+    if (row.date === "" || row.date <= today.value) return null;
+
+    const laterStagedSnapshot = rows.value.some((otherRow, otherIndex) => (
+      otherIndex !== index
+      && otherIndex < activeRowCount.value
+      && otherRow.date > row.date
+    ));
+    const laterExistingSnapshot = baselineSnapshots.value.some((snapshot) => snapshot.date > row.date);
+    if (laterStagedSnapshot || laterExistingSnapshot) {
+      return "Future-dated snapshot. Balance-over-time charts only show data through today.";
+    }
+
+    return "Future-dated snapshot. This snapshot will count as the latest balance, but balance-over-time charts only show data through today.";
+  }
+
   function effectiveAmount(row: SnapshotDraftRow) {
     return row.editingField == null ? row.amount : row.liveAmount;
   }
 
   function nextStartDate() {
     const lastDate = snapshotsAsc.value.at(-1)?.date;
-    return lastDate != null && lastDate !== "" ? addDaysToCalendarDateIsoString(lastDate, 1) : today;
+    return lastDate != null && lastDate !== "" ? addDaysToCalendarDateIsoString(lastDate, 1) : today.value;
   }
 
   function nextDateFrom(index: number) {
@@ -396,7 +413,6 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
     submitError,
     overwriteExistingConfirmed,
     rows,
-    todayDate,
     getCalendarDateModelValueFromIsoString,
     rowStates,
     hasOverwriteConflicts,

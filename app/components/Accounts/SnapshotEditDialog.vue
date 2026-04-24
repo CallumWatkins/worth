@@ -62,7 +62,6 @@
           <UFormField label="Date" :error="dateError || undefined">
             <UInputDate
               :model-value="getCalendarDateModelValueFromIsoString(state.date)"
-              :max-value="todayDate"
               :disabled="updateSnapshot.isPending"
               :color="dateError != null ? 'error' : 'neutral'"
               :highlight="dateError != null"
@@ -71,6 +70,16 @@
               @update:model-value="state.date = getCalendarDateIsoStringFromInputValue($event)"
             />
           </UFormField>
+
+          <UAlert
+            v-if="state.date !== '' && state.date <= today"
+            color="warning"
+            variant="subtle"
+            title="Future-dated snapshot"
+            :description="nextSnapshot != null
+              ? 'Balance-over-time charts only show data through today.'
+              : 'This snapshot will count as the latest balance, but balance-over-time charts only show data through today.'"
+          />
 
           <UFormField label="Balance" :error="showAmountErrorState ? true : undefined">
             <UInputNumber
@@ -156,8 +165,7 @@ const state = reactive({
   overwriteExisting: false
 });
 
-const today = getTodayCalendarDateIsoString();
-const todayDate = getCalendarDateModelValueFromIsoString(today)!;
+const today = ref(getTodayCalendarDateIsoString());
 
 const currentSnapshot = computed(() => {
   if (props.snapshotId == null) return null;
@@ -189,7 +197,6 @@ const amountMinor = computed(() => convertCurrencyMajorAmountToMinorUnits(state.
 
 const dateError = computed(() => {
   if (state.date === "") return "Enter a date";
-  if (state.date > today) return "Snapshot date cannot be in the future";
   return null;
 });
 
@@ -207,6 +214,7 @@ const changeMinor = computed(() => {
 
 watch(open, (isOpen) => {
   if (!isOpen) return;
+  today.value = getTodayCalendarDateIsoString();
   baselineSnapshots.value = props.snapshots.map((snapshot) => ({ ...snapshot }));
   hydrateFromSnapshot();
 });
@@ -218,6 +226,7 @@ watch(() => props.snapshotId, () => {
 });
 
 async function onSubmit() {
+  today.value = getTodayCalendarDateIsoString();
   amountTouched.value = true;
 
   if (

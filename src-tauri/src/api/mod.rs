@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use thiserror::Error;
 
-use chrono::{Duration, NaiveDate, Utc};
+use chrono::{Duration, Local, NaiveDate, Utc};
 use garde::Validate;
 use sqlx::SqlitePool;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -725,7 +725,7 @@ pub async fn account_balance_over_time(
     account_id: i64,
     period: BalanceOverTimePeriod,
 ) -> Result<Vec<BalancePointDto>, ApiError> {
-    let today = Utc::now().date_naive();
+    let today = Local::now().date_naive();
     let pool = &state.pool;
 
     // Ensure account exists.
@@ -791,7 +791,7 @@ pub async fn account_balance_over_time(
 #[specta::specta]
 pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, ApiError> {
     let pool = &state.pool;
-    let today = Utc::now().date_naive();
+    let today = Local::now().date_naive();
 
     let accounts = db::accounts_list_full(pool)
         .await
@@ -860,7 +860,7 @@ pub async fn dashboard_balance_over_time(
     state: State<'_, AppState>,
     period: BalanceOverTimePeriod,
 ) -> Result<Vec<DashboardBalancePointDto>, ApiError> {
-    let today = Utc::now().date_naive();
+    let today = Local::now().date_naive();
     let pool = &state.pool;
     let accounts = db::accounts_list_full(pool)
         .await
@@ -1059,13 +1059,6 @@ async fn validate_account_snapshots_create(
     let mut previous_date = None;
 
     for (index, snapshot) in input.snapshots.iter().enumerate() {
-        if snapshot.date > Utc::now().date_naive() {
-            issues.push(validation_issue(
-                &format!("snapshots.{index}.date"),
-                "Snapshot date cannot be in the future",
-            ));
-        }
-
         if let Some(last_date) = previous_date {
             if snapshot.date <= last_date {
                 issues.push(validation_issue(
@@ -1122,13 +1115,6 @@ async fn validate_account_snapshot_update(
     input: &AccountSnapshotUpdateInput,
 ) -> Result<(), ApiError> {
     let mut issues = validation_issues_from_garde_report(input.validate().err());
-
-    if input.date > Utc::now().date_naive() {
-        issues.push(validation_issue(
-            "date",
-            "Snapshot date cannot be in the future",
-        ));
-    }
 
     let conflicting = db::snapshots_for_account_dates(pool, account_id, &[input.date])
         .await
@@ -1280,7 +1266,7 @@ async fn build_account_dtos(
     pool: &SqlitePool,
     accounts: Vec<AccountListRow>,
 ) -> Result<Vec<AccountDto>, ApiError> {
-    let today = Utc::now().date_naive();
+    let today = Local::now().date_naive();
     let account_ids = accounts.iter().map(|a| a.id).collect::<Vec<_>>();
 
     // Longest period shown in the UI is 6M (180 points). We always build that once and slice.
