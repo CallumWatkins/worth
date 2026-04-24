@@ -426,7 +426,8 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
           text: formatCurrency(totalVisible, "GBP", {
             notation: "compact",
             compactDisplay: "short",
-            maximumFractionDigits: 1
+            minimumFractionDigits: Math.abs(totalVisible) < 1000 ? 2 : 0,
+            maximumFractionDigits: Math.abs(totalVisible) < 1000 ? 2 : 1
           }),
           fontSize: 28,
           fontWeight: 700,
