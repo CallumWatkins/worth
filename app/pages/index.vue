@@ -26,7 +26,7 @@
           variant="outline"
           spotlight
           :ui="{
-            container: 'grid-cols-[1fr_auto]',
+            container: 'lg:grid-cols-[1fr_auto]',
             title: 'text-muted text-sm',
             spotlight: 'bg-default/95'
           }"

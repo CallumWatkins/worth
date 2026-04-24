@@ -2,7 +2,7 @@
   <UHeader
     mode="slideover"
     :ui="{
-      left: 'flex-none pr-4',
+      left: 'lg:flex-none pr-4',
       center: 'h-full'
     }"
   >
