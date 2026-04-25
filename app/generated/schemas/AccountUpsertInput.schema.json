@@ -6,6 +6,13 @@
     "account_type": {
       "$ref": "#/$defs/AccountTypeName"
     },
+    "closed_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
     "currency_code": {
       "$ref": "#/$defs/CurrencyCode"
     },

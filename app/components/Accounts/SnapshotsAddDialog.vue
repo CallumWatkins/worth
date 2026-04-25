@@ -121,6 +121,9 @@
                     <div v-if="rowStates[index]!.futureDateWarning" class="text-warning">
                       {{ rowStates[index]!.futureDateWarning }}
                     </div>
+                    <div v-if="rowStates[index]!.beforeOpenedDateWarning" class="text-warning">
+                      Snapshot is before the account opened date of {{ formatShortDate(props.openedDate) }}.
+                    </div>
                   </div>
                 </td>
 
@@ -188,6 +191,7 @@ import { toRef } from "vue";
 
 const props = defineProps<{
   accountId: number | null
+  openedDate: string | null | undefined
   currencyCode: CurrencyCode
   snapshots: AccountBalanceSnapshotDto[]
 }>();
@@ -220,6 +224,7 @@ const {
 } = useSnapshotsAddForm({
   open,
   accountId: toRef(props, "accountId"),
+  openedDate: toRef(props, "openedDate"),
   snapshots: toRef(props, "snapshots")
 });
 </script>

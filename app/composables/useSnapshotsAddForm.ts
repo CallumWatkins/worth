@@ -20,6 +20,7 @@ interface SnapshotRowState {
   amountMinor: number | null
   dateError: string | null
   futureDateWarning: string | null
+  beforeOpenedDateWarning: boolean
   previous: SnapshotContext | null
   conflictExisting: AccountBalanceSnapshotDto | null
   changeMinor: number | null
@@ -32,6 +33,7 @@ interface SnapshotRowState {
 interface UseSnapshotsAddFormParams {
   open: Ref<boolean>
   accountId: Ref<number | null>
+  openedDate: Ref<string | null | undefined>
   snapshots: Ref<AccountBalanceSnapshotDto[]>
 }
 
@@ -138,6 +140,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
         amountMinor,
         dateError,
         futureDateWarning: futureDateWarning(row, index),
+        beforeOpenedDateWarning: row.date !== "" && params.openedDate.value != null && row.date < params.openedDate.value,
         previous,
         conflictExisting,
         changeMinor,

@@ -388,6 +388,7 @@ pub async fn accounts_create(
                 currency_code: validated.currency_code.clone(),
                 normal_balance_sign: validated.normal_balance_sign,
                 opened_date: validated.opened_date,
+                closed_date: validated.closed_date,
             };
 
             db::account_create(pool, &mutation)
@@ -409,6 +410,7 @@ pub async fn accounts_create(
                 currency_code: validated.currency_code.clone(),
                 normal_balance_sign: validated.normal_balance_sign,
                 opened_date: validated.opened_date,
+                closed_date: validated.closed_date,
             };
 
             let account_id = db::account_create_tx(&mut tx, &mutation)
@@ -452,6 +454,7 @@ pub async fn accounts_update(
                 currency_code: validated.currency_code.clone(),
                 normal_balance_sign: validated.normal_balance_sign,
                 opened_date: validated.opened_date,
+                closed_date: validated.closed_date,
             };
 
             let updated = db::account_update(pool, account_id, &mutation)
@@ -473,6 +476,7 @@ pub async fn accounts_update(
                 currency_code: validated.currency_code.clone(),
                 normal_balance_sign: validated.normal_balance_sign,
                 opened_date: validated.opened_date,
+                closed_date: validated.closed_date,
             };
 
             let updated = db::account_update_tx(&mut tx, account_id, &mutation)
@@ -901,6 +905,7 @@ struct ValidatedAccountUpsert {
     currency_code: String,
     normal_balance_sign: i32,
     opened_date: Option<NaiveDate>,
+    closed_date: Option<NaiveDate>,
 }
 
 async fn institution_detail_by_id(
@@ -1034,6 +1039,16 @@ async fn validate_account_upsert(
         }
     }
 
+    if let (Some(opened_date), Some(closed_date)) = (normalized.opened_date, normalized.closed_date)
+    {
+        if closed_date < opened_date {
+            issues.push(validation_issue(
+                "closed_date",
+                "Closed date cannot be before opened date",
+            ));
+        }
+    }
+
     if !issues.is_empty() {
         return Err(ApiError::Validation(issues));
     }
@@ -1045,6 +1060,7 @@ async fn validate_account_upsert(
         currency_code: normalized.currency_code.as_str().to_owned(),
         normal_balance_sign: normalized.normal_balance_sign,
         opened_date: normalized.opened_date,
+        closed_date: normalized.closed_date,
     })
 }
 
@@ -1216,6 +1232,7 @@ fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
         currency_code: input.currency_code,
         normal_balance_sign: input.normal_balance_sign,
         opened_date: input.opened_date,
+        closed_date: input.closed_date,
     }
 }
 

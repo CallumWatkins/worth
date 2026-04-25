@@ -34,7 +34,8 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     institution: undefined,
     name: undefined,
     normal_balance_sign: 1,
-    opened_date: undefined
+    opened_date: undefined,
+    closed_date: undefined
   };
 
   const state = shallowReactive<Partial<AccountFormInputValues>>({
@@ -165,6 +166,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.currency_code = account.currency_code;
     state.normal_balance_sign = account.normal_balance_sign === -1 ? -1 : 1;
     state.opened_date = account.opened_date == null ? undefined : parseDate(account.opened_date);
+    state.closed_date = account.closed_date == null ? undefined : parseDate(account.closed_date);
     institutionSearchTerm.value = "";
   }
 

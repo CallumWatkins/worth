@@ -6,13 +6,26 @@
 
     <UPageHeader
       v-if="accountQuery.isSuccess"
-      :title="accountQuery.data.name"
       :description="headerDescription"
       :ui="{
         root: 'pb-0 border-none',
         description: 'mt-1'
       }"
     >
+      <template #title>
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="truncate">{{ accountQuery.data.name }}</span>
+          <UBadge
+            v-if="accountQuery.data.closed_date != null"
+            variant="subtle"
+            color="warning"
+            class="translate-y-px"
+          >
+            Closed
+          </UBadge>
+        </div>
+      </template>
+
       <template #links>
         <UButton
           label="Settings"
@@ -26,7 +39,7 @@
 
     <UPageBody class="space-y-8">
       <template v-if="accountQuery.isSuccess">
-        <div class="grid grid-cols-4 gap-4">
+        <div class="flex flex-wrap justify-start gap-4 *:max-w-73 *:flex-[1_1_fit-content]">
           <UPageCard
             title="Current Balance"
             variant="subtle"
@@ -49,7 +62,7 @@
             variant="subtle"
             :ui="{
               title: 'text-muted text-sm whitespace-nowrap',
-              description: 'text-xl font-bold text-default whitespace-nowrap'
+              description: 'text-xl font-bold text-default text-pretty'
             }"
           />
 
@@ -76,6 +89,27 @@
           </UPageCard>
 
           <UPageCard
+            v-if="accountQuery.data.opened_date != null || accountQuery.data.closed_date != null"
+            title="Account Dates"
+            variant="subtle"
+            :ui="{
+              title: 'text-muted text-sm whitespace-nowrap',
+              description: 'space-y-2'
+            }"
+          >
+            <template #description>
+              <div v-if="accountQuery.data.opened_date != null" class="flex items-baseline justify-between gap-2">
+                <span class="text-xs uppercase tracking-wide text-muted">Opened</span>
+                <span class="font-bold text-xl whitespace-nowrap">{{ formatShortDate(accountQuery.data.opened_date) }}</span>
+              </div>
+              <div v-if="accountQuery.data.closed_date != null" class="flex items-baseline justify-between gap-2">
+                <span class="text-xs uppercase tracking-wide text-muted">Closed</span>
+                <span class="font-bold text-xl whitespace-nowrap">{{ formatShortDate(accountQuery.data.closed_date) }}</span>
+              </div>
+            </template>
+          </UPageCard>
+
+          <UPageCard
             title="Monthly Change"
             variant="subtle"
             :ui="{
@@ -85,12 +119,12 @@
             <template #description>
               <div
                 v-if="monthlyChangeMinor != null"
-                class="text-xl font-bold whitespace-nowrap"
+                class="text-xl font-bold"
                 :class="monthlyChangeMinor >= 0 ? 'text-success' : 'text-error'"
               >
                 {{ formatCurrencyMinor(monthlyChangeMinor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
               </div>
-              <div v-else class="text-xl font-bold text-default whitespace-nowrap">
+              <div v-else class="text-xl font-bold text-default">
                 No change
               </div>
               <div class="text-xs text-muted mt-1">
@@ -329,6 +363,7 @@
         <AccountsSnapshotsAddDialog
           v-model:open="addSnapshotsOpen"
           :account-id="accountId"
+          :opened-date="accountQuery.data.opened_date"
           :currency-code="accountCurrencyCode"
           :snapshots="snapshotsQuery.data ?? []"
         />
@@ -337,6 +372,7 @@
           v-model:open="editSnapshotOpen"
           :account-id="accountId"
           :snapshot-id="editSnapshotId"
+          :opened-date="accountQuery.data.opened_date"
           :currency-code="accountCurrencyCode"
           :snapshots="snapshotsQuery.data ?? []"
         />

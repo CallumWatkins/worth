@@ -1037,6 +1037,7 @@ pub struct AccountMutationInput {
     pub currency_code: String,
     pub normal_balance_sign: i32,
     pub opened_date: Option<NaiveDate>,
+    pub closed_date: Option<NaiveDate>,
 }
 
 pub async fn account_create(
@@ -1052,10 +1053,11 @@ pub async fn account_create(
                 type_id,
                 currency_code,
                 normal_balance_sign,
-                opened_date
+                opened_date,
+                closed_date
             )
         VALUES
-            (?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?)
         ",
     )
     .bind(&input.name)
@@ -1064,6 +1066,7 @@ pub async fn account_create(
     .bind(&input.currency_code)
     .bind(input.normal_balance_sign)
     .bind(input.opened_date)
+    .bind(input.closed_date)
     .execute(pool)
     .await?;
 
@@ -1107,10 +1110,11 @@ pub async fn account_create_tx(
                 type_id,
                 currency_code,
                 normal_balance_sign,
-                opened_date
+                opened_date,
+                closed_date
             )
         VALUES
-            (?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?)
         ",
     )
     .bind(&input.name)
@@ -1119,6 +1123,7 @@ pub async fn account_create_tx(
     .bind(&input.currency_code)
     .bind(input.normal_balance_sign)
     .bind(input.opened_date)
+    .bind(input.closed_date)
     .execute(&mut **tx)
     .await?;
     Ok(result.last_insert_rowid())
@@ -1139,6 +1144,7 @@ pub async fn account_update(
             currency_code = ?,
             normal_balance_sign = ?,
             opened_date = ?,
+            closed_date = ?,
             updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
         WHERE
             id = ?
@@ -1150,6 +1156,7 @@ pub async fn account_update(
     .bind(&input.currency_code)
     .bind(input.normal_balance_sign)
     .bind(input.opened_date)
+    .bind(input.closed_date)
     .bind(account_id)
     .execute(pool)
     .await?;
@@ -1199,6 +1206,7 @@ pub async fn account_update_tx(
             currency_code = ?,
             normal_balance_sign = ?,
             opened_date = ?,
+            closed_date = ?,
             updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
         WHERE
             id = ?
@@ -1210,6 +1218,7 @@ pub async fn account_update_tx(
     .bind(&input.currency_code)
     .bind(input.normal_balance_sign)
     .bind(input.opened_date)
+    .bind(input.closed_date)
     .bind(account_id)
     .execute(&mut **tx)
     .await?;

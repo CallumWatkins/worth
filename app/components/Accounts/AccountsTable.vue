@@ -50,7 +50,14 @@
             {{ row.original.name }}
           </span>
           <UBadge
-            v-if="row.original.latest_balance_minor === 0"
+            v-if="row.original.closed_date != null"
+            variant="subtle"
+            color="warning"
+          >
+            Closed
+          </UBadge>
+          <UBadge
+            v-else-if="row.original.latest_balance_minor === 0"
             variant="subtle"
             color="neutral"
           >

@@ -72,13 +72,21 @@
           </UFormField>
 
           <UAlert
-            v-if="state.date !== '' && state.date <= today"
+            v-if="state.date !== '' && state.date > today"
             color="warning"
             variant="subtle"
             title="Future-dated snapshot"
             :description="nextSnapshot != null
               ? 'Balance-over-time charts only show data through today.'
               : 'This snapshot will count as the latest balance, but balance-over-time charts only show data through today.'"
+          />
+
+          <UAlert
+            v-if="state.date !== '' && props.openedDate != null && state.date < props.openedDate"
+            color="warning"
+            variant="subtle"
+            title="Before account opened date"
+            :description="`This snapshot is before the account opened date of ${formatShortDate(props.openedDate)}.`"
           />
 
           <UFormField label="Balance" :error="showAmountErrorState ? true : undefined">
@@ -147,6 +155,7 @@ import type { AccountBalanceSnapshotDto, AccountSnapshotUpdateInput, CurrencyCod
 const props = defineProps<{
   accountId: number | null
   snapshotId: number | null
+  openedDate: string | null | undefined
   currencyCode: CurrencyCode
   snapshots: AccountBalanceSnapshotDto[]
 }>();

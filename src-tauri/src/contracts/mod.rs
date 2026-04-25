@@ -141,6 +141,9 @@ pub struct AccountUpsertInput {
     #[garde(skip)]
     #[specta(optional)]
     pub opened_date: Option<NaiveDate>,
+    #[garde(skip)]
+    #[specta(optional)]
+    pub closed_date: Option<NaiveDate>,
 }
 
 #[crate::export_schema]

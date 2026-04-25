@@ -119,13 +119,83 @@
               </UFormField>
             </div>
 
-            <UFormField label="Opened date (optional)" name="opened_date">
-              <UInputDate
-                v-model="state.opened_date"
-                :range="false"
-                class="w-full"
-              />
-            </UFormField>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <UFormField label="Opened date (optional)" name="opened_date">
+                <UPopover v-model:open="openedDatePickerOpen" :content="{ align: 'end' }">
+                  <template #anchor>
+                    <UInputDate
+                      v-model="state.opened_date"
+                      :range="false"
+                      class="w-full"
+                    >
+                      <template #trailing>
+                        <UButton
+                          color="neutral"
+                          variant="link"
+                          size="sm"
+                          icon="i-lucide-calendar"
+                          aria-label="Select a date"
+                          class="px-0"
+                          @click="openedDatePickerOpen = true"
+                        />
+                      </template>
+                    </UInputDate>
+                  </template>
+
+                  <template #content>
+                    <UCalendar v-model="state.opened_date" class="p-2" />
+                  </template>
+                </UPopover>
+
+                <template #error="{ error }">
+                  {{ error }}
+                  <div v-if="openedDateSnapshotWarningCount > 0" class="mt-2 text-sm text-warning">
+                    This account has {{ openedDateSnapshotWarningCount }} snapshot{{ openedDateSnapshotWarningCount === 1 ? '' : 's' }} before {{ formatShortDate(openedDateValue) }}.
+                  </div>
+                </template>
+              </UFormField>
+
+              <UFormField label="Closed date (optional)" name="closed_date">
+                <UPopover v-model:open="closedDatePickerOpen" :content="{ align: 'end' }">
+                  <template #anchor>
+                    <UInputDate
+                      v-model="state.closed_date"
+                      :range="false"
+                      class="w-full"
+                    >
+                      <template #trailing>
+                        <UButton
+                          color="neutral"
+                          variant="link"
+                          size="sm"
+                          icon="i-lucide-calendar"
+                          aria-label="Select a date"
+                          class="px-0"
+                          @click="closedDatePickerOpen = true"
+                        />
+                      </template>
+                    </UInputDate>
+                  </template>
+
+                  <template #content>
+                    <UCalendar v-model="state.closed_date" class="p-2" />
+                  </template>
+                </UPopover>
+
+                <template #error="{ error }">
+                  {{ error }}
+                  <div v-if="showClosedDateBalanceWarning && closedDateSnapshotWarningCount > 0" class="mt-2 text-sm text-warning">
+                    This account still has a balance of {{ formatCurrencyMinor(accountQuery.data.latest_balance_minor, accountQuery.data.currency_code) }} and has {{ closedDateSnapshotWarningCount }} snapshot{{ closedDateSnapshotWarningCount === 1 ? '' : 's' }} after {{ formatShortDate(closedDateValue) }}.
+                  </div>
+                  <div v-else-if="showClosedDateBalanceWarning" class="mt-2 text-sm text-warning">
+                    This account still has a balance of {{ formatCurrencyMinor(accountQuery.data.latest_balance_minor, accountQuery.data.currency_code) }}.
+                  </div>
+                  <div v-else-if="closedDateSnapshotWarningCount > 0" class="mt-2 text-sm text-warning">
+                    This account has {{ closedDateSnapshotWarningCount }} snapshot{{ closedDateSnapshotWarningCount === 1 ? '' : 's' }} after {{ formatShortDate(closedDateValue) }}.
+                  </div>
+                </template>
+              </UFormField>
+            </div>
 
             <div class="flex items-center justify-end gap-3">
               <Transition name="save-status-fade">
@@ -185,10 +255,14 @@ import { UForm } from "#components";
 import { useQuery } from "@tanstack/vue-query";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 
+const openedDatePickerOpen = ref(false);
+const closedDatePickerOpen = ref(false);
+
 const route = useRoute("accounts-id-settings");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 const { updateAccount } = useAccountMutations();
+const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 const form = useTemplateRef<ComponentExposed<typeof UForm<typeof accountFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
@@ -198,6 +272,12 @@ const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
   enabled: computed(() => accountId.value !== null),
   queryFn: async () => api.accountsGet(accountId.value!)
+}));
+
+const snapshotsQuery = proxyRefs(useQuery({
+  queryKey: computed(() => queryKeys.accounts.snapshots(accountId.value!)),
+  enabled: computed(() => accountId.value !== null && accountQuery.isSuccess),
+  queryFn: async () => api.accountSnapshotsList(accountId.value!)
 }));
 
 useResourcePageError({
@@ -217,6 +297,8 @@ const institutionsQuery = proxyRefs(useQuery({
 const submitError = ref<string | null>(null);
 const didSave = ref(false);
 const hasHydrated = ref(false);
+const initialOpenedDate = ref<string | undefined>(undefined);
+const initialClosedDate = ref<string | undefined>(undefined);
 const deleteOpen = ref(false);
 const {
   state,
@@ -235,6 +317,8 @@ const {
 watch(() => accountQuery.data, (account) => {
   if (!account || hasHydrated.value) return;
   hydrateFromAccount(account);
+  initialOpenedDate.value = account.opened_date ?? undefined;
+  initialClosedDate.value = account.closed_date ?? undefined;
   hasHydrated.value = true;
   form.value?.clear();
 }, { immediate: true });
@@ -242,6 +326,39 @@ watch(() => accountQuery.data, (account) => {
 watch(accountId, () => {
   hasHydrated.value = false;
   didSave.value = false;
+  initialOpenedDate.value = undefined;
+  initialClosedDate.value = undefined;
+});
+
+const openedDateValue = computed(() => state.opened_date == null ? undefined : state.opened_date.toString());
+const closedDateValue = computed(() => state.closed_date == null ? undefined : state.closed_date.toString());
+const openedDateSnapshotWarningCount = computed(() => {
+  const account = accountQuery.data;
+  const openedDate = openedDateValue.value;
+  if (
+    account == null
+    || openedDate == null
+    || openedDate === initialOpenedDate.value
+    || account.first_snapshot_date == null
+    || account.first_snapshot_date >= openedDate
+  ) {
+    return 0;
+  }
+
+  return (snapshotsQuery.data ?? []).filter((snapshot) => snapshot.date < openedDate).length;
+});
+const showClosedDateBalanceWarning = computed(() => {
+  const account = accountQuery.data;
+  return account != null
+    && closedDateValue.value != null
+    && closedDateValue.value !== initialClosedDate.value
+    && account.latest_balance_minor !== 0;
+});
+const closedDateSnapshotWarningCount = computed(() => {
+  const closedDate = closedDateValue.value;
+  if (closedDate == null || closedDate === initialClosedDate.value) return 0;
+
+  return (snapshotsQuery.data ?? []).filter((snapshot) => snapshot.date > closedDate).length;
 });
 
 usePreventRouteNavigation({
@@ -284,6 +401,8 @@ async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
       accountId: accountId.value,
       input: payload
     });
+    initialOpenedDate.value = payload.opened_date ?? undefined;
+    initialClosedDate.value = payload.closed_date ?? undefined;
     didSave.value = true;
   } catch (error) {
     if (!setBackendValidationErrors(error)) {
