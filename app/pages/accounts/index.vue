@@ -51,6 +51,7 @@
         :hide-empty="hideEmpty"
         :activity-period="activityPeriod"
         :hide-columns="hideColumns"
+        @clear-filters="hideEmpty = false"
       />
 
       <AccountsCreateDialog v-model:open="createDialogOpen" />

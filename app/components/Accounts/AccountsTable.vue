@@ -136,6 +136,24 @@
         {{ formatCurrencyMinor(row.original.latest_balance_minor, "GBP") }}
       </span>
     </template>
+
+    <template #body-bottom>
+      <tr v-if="props.accounts.length - accountsData.length > 0">
+        <td colspan="100" class="p-4 text-sm text-muted">
+          <div class="flex items-center justify-center gap-3">
+            <span class="-translate-y-px">{{ props.accounts.length - accountsData.length }} account{{ props.accounts.length - accountsData.length === 1 ? "" : "s" }} hidden</span>
+            <UButton
+              label="Show"
+              color="neutral"
+              variant="link"
+              size="sm"
+              class="p-0"
+              @click.stop="emit('clearFilters')"
+            />
+          </div>
+        </td>
+      </tr>
+    </template>
   </UTable>
 
   <AccountsDeleteDialog
@@ -164,6 +182,10 @@ const props = withDefaults(defineProps<{
 }>(), {
   hideColumns: () => []
 });
+
+const emit = defineEmits<{
+  clearFilters: []
+}>();
 
 const UButton = resolveComponent("UButton");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
