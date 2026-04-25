@@ -4,7 +4,12 @@
   "type": "object",
   "properties": {
     "account_type": {
-      "$ref": "#/$defs/AccountTypeName"
+      "$ref": "#/$defs/AccountTypeName",
+      "x-validation": {
+        "invalid": "Select an account type",
+        "required": "Select an account type",
+        "type": "Select an account type"
+      }
     },
     "closed_date": {
       "type": [
@@ -14,16 +19,32 @@
       "format": "date"
     },
     "currency_code": {
-      "$ref": "#/$defs/CurrencyCode"
+      "$ref": "#/$defs/CurrencyCode",
+      "x-validation": {
+        "invalid": "Select a currency",
+        "required": "Select a currency",
+        "type": "Select a currency"
+      }
     },
     "institution": {
-      "$ref": "#/$defs/InstitutionRef"
+      "$ref": "#/$defs/InstitutionRef",
+      "x-validation": {
+        "invalid": "Select or create an institution",
+        "required": "Select or create an institution",
+        "type": "Select or create an institution"
+      }
     },
     "name": {
       "type": "string",
       "maxLength": 120,
       "minLength": 1,
-      "pattern": ".*\\S.*"
+      "pattern": ".*\\S.*",
+      "x-validation": {
+        "blank": "Enter an account name",
+        "maxLength": "Account name must be 120 characters or fewer",
+        "required": "Enter an account name",
+        "type": "Enter an account name"
+      }
     },
     "normal_balance_sign": {
       "type": "integer",
@@ -31,7 +52,12 @@
       "enum": [
         -1,
         1
-      ]
+      ],
+      "x-validation": {
+        "invalid": "Select whether this account normally has a positive or negative balance",
+        "required": "Select whether this account normally has a positive or negative balance",
+        "type": "Select whether this account normally has a positive or negative balance"
+      }
     },
     "opened_date": {
       "type": [
@@ -79,7 +105,12 @@
             "id": {
               "type": "integer",
               "format": "int64",
-              "minimum": 1
+              "minimum": 1,
+              "x-validation": {
+                "minimum": "Select or create an institution",
+                "required": "Select or create an institution",
+                "type": "Select or create an institution"
+              }
             },
             "kind": {
               "type": "string",
@@ -116,7 +147,13 @@
           "type": "string",
           "maxLength": 120,
           "minLength": 1,
-          "pattern": ".*\\S.*"
+          "pattern": ".*\\S.*",
+          "x-validation": {
+            "blank": "Enter an institution name",
+            "maxLength": "Institution name must be 120 characters or fewer",
+            "required": "Enter an institution name",
+            "type": "Enter an institution name"
+          }
         }
       },
       "required": [

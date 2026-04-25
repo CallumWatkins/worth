@@ -9,7 +9,12 @@
         "type": "integer",
         "format": "int64"
       },
-      "minItems": 1
+      "minItems": 1,
+      "x-validation": {
+        "minItems": "Select at least one snapshot",
+        "required": "Select at least one snapshot",
+        "type": "Select at least one snapshot"
+      }
     }
   },
   "required": [

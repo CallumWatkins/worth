@@ -8,7 +8,12 @@
       "items": {
         "$ref": "#/$defs/AccountSnapshotWriteInput"
       },
-      "minItems": 1
+      "minItems": 1,
+      "x-validation": {
+        "minItems": "Add at least one snapshot",
+        "required": "Add at least one snapshot",
+        "type": "Add at least one snapshot"
+      }
     }
   },
   "required": [

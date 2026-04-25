@@ -103,10 +103,32 @@ impl FromStr for CurrencyCode {
     }
 }
 
+const INSTITUTION_NAME_REQUIRED: &str = "Enter an institution name";
+const INSTITUTION_NAME_MAX_LENGTH: &str = "Institution name must be 120 characters or fewer";
+const ACCOUNT_NAME_REQUIRED: &str = "Enter an account name";
+const ACCOUNT_NAME_MAX_LENGTH: &str = "Account name must be 120 characters or fewer";
+const INSTITUTION_REQUIRED: &str = "Select or create an institution";
+const ACCOUNT_TYPE_REQUIRED: &str = "Select an account type";
+const CURRENCY_REQUIRED: &str = "Select a currency";
+const NORMAL_BALANCE_SIGN_REQUIRED: &str =
+    "Select whether this account normally has a positive or negative balance";
+const SNAPSHOT_REQUIRED: &str = "Add at least one snapshot";
+const SNAPSHOT_SELECTION_REQUIRED: &str = "Select at least one snapshot";
+
 #[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct InstitutionUpsertInput {
-    #[garde(length(min = 1, max = 120), pattern(r".*\S.*"))]
+    #[garde(custom(validate_institution_name))]
+    #[schemars(
+        length(min = 1, max = 120),
+        pattern(r".*\S.*"),
+        extend("x-validation" = {
+            "required": INSTITUTION_NAME_REQUIRED,
+            "blank": INSTITUTION_NAME_REQUIRED,
+            "maxLength": INSTITUTION_NAME_MAX_LENGTH,
+            "type": INSTITUTION_NAME_REQUIRED
+        })
+    )]
     pub name: String,
 }
 
@@ -115,7 +137,15 @@ pub struct InstitutionUpsertInput {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum InstitutionRef {
     Existing {
-        #[garde(range(min = 1))]
+        #[garde(custom(validate_institution_id))]
+        #[schemars(
+            range(min = 1),
+            extend("x-validation" = {
+                "required": INSTITUTION_REQUIRED,
+                "minimum": INSTITUTION_REQUIRED,
+                "type": INSTITUTION_REQUIRED
+            })
+        )]
         id: i64,
     },
     New {
@@ -128,15 +158,47 @@ pub enum InstitutionRef {
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountUpsertInput {
     #[garde(dive)]
+    #[schemars(extend("x-validation" = {
+        "required": INSTITUTION_REQUIRED,
+        "invalid": INSTITUTION_REQUIRED,
+        "type": INSTITUTION_REQUIRED
+    }))]
     pub institution: InstitutionRef,
-    #[garde(length(min = 1, max = 120), pattern(r".*\S.*"))]
+    #[garde(custom(validate_account_name))]
+    #[schemars(
+        length(min = 1, max = 120),
+        pattern(r".*\S.*"),
+        extend("x-validation" = {
+            "required": ACCOUNT_NAME_REQUIRED,
+            "blank": ACCOUNT_NAME_REQUIRED,
+            "maxLength": ACCOUNT_NAME_MAX_LENGTH,
+            "type": ACCOUNT_NAME_REQUIRED
+        })
+    )]
     pub name: String,
     #[garde(skip)]
+    #[schemars(extend("x-validation" = {
+        "required": ACCOUNT_TYPE_REQUIRED,
+        "invalid": ACCOUNT_TYPE_REQUIRED,
+        "type": ACCOUNT_TYPE_REQUIRED
+    }))]
     pub account_type: AccountTypeName,
     #[garde(skip)]
+    #[schemars(extend("x-validation" = {
+        "required": CURRENCY_REQUIRED,
+        "invalid": CURRENCY_REQUIRED,
+        "type": CURRENCY_REQUIRED
+    }))]
     pub currency_code: CurrencyCode,
     #[garde(custom(validate_normal_balance_sign))]
-    #[schemars(extend("enum" = [-1, 1]))]
+    #[schemars(extend(
+        "enum" = [-1, 1],
+        "x-validation" = {
+            "required": NORMAL_BALANCE_SIGN_REQUIRED,
+            "invalid": NORMAL_BALANCE_SIGN_REQUIRED,
+            "type": NORMAL_BALANCE_SIGN_REQUIRED
+        }
+    ))]
     pub normal_balance_sign: i32,
     #[garde(skip)]
     #[specta(optional)]
@@ -160,7 +222,12 @@ pub struct AccountSnapshotWriteInput {
 #[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountSnapshotsCreateInput {
-    #[garde(length(min = 1), dive)]
+    #[garde(custom(validate_snapshots_non_empty), dive)]
+    #[schemars(length(min = 1), extend("x-validation" = {
+        "required": SNAPSHOT_REQUIRED,
+        "minItems": SNAPSHOT_REQUIRED,
+        "type": SNAPSHOT_REQUIRED
+    }))]
     pub snapshots: Vec<AccountSnapshotWriteInput>,
 }
 
@@ -178,13 +245,66 @@ pub struct AccountSnapshotUpdateInput {
 #[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountSnapshotsDeleteInput {
-    #[garde(length(min = 1))]
+    #[garde(custom(validate_snapshot_ids_non_empty))]
+    #[schemars(length(min = 1), extend("x-validation" = {
+        "required": SNAPSHOT_SELECTION_REQUIRED,
+        "minItems": SNAPSHOT_SELECTION_REQUIRED,
+        "type": SNAPSHOT_SELECTION_REQUIRED
+    }))]
     pub snapshot_ids: Vec<i64>,
+}
+
+fn validate_institution_name(value: &str, _ctx: &()) -> garde::Result {
+    validate_name(
+        value,
+        INSTITUTION_NAME_REQUIRED,
+        INSTITUTION_NAME_MAX_LENGTH,
+    )
+}
+
+fn validate_account_name(value: &str, _ctx: &()) -> garde::Result {
+    validate_name(value, ACCOUNT_NAME_REQUIRED, ACCOUNT_NAME_MAX_LENGTH)
+}
+
+fn validate_name(value: &str, empty_message: &str, max_length_message: &str) -> garde::Result {
+    if value.is_empty() {
+        return Err(garde::Error::new(empty_message));
+    }
+
+    if value.len() > 120 {
+        return Err(garde::Error::new(max_length_message));
+    }
+
+    Ok(())
+}
+
+fn validate_institution_id(value: &i64, _ctx: &()) -> garde::Result {
+    if *value < 1 {
+        return Err(garde::Error::new(INSTITUTION_REQUIRED));
+    }
+
+    Ok(())
+}
+
+fn validate_snapshots_non_empty(value: &[AccountSnapshotWriteInput], _ctx: &()) -> garde::Result {
+    if value.is_empty() {
+        return Err(garde::Error::new(SNAPSHOT_REQUIRED));
+    }
+
+    Ok(())
+}
+
+fn validate_snapshot_ids_non_empty(value: &[i64], _ctx: &()) -> garde::Result {
+    if value.is_empty() {
+        return Err(garde::Error::new(SNAPSHOT_SELECTION_REQUIRED));
+    }
+
+    Ok(())
 }
 
 fn validate_normal_balance_sign(value: &i32, _ctx: &()) -> garde::Result {
     if !matches!(*value, -1 | 1) {
-        return Err(garde::Error::new("Normal balance sign must be 1 or -1"));
+        return Err(garde::Error::new(NORMAL_BALANCE_SIGN_REQUIRED));
     }
     Ok(())
 }
