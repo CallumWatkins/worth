@@ -187,7 +187,7 @@
                   Latest balance
                 </div>
                 <div class="text-sm font-medium text-zinc-100">
-                  £2,920
+                  £2,920.65
                 </div>
               </div>
             </div>
@@ -216,15 +216,15 @@
               <div class="space-y-1.5">
                 <div class="grid grid-cols-[1fr_auto] gap-3 rounded-xl bg-zinc-800/80 px-3 py-2.5 text-[13px] text-zinc-100">
                   <span>{{ formatShortDate(`${previousSnapshotMonth}-07`) }}</span>
-                  <span>£2,400</span>
+                  <span>£2,400.10</span>
                 </div>
                 <div class="grid grid-cols-[1fr_auto] gap-3 rounded-xl bg-zinc-800/80 px-3 py-2.5 text-[13px] text-zinc-100">
                   <span>{{ formatShortDate(`${previousSnapshotMonth}-10`) }}</span>
-                  <span>£2,610</span>
+                  <span>£2,610.29</span>
                 </div>
                 <div class="grid grid-cols-[1fr_auto] gap-3 rounded-xl bg-primary/10 px-3 py-2.5 text-[13px] text-zinc-100 ring-1 ring-primary/25">
                   <span>{{ formatShortDate(`${previousSnapshotMonth}-12`) }}</span>
-                  <span>£2,920</span>
+                  <span>£2,920.65</span>
                 </div>
               </div>
             </div>
