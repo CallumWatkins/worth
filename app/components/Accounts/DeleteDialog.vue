@@ -6,7 +6,11 @@
     :close="false"
   >
     <template #body>
-      <div class="space-y-4">
+      <UForm
+        :state="confirmationState"
+        class="space-y-4"
+        @submit="onDelete"
+      >
         <UAlert
           color="error"
           variant="soft"
@@ -46,12 +50,12 @@
             </div>
           </div>
 
-          <UFormField>
+          <UFormField name="confirmationInput">
             <template #label>
               Type <span class="text-highlighted">{{ CONFIRM_PHRASE }}</span> to confirm
             </template>
             <UInput
-              v-model="confirmationInput"
+              v-model="confirmationState.confirmationInput"
               :placeholder="CONFIRM_PHRASE"
               class="w-full"
               autofocus
@@ -63,6 +67,7 @@
           <UButton
             color="neutral"
             variant="ghost"
+            type="button"
             :disabled="deleteAccount.isPending"
             @click="open = false"
           >
@@ -70,14 +75,14 @@
           </UButton>
           <UButton
             color="error"
+            type="submit"
             :disabled="!canDelete"
             loading-auto
-            @click="onDelete"
           >
             Delete account permanently
           </UButton>
         </div>
-      </div>
+      </UForm>
     </template>
   </UModal>
 </template>
@@ -95,7 +100,7 @@ const open = defineModel<boolean>("open", { required: true });
 const api = useApi();
 const { deleteAccount } = useAccountMutations();
 
-const confirmationInput = ref("");
+const confirmationState = reactive({ confirmationInput: "" });
 const submitError = ref<string | null>(null);
 
 const deletePreviewQuery = proxyRefs(useQuery({
@@ -107,12 +112,12 @@ const deletePreviewQuery = proxyRefs(useQuery({
 const canDelete = computed(() => {
   if (deleteAccount.isPending) return false;
   if (!deletePreviewQuery.isSuccess) return false;
-  return confirmationInput.value.trim().toLowerCase() === CONFIRM_PHRASE;
+  return confirmationState.confirmationInput.trim().toLowerCase() === CONFIRM_PHRASE;
 });
 
 watch(open, (isOpen) => {
   if (!isOpen) return;
-  confirmationInput.value = "";
+  confirmationState.confirmationInput = "";
   submitError.value = null;
 });
 
