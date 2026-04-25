@@ -82,6 +82,7 @@
         <InstitutionsDeleteDialog
           v-model:open="deleteOpen"
           :institution-id="institutionId"
+          :redirect-to="{ name: 'institutions' }"
         />
       </template>
     </UPageBody>

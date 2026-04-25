@@ -85,6 +85,11 @@
           {{ formatCurrencyMinor(row.original.total_balance_minor, "GBP") }}
         </template>
       </UTable>
+
+      <InstitutionsDeleteDialog
+        v-model:open="deleteOpen"
+        :institution-id="deleteInstitutionId"
+      />
     </UPageBody>
 
     <InstitutionsCreateDialog v-model:open="createDialogOpen" />
@@ -101,9 +106,12 @@ import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 type Institution = InstitutionSummaryDto;
 
 const UButton = resolveComponent("UButton");
+const UDropdownMenu = resolveComponent("UDropdownMenu");
 
 const api = useApi();
 const createDialogOpen = ref(false);
+const deleteOpen = ref(false);
+const deleteInstitutionId = ref<number | null>(null);
 
 const institutionsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.institutions.list(),
@@ -155,6 +163,33 @@ function staticHeader(label: string) {
   }, label);
 }
 
+function institutionRowActions(institution: Institution) {
+  return [
+    {
+      type: "label" as const,
+      label: "Actions"
+    },
+    {
+      label: "Settings",
+      icon: "i-lucide-settings",
+      onSelect: async () => {
+        await navigateTo({ name: "institutions-id-settings", params: { id: institution.id } });
+      }
+    },
+    {
+      label: "Delete institution",
+      icon: "i-lucide-trash-2",
+      color: "error" as const,
+      onSelect: () => openInstitutionDeleteDialog(institution.id)
+    }
+  ];
+}
+
+function openInstitutionDeleteDialog(institutionId: number) {
+  deleteInstitutionId.value = institutionId;
+  deleteOpen.value = true;
+}
+
 const columns = computed<TableColumn<Institution>[]>(() => [
   {
     accessorKey: "name",
@@ -201,6 +236,26 @@ const columns = computed<TableColumn<Institution>[]>(() => [
     meta: {
       class: {
         th: "text-right",
+        td: "text-right"
+      }
+    }
+  },
+  {
+    id: "actions",
+    enableSorting: false,
+    header: "",
+    cell: ({ row }) => h(UDropdownMenu, {
+      items: institutionRowActions(row.original),
+      content: { align: "end" },
+      "aria-label": "Institution actions"
+    }, () => h(UButton, {
+      icon: "i-lucide-ellipsis-vertical",
+      color: "neutral",
+      variant: "ghost",
+      "aria-label": `Actions for ${row.original.name}`
+    })),
+    meta: {
+      class: {
         td: "text-right"
       }
     }

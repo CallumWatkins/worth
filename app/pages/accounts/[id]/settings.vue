@@ -240,6 +240,7 @@
         <AccountsDeleteDialog
           v-model:open="deleteOpen"
           :account-id="accountId"
+          :redirect-to="{ name: 'accounts' }"
         />
       </template>
     </UPageBody>

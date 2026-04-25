@@ -88,10 +88,12 @@
 </template>
 
 <script lang="ts" setup>
+import type { RouteLocationRaw } from "vue-router";
 import { useQuery } from "@tanstack/vue-query";
 
 const props = defineProps<{
   accountId: number | null
+  redirectTo?: RouteLocationRaw
 }>();
 
 const CONFIRM_PHRASE = "delete";
@@ -128,7 +130,9 @@ async function onDelete() {
   try {
     await deleteAccount.mutateAsync(props.accountId);
     open.value = false;
-    await navigateTo({ name: "accounts" });
+    if (props.redirectTo !== undefined) {
+      await navigateTo(props.redirectTo);
+    }
   } catch (error) {
     submitError.value = error instanceof Error ? error.message : "Failed to delete account";
   }

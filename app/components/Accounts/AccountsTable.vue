@@ -137,6 +137,11 @@
       </span>
     </template>
   </UTable>
+
+  <AccountsDeleteDialog
+    v-model:open="deleteOpen"
+    :account-id="deleteAccountId"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -161,6 +166,10 @@ const props = withDefaults(defineProps<{
 });
 
 const UButton = resolveComponent("UButton");
+const UDropdownMenu = resolveComponent("UDropdownMenu");
+
+const deleteOpen = ref(false);
+const deleteAccountId = ref<number | null>(null);
 
 const hasHiddenInstitution = computed(() => props.hideColumns.includes("institution"));
 const resolvedGroupBy = computed<GroupBy>(() => (
@@ -393,6 +402,33 @@ function sortableHeader(column: Column<Account, unknown>, label: string) {
   });
 }
 
+function accountRowActions(account: Account) {
+  return [
+    {
+      type: "label" as const,
+      label: "Actions"
+    },
+    {
+      label: "Settings",
+      icon: "i-lucide-settings",
+      onSelect: async () => {
+        await navigateTo({ name: "accounts-id-settings", params: { id: account.id } });
+      }
+    },
+    {
+      label: "Delete account",
+      icon: "i-lucide-trash-2",
+      color: "error" as const,
+      onSelect: () => openAccountDeleteDialog(account.id)
+    }
+  ];
+}
+
+function openAccountDeleteDialog(accountId: number) {
+  deleteAccountId.value = accountId;
+  deleteOpen.value = true;
+}
+
 const columns = computed<TableColumn<Account>[]>(() => {
   const out: TableColumn<Account>[] = [];
 
@@ -475,6 +511,30 @@ const columns = computed<TableColumn<Account>[]>(() => {
       meta: {
         class: {
           th: "text-right",
+          td: "text-right"
+        }
+      }
+    },
+    {
+      id: "actions",
+      enableSorting: false,
+      header: "",
+      cell: ({ row }) => {
+        if (row.getIsGrouped()) return null;
+
+        return h(UDropdownMenu, {
+          items: accountRowActions(row.original),
+          content: { align: "end" },
+          "aria-label": "Account actions"
+        }, () => h(UButton, {
+          icon: "i-lucide-ellipsis-vertical",
+          color: "neutral",
+          variant: "ghost",
+          "aria-label": `Actions for ${row.original.name}`
+        }));
+      },
+      meta: {
+        class: {
           td: "text-right"
         }
       }

@@ -104,10 +104,12 @@
 </template>
 
 <script lang="ts" setup>
+import type { RouteLocationRaw } from "vue-router";
 import { useQuery } from "@tanstack/vue-query";
 
 const props = defineProps<{
   institutionId: number | null
+  redirectTo?: RouteLocationRaw
 }>();
 
 const CONFIRM_PHRASE = "delete";
@@ -144,7 +146,9 @@ async function onDelete() {
   try {
     await deleteInstitution.mutateAsync(props.institutionId);
     open.value = false;
-    await navigateTo({ name: "institutions" });
+    if (props.redirectTo !== undefined) {
+      await navigateTo(props.redirectTo);
+    }
   } catch (error) {
     submitError.value = error instanceof Error ? error.message : "Failed to delete institution";
   }
