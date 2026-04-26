@@ -46,7 +46,7 @@
       />
     </template>
     <template #right>
-      <AppSearchBar class="w-72" />
+      <AppSearchBar class="lg:w-72" />
     </template>
   </UHeader>
 </template>
