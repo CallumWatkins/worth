@@ -22,6 +22,7 @@
             :schema="accountFormSchema"
             :state="state"
             :validate-on="['blur']"
+            :validate-on-input-delay="0"
             class="space-y-4"
             @submit="onSubmit"
           >
