@@ -23,23 +23,33 @@
           :title="errorMessage"
         />
 
-        <div v-if="stepIndex === 0" class="grid gap-3 sm:grid-cols-2">
-          <button
-            v-for="flow in flowDefinitions"
-            :key="flow.id"
-            type="button"
-            class="cursor-pointer rounded-xl border border-default p-4 text-left transition hover:border-primary/60 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="busy"
-            @click="selectFlow(flow.id)"
-          >
-            <div class="flex items-center gap-2 font-semibold text-highlighted">
-              <UIcon :name="flow.icon" class="size-5 text-primary" />
-              {{ flow.label }}
-            </div>
-            <div class="mt-2 text-sm text-muted">
-              {{ flow.description }}
-            </div>
-          </button>
+        <div v-if="stepIndex === 0" class="space-y-5">
+          <p class="leading-7 text-toned">
+            Import balance snapshots from outside Worth into this account.
+          </p>
+
+          <h3 class="mb-3 text-sm font-medium text-center">
+            Choose source
+          </h3>
+
+          <div class="flex flex-wrap justify-center gap-3">
+            <button
+              v-for="flow in flowDefinitions"
+              :key="flow.id"
+              type="button"
+              class="w-full max-w-xs cursor-pointer rounded-xl border border-default p-4 text-left transition hover:border-primary/60 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="busy"
+              @click="selectFlow(flow.id)"
+            >
+              <div class="flex items-center gap-2 font-semibold text-highlighted">
+                <UIcon :name="flow.icon" class="size-5 text-primary" />
+                {{ flow.label }}
+              </div>
+              <div class="mt-2 text-sm text-muted">
+                {{ flow.description }}
+              </div>
+            </button>
+          </div>
         </div>
 
         <component
