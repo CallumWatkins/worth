@@ -368,7 +368,7 @@
           :snapshots="snapshotsQuery.data ?? []"
         />
 
-        <AccountsSnapshotEditDialog
+        <AccountsSnapshotsEditDialog
           v-model:open="editSnapshotOpen"
           :account-id="accountId"
           :snapshot-id="editSnapshotId"
