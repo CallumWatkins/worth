@@ -20,16 +20,6 @@
         :description="invalidPreviewDescription"
       />
 
-      <div v-if="preview.summary.overwrite_count > 0" class="space-y-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
-        <UCheckbox
-          :model-value="overwriteExistingConfirmed"
-          label="I understand this import will overwrite existing snapshots"
-          @update:model-value="emit('update:overwriteExistingConfirmed', Boolean($event))"
-        />
-        <div class="text-xs text-muted">
-          {{ preview.summary.overwrite_count }} existing {{ preview.summary.overwrite_count === 1 ? 'snapshot' : 'snapshots' }} will be replaced.
-        </div>
-      </div>
       <UAlert
         v-else-if="warningCount > 0"
         color="warning"
@@ -77,8 +67,8 @@
                 </div>
               </div>
 
-              <div v-if="row.original.action === 'overwrite' && row.original.existing_snapshot" class="text-warning">
-                Replaces {{ formatCurrencyMinor(row.original.existing_snapshot.balance_minor, currencyCode) }} from {{ formatShortDate(row.original.existing_snapshot.date) }}.
+              <div v-if="row.original.action === 'overwrite' && row.original.existing_snapshot" class="text-toned">
+                Overwrites the existing snapshot of {{ formatCurrencyMinor(row.original.existing_snapshot.balance_minor, currencyCode) }}.
               </div>
 
               <div v-if="row.original.action === 'skip_existing'" class="text-muted">
@@ -98,6 +88,14 @@
             </div>
           </template>
         </UTable>
+      </div>
+
+      <div v-if="preview.summary.overwrite_count > 0" class="rounded-lg border border-warning/40 bg-warning/10 p-3">
+        <UCheckbox
+          :model-value="overwriteExistingConfirmed"
+          :label="`I understand this import will overwrite ${preview.summary.overwrite_count} existing ${preview.summary.overwrite_count === 1 ? 'snapshot' : 'snapshots'}`"
+          @update:model-value="emit('update:overwriteExistingConfirmed', Boolean($event))"
+        />
       </div>
     </div>
 
