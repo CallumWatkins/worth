@@ -12,6 +12,11 @@ use crate::contracts::{
     AccountSnapshotUpdateInput, AccountSnapshotsCreateInput, AccountSnapshotsDeleteInput,
     AccountTypeName, AccountUpsertInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput,
 };
+use crate::imports::snapshots::{
+    SnapshotImportCommitDto, SnapshotImportInspectionDto, SnapshotImportOptionsInput,
+    SnapshotImportPlanningContext, SnapshotImportPreviewAction, SnapshotImportPreviewDto,
+    SnapshotImportSourceInput, SnapshotImportValidationIssue,
+};
 use crate::state::AppState;
 use crate::{db, db::AccountListRow};
 
@@ -668,6 +673,145 @@ pub async fn account_snapshots_delete(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn account_snapshot_import_inspect(
+    input: SnapshotImportSourceInput,
+) -> Result<SnapshotImportInspectionDto, ApiError> {
+    crate::imports::snapshots::inspect_source(&input).map_err(map_snapshot_import_validation)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn account_snapshot_import_preview(
+    state: State<'_, AppState>,
+    account_id: i64,
+    input: SnapshotImportSourceInput,
+    options: SnapshotImportOptionsInput,
+) -> Result<SnapshotImportPreviewDto, ApiError> {
+    let pool = &state.pool;
+
+    let Some(account) = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    let existing_snapshots = db::snapshots_for_account(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let plan = crate::imports::snapshots::plan_import(
+        &input,
+        &options,
+        &existing_snapshots,
+        SnapshotImportPlanningContext {
+            account_opened_date: account.opened_date,
+            account_closed_date: account.closed_date,
+            today: Local::now().date_naive(),
+        },
+    )
+    .map_err(map_snapshot_import_validation)?;
+
+    Ok(plan.preview)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn account_snapshot_import_commit(
+    state: State<'_, AppState>,
+    account_id: i64,
+    input: SnapshotImportSourceInput,
+    options: SnapshotImportOptionsInput,
+) -> Result<SnapshotImportCommitDto, ApiError> {
+    let pool = &state.pool;
+
+    let Some(account) = db::account_get_full(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    else {
+        return Err(ApiError::NotFound);
+    };
+
+    let existing_snapshots = db::snapshots_for_account(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    let plan = crate::imports::snapshots::plan_import(
+        &input,
+        &options,
+        &existing_snapshots,
+        SnapshotImportPlanningContext {
+            account_opened_date: account.opened_date,
+            account_closed_date: account.closed_date,
+            today: Local::now().date_naive(),
+        },
+    )
+    .map_err(map_snapshot_import_validation)?;
+
+    if plan.preview.summary.invalid_count > 0 {
+        return Err(ApiError::Validation(vec![validation_issue(
+            "import",
+            "Fix invalid rows before importing snapshots",
+        )]));
+    }
+
+    if plan.preview.summary.overwrite_count > 0 && !options.overwrite_existing_confirmed {
+        return Err(ApiError::Validation(vec![validation_issue(
+            "import",
+            "Confirm overwrite to continue",
+        )]));
+    }
+
+    let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+    let mut created_count = 0;
+    let mut overwritten_count = 0;
+
+    for write in plan.writes {
+        match write.action {
+            SnapshotImportPreviewAction::Create => {
+                db::account_snapshot_create_tx(
+                    &mut tx,
+                    account_id,
+                    write.date,
+                    write.balance_minor,
+                )
+                .await
+                .map_err(map_account_snapshot_write_error)?;
+                created_count += 1;
+            }
+            SnapshotImportPreviewAction::Overwrite => {
+                let Some(existing_snapshot_id) = write.existing_snapshot_id else {
+                    return Err(ApiError::Db);
+                };
+                let updated = db::account_snapshot_update_tx(
+                    &mut tx,
+                    account_id,
+                    existing_snapshot_id,
+                    write.date,
+                    write.balance_minor,
+                )
+                .await
+                .map_err(map_account_snapshot_write_error)?;
+                if !updated {
+                    return Err(ApiError::NotFound);
+                }
+                overwritten_count += 1;
+            }
+            SnapshotImportPreviewAction::SkipExisting
+            | SnapshotImportPreviewAction::SkipUnchanged
+            | SnapshotImportPreviewAction::Invalid => {}
+        }
+    }
+
+    tx.commit().await.map_err(|_| ApiError::Db)?;
+
+    Ok(SnapshotImportCommitDto {
+        created_count,
+        overwritten_count,
+        skipped_count: plan.preview.summary.skip_count,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn institutions_delete_preview(
     state: State<'_, AppState>,
     institution_id: i64,
@@ -1202,6 +1346,15 @@ fn validation_issues_from_garde_report(
         .collect()
 }
 
+fn map_snapshot_import_validation(issues: Vec<SnapshotImportValidationIssue>) -> ApiError {
+    ApiError::Validation(
+        issues
+            .into_iter()
+            .map(|issue| validation_issue(&issue.field, &issue.message))
+            .collect(),
+    )
+}
+
 fn garde_path_to_field(path: &garde::error::Path) -> String {
     let raw = path.to_string();
     if raw == "$" {
@@ -1474,6 +1627,9 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         account_snapshots_create,
         account_snapshot_update,
         account_snapshots_delete,
+        account_snapshot_import_inspect,
+        account_snapshot_import_preview,
+        account_snapshot_import_commit,
         account_balance_over_time,
         dashboard_get,
         dashboard_balance_over_time,

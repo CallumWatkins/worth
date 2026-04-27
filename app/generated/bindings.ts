@@ -133,6 +133,30 @@ async accountSnapshotsDelete(accountId: number, input: AccountSnapshotsDeleteInp
     else return { status: "error", error: e  as any };
 }
 },
+async accountSnapshotImportInspect(input: SnapshotImportSourceInput) : Promise<Result<SnapshotImportInspectionDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_snapshot_import_inspect", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountSnapshotImportPreview(accountId: number, input: SnapshotImportSourceInput, options: SnapshotImportOptionsInput) : Promise<Result<SnapshotImportPreviewDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_snapshot_import_preview", { accountId, input, options }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async accountSnapshotImportCommit(accountId: number, input: SnapshotImportSourceInput, options: SnapshotImportOptionsInput) : Promise<Result<SnapshotImportCommitDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("account_snapshot_import_commit", { accountId, input, options }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async accountBalanceOverTime(accountId: number, period: BalanceOverTimePeriod) : Promise<Result<BalancePointDto[], ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("account_balance_over_time", { accountId, period }) };
@@ -193,6 +217,14 @@ export type ApiError = "Db" | "NotFound" | { Validation: ValidationIssue[] }
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
 export type BalancePointDto = { date: string; balance_minor: number }
 export type CreatedIdDto = { id: number }
+export type CsvSnapshotImportBalanceFormat = "thousands_comma_decimal_dot" | "thousands_dot_decimal_comma"
+export type CsvSnapshotImportColumnDto = { name: string; index: number; sample_values: string[] }
+export type CsvSnapshotImportDateFormat = "yyyy_mm_dd" | "dd_mm_yyyy_slash" | "dd_mm_yy_slash" | "mm_dd_yyyy_slash" | "mm_dd_yy_slash" | "dd_mm_yyyy_dash" | "yyyy_mm_dd_slash"
+export type CsvSnapshotImportGuessesDto = { date_column: string | null; amount_column: string | null; date_format: CsvSnapshotImportDateFormat | null; balance_format: CsvSnapshotImportBalanceFormat | null }
+export type CsvSnapshotImportInspectionDto = { file_name: string; columns: CsvSnapshotImportColumnDto[]; sample_rows: CsvSnapshotImportSampleRowDto[]; guesses: CsvSnapshotImportGuessesDto; total_rows: number }
+export type CsvSnapshotImportOptionsInput = { date_column: string; amount_column: string; date_format: CsvSnapshotImportDateFormat; balance_format: CsvSnapshotImportBalanceFormat }
+export type CsvSnapshotImportSampleRowDto = { source_row_number: number; values: string[] }
+export type CsvSnapshotImportSourceInput = { file_name: string; content: string; has_header_row: boolean }
 export type CurrencyCode = "GBP"
 export type DashboardAllocationDto = { account_type: AccountTypeName; balance_minor: number }
 export type DashboardBalancePointDto = { date: string; balance_minor: number }
@@ -205,6 +237,18 @@ export type InstitutionRef = { kind: "existing"; id: number } | { kind: "new"; i
 export type InstitutionSummaryDto = { id: number; name: string; account_count: number; empty_account_count: number; account_types: AccountTypeName[]; total_balance_minor: number }
 export type InstitutionUpsertInput = { name: string }
 export type SearchResultDto = { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string } | { kind: "institution"; id: number; name: string }
+export type SnapshotImportCommitDto = { created_count: number; overwritten_count: number; skipped_count: number }
+export type SnapshotImportExistingDatePolicy = "overwrite" | "skip" | "error"
+export type SnapshotImportExistingSnapshotDto = { id: number; date: string; balance_minor: number; created_at: string }
+export type SnapshotImportInspectionDto = ({ kind: "csv" } & CsvSnapshotImportInspectionDto)
+export type SnapshotImportOptionsInput = { source: SnapshotImportSourceOptionsInput; existing_date_policy: SnapshotImportExistingDatePolicy; unchanged_value_policy: SnapshotImportUnchangedValuePolicy; overwrite_existing_confirmed: boolean }
+export type SnapshotImportPreviewAction = "create" | "overwrite" | "skip_existing" | "skip_unchanged" | "invalid"
+export type SnapshotImportPreviewDto = { summary: SnapshotImportPreviewSummaryDto; rows: SnapshotImportPreviewRowDto[] }
+export type SnapshotImportPreviewRowDto = { source_row_number: number; raw_date: string; raw_amount: string; date: string | null; balance_minor: number | null; action: SnapshotImportPreviewAction; issues: string[]; warnings: string[]; existing_snapshot: SnapshotImportExistingSnapshotDto | null; previous_balance_minor: number | null }
+export type SnapshotImportPreviewSummaryDto = { total_rows: number; create_count: number; overwrite_count: number; skip_count: number; invalid_count: number }
+export type SnapshotImportSourceInput = ({ kind: "csv" } & CsvSnapshotImportSourceInput)
+export type SnapshotImportSourceOptionsInput = ({ kind: "csv" } & CsvSnapshotImportOptionsInput)
+export type SnapshotImportUnchangedValuePolicy = "exclude" | "include"
 export type ValidationIssue = { field: string; message: string }
 
 /** tauri-specta globals **/

@@ -13,14 +13,16 @@
     }"
   >
     <template #actions>
-      <UButton
-        v-if="actionLabel"
-        :icon="actionIcon"
-        size="lg"
-        @click="$emit('action')"
-      >
-        {{ actionLabel }}
-      </UButton>
+      <slot name="actions">
+        <UButton
+          v-if="actionLabel"
+          :icon="actionIcon"
+          size="lg"
+          @click="$emit('action')"
+        >
+          {{ actionLabel }}
+        </UButton>
+      </slot>
     </template>
   </UEmpty>
 </template>

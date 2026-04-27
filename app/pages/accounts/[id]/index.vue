@@ -139,10 +139,28 @@
           icon="i-lucide-chart-line"
           title="No snapshots yet"
           description="Add balance snapshots to start building this account's history."
-          action-label="Add snapshots"
-          action-icon="i-lucide-plus"
-          @action="addSnapshotsOpen = true"
-        />
+        >
+          <template #actions>
+            <div class="flex flex-wrap justify-center gap-2">
+              <UButton
+                icon="i-lucide-plus"
+                size="lg"
+                @click="addSnapshotsOpen = true"
+              >
+                Add snapshots
+              </UButton>
+              <UButton
+                icon="i-lucide-file-input"
+                size="lg"
+                color="neutral"
+                variant="subtle"
+                @click="importSnapshotsOpen = true"
+              >
+                Import
+              </UButton>
+            </div>
+          </template>
+        </EmptyPageState>
 
         <template v-else>
           <UPageCard
@@ -253,13 +271,22 @@
                     </UFormField>
                   </div>
                   <div v-if="tableView === 'snapshots'" class="flex items-center gap-2">
-                    <UButton
-                      icon="i-lucide-plus"
-                      :disabled="!accountQuery.data"
-                      @click="addSnapshotsOpen = true"
-                    >
-                      Add snapshots
-                    </UButton>
+                    <UFieldGroup>
+                      <UButton
+                        icon="i-lucide-plus"
+                        :disabled="!accountQuery.data"
+                        @click="addSnapshotsOpen = true"
+                      >
+                        Add snapshots
+                      </UButton>
+                      <UDropdownMenu :items="addSnapshotsMenuItems" :content="{ align: 'end' }">
+                        <UButton
+                          icon="i-lucide-chevron-down"
+                          :disabled="!accountQuery.data"
+                          aria-label="More snapshot add options"
+                        />
+                      </UDropdownMenu>
+                    </UFieldGroup>
                     <UButton
                       v-if="selectedSnapshotCount"
                       color="error"
@@ -369,6 +396,12 @@
           :snapshots="snapshotsQuery.data ?? []"
         />
 
+        <AccountsSnapshotsImportDialog
+          v-model:open="importSnapshotsOpen"
+          :account-id="accountId"
+          :currency-code="accountCurrencyCode"
+        />
+
         <AccountsSnapshotsEditDialog
           v-model:open="editSnapshotOpen"
           :account-id="accountId"
@@ -447,6 +480,7 @@ const accountQuery = proxyRefs(useQuery({
 
 const accountCurrencyCode = computed(() => accountQuery.data?.currency_code ?? "GBP");
 const addSnapshotsOpen = ref(false);
+const importSnapshotsOpen = ref(false);
 const editSnapshotOpen = ref(false);
 const editSnapshotId = ref<number | null>(null);
 const deleteSnapshotsOpen = ref(false);
@@ -484,6 +518,16 @@ const balanceOverTimePeriodItems = computed<TabsItem[]>(() => {
     { label: "MAX", value: "MAX", disabled }
   ];
 });
+
+const addSnapshotsMenuItems = computed(() => [
+  {
+    label: "Import snapshots",
+    icon: "i-lucide-file-input",
+    onSelect: () => {
+      importSnapshotsOpen.value = true;
+    }
+  }
+]);
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const account = accountQuery.data;
