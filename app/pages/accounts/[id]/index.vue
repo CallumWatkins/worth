@@ -364,6 +364,7 @@
           v-model:open="addSnapshotsOpen"
           :account-id="accountId"
           :opened-date="accountQuery.data.opened_date"
+          :closed-date="accountQuery.data.closed_date"
           :currency-code="accountCurrencyCode"
           :snapshots="snapshotsQuery.data ?? []"
         />
@@ -373,6 +374,7 @@
           :account-id="accountId"
           :snapshot-id="editSnapshotId"
           :opened-date="accountQuery.data.opened_date"
+          :closed-date="accountQuery.data.closed_date"
           :currency-code="accountCurrencyCode"
           :snapshots="snapshotsQuery.data ?? []"
         />

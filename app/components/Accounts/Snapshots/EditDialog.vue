@@ -89,6 +89,14 @@
             :description="`This snapshot is before the account opened date of ${formatShortDate(props.openedDate)}.`"
           />
 
+          <UAlert
+            v-if="state.date !== '' && props.closedDate != null && state.date > props.closedDate"
+            color="warning"
+            variant="subtle"
+            title="After account closed date"
+            :description="`This snapshot is after the account closed date of ${formatShortDate(props.closedDate)}.`"
+          />
+
           <UFormField label="Balance" :error="showAmountErrorState ? true : undefined">
             <UInputNumber
               v-model="state.amount"
@@ -156,6 +164,7 @@ const props = defineProps<{
   accountId: number | null
   snapshotId: number | null
   openedDate: string | null | undefined
+  closedDate: string | null | undefined
   currencyCode: CurrencyCode
   snapshots: AccountBalanceSnapshotDto[]
 }>();

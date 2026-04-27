@@ -124,6 +124,9 @@
                     <div v-if="rowStates[index]!.beforeOpenedDateWarning" class="text-warning">
                       Snapshot is before the account opened date of {{ formatShortDate(props.openedDate) }}.
                     </div>
+                    <div v-if="rowStates[index]!.afterClosedDateWarning" class="text-warning">
+                      Snapshot is after the account closed date of {{ formatShortDate(props.closedDate) }}.
+                    </div>
                   </div>
                 </td>
 
@@ -192,6 +195,7 @@ import { toRef } from "vue";
 const props = defineProps<{
   accountId: number | null
   openedDate: string | null | undefined
+  closedDate: string | null | undefined
   currencyCode: CurrencyCode
   snapshots: AccountBalanceSnapshotDto[]
 }>();
@@ -225,6 +229,7 @@ const {
   open,
   accountId: toRef(props, "accountId"),
   openedDate: toRef(props, "openedDate"),
+  closedDate: toRef(props, "closedDate"),
   snapshots: toRef(props, "snapshots")
 });
 </script>
