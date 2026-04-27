@@ -6,7 +6,7 @@
           <div class="text-xs uppercase tracking-wide text-muted">
             {{ item.label }}
           </div>
-          <div class="mt-1 text-lg font-semibold text-highlighted">
+          <div class="mt-1 text-lg text-highlighted" :class="item.value > 0 ? 'font-semibold' : undefined">
             {{ item.value }}
           </div>
         </div>
@@ -172,17 +172,25 @@ const summaryItems = computed(() => {
   if (!summary) return [];
   return [
     { label: "Total", value: summary.total_rows, class: "border-default" },
-    { label: "Create", value: summary.create_count, class: "border-default" },
+    {
+      label: "Create",
+      value: summary.create_count,
+      class: summary.create_count > 0 ? "border-default" : "border-default opacity-75"
+    },
     {
       label: "Overwrite",
       value: summary.overwrite_count,
-      class: summary.overwrite_count > 0 ? "border-warning/40 bg-warning/10" : "border-default"
+      class: summary.overwrite_count > 0 ? "border-warning/40 bg-warning/10" : "border-default opacity-75"
     },
-    { label: "Skip", value: summary.skip_count, class: "border-default" },
+    {
+      label: "Skip",
+      value: summary.skip_count,
+      class: summary.skip_count > 0 ? "border-default" : "border-default opacity-75"
+    },
     {
       label: "Invalid",
       value: summary.invalid_count,
-      class: summary.invalid_count > 0 ? "border-error/40 bg-error/10" : "border-default"
+      class: summary.invalid_count > 0 ? "border-error/40 bg-error/10" : "border-default opacity-75"
     }
   ];
 });
