@@ -6,7 +6,7 @@
     :ui="{ content: 'max-w-3xl' }"
   >
     <template #body>
-      <div class="space-y-5">
+      <div class="space-y-8">
         <UStepper
           v-if="stepItems.length > 1"
           v-model="stepIndex"
@@ -58,7 +58,10 @@
           v-bind="currentStep.props()"
         />
 
-        <div class="flex items-center justify-between gap-2">
+        <div
+          v-if="(stepIndex > 0) || showContinue || showComplete"
+          class="flex items-center justify-between gap-2"
+        >
           <div>
             <UButton
               v-if="stepIndex > 0"

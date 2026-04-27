@@ -1,6 +1,6 @@
 <template>
-  <div class="space-y-4">
-    <div class="space-y-3">
+  <div class="space-y-8">
+    <div class="space-y-4">
       <UFileUpload
         :model-value="selectedFile"
         accept=".csv,text/csv"
@@ -9,7 +9,6 @@
         :disabled="busy"
         layout="list"
         position="inside"
-        class="min-h-36"
         @update:model-value="$emit('update:selectedFile', $event ?? null)"
       />
 
