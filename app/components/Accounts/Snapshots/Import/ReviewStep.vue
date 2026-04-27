@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div v-if="preview" class="space-y-4">
-      <div class="grid gap-3 sm:grid-cols-5">
+      <div class="grid gap-3 sm:grid-cols-6">
         <div v-for="item in summaryItems" :key="item.label" class="rounded-lg border p-3" :class="item.class">
           <div class="text-xs uppercase tracking-wide text-muted">
             {{ item.label }}
@@ -30,6 +30,13 @@
           {{ preview.summary.overwrite_count }} existing {{ preview.summary.overwrite_count === 1 ? 'snapshot' : 'snapshots' }} will be replaced.
         </div>
       </div>
+      <UAlert
+        v-else-if="warningCount > 0"
+        color="warning"
+        variant="subtle"
+        title="Review warnings before importing"
+        :description="`${warningCount} ${warningCount === 1 ? 'warning' : 'warnings'} found. Review the highlighted notes below before importing.`"
+      />
 
       <div class="relative rounded-lg after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-lg after:border after:border-default">
         <UTable
@@ -167,6 +174,10 @@ const previewColumns: TableColumn<SnapshotImportPreviewRowDto>[] = [
   }
 ];
 
+const warningCount = computed(() => {
+  return props.preview?.rows.reduce((count, row) => count + row.warnings.length, 0) ?? 0;
+});
+
 const summaryItems = computed(() => {
   const summary = props.preview?.summary;
   if (!summary) return [];
@@ -191,6 +202,11 @@ const summaryItems = computed(() => {
       label: "Invalid",
       value: summary.invalid_count,
       class: summary.invalid_count > 0 ? "border-error/40 bg-error/10" : "border-default opacity-75"
+    },
+    {
+      label: "Warnings",
+      value: warningCount.value,
+      class: warningCount.value > 0 ? "border-warning/40 bg-warning/10" : "border-default opacity-75"
     }
   ];
 });
