@@ -2,7 +2,7 @@
   <UModal
     v-model:open="open"
     title="Import snapshots"
-    :dismissible="false"
+    :dismissible="stepIndex === 0"
     :ui="{ content: 'max-w-3xl' }"
   >
     <template #body>
