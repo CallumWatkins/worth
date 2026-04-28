@@ -797,6 +797,7 @@ pub async fn account_snapshot_import_commit(
             }
             SnapshotImportPreviewAction::SkipExisting
             | SnapshotImportPreviewAction::SkipUnchanged
+            | SnapshotImportPreviewAction::SkipDuplicate
             | SnapshotImportPreviewAction::Invalid => {}
         }
     }

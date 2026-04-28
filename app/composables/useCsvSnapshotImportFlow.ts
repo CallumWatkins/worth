@@ -43,10 +43,14 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
       date_column: "",
       amount_column: "",
       date_format: "yyyy_mm_dd",
+      timestamp_date_policy: "date_as_written",
+      timestamp_missing_timezone_policy: "local",
+      timestamp_missing_timezone: getLocalTimezone(),
       balance_format: "thousands_comma_decimal_dot"
     },
     existing_date_policy: "overwrite",
     unchanged_value_policy: "exclude",
+    duplicate_date_policy: "keep_last",
     overwrite_existing_confirmed: false
   });
 
@@ -126,10 +130,14 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
           date_column: inspection.value.guesses.date_column ?? inspection.value.columns[0]?.name ?? "",
           amount_column: inspection.value.guesses.amount_column ?? inspection.value.columns[1]?.name ?? "",
           date_format: inspection.value.guesses.date_format ?? "yyyy_mm_dd",
+          timestamp_date_policy: "date_as_written",
+          timestamp_missing_timezone_policy: inspection.value.guesses.timestamp_missing_timezone_policy ?? "local",
+          timestamp_missing_timezone: getLocalTimezone(),
           balance_format: inspection.value.guesses.balance_format ?? "thousands_comma_decimal_dot"
         },
         existing_date_policy: "overwrite",
         unchanged_value_policy: "exclude",
+        duplicate_date_policy: inspection.value.guesses.duplicate_date_policy ?? "keep_last",
         overwrite_existing_confirmed: false
       };
     } catch (error) {
@@ -220,10 +228,14 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
         date_column: "",
         amount_column: "",
         date_format: "yyyy_mm_dd",
+        timestamp_date_policy: "date_as_written",
+        timestamp_missing_timezone_policy: "local",
+        timestamp_missing_timezone: getLocalTimezone(),
         balance_format: "thousands_comma_decimal_dot"
       },
       existing_date_policy: "overwrite",
       unchanged_value_policy: "exclude",
+      duplicate_date_policy: "keep_last",
       overwrite_existing_confirmed: false
     };
   }
@@ -309,4 +321,8 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
       }
     ]
   };
+}
+
+function getLocalTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }

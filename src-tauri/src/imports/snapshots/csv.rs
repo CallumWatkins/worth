@@ -1,9 +1,13 @@
-use chrono::NaiveDate;
+use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::HashMap;
 
-use super::{issue, SnapshotImportCandidate, SnapshotImportValidationIssue};
+use super::{
+    issue, SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy,
+    SnapshotImportValidationIssue,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CsvSnapshotImportSourceInput {
@@ -17,6 +21,9 @@ pub struct CsvSnapshotImportOptionsInput {
     pub date_column: String,
     pub amount_column: String,
     pub date_format: CsvSnapshotImportDateFormat,
+    pub timestamp_date_policy: CsvSnapshotImportTimestampDatePolicy,
+    pub timestamp_missing_timezone_policy: CsvSnapshotImportMissingTimezonePolicy,
+    pub timestamp_missing_timezone: String,
     pub balance_format: CsvSnapshotImportBalanceFormat,
 }
 
@@ -30,6 +37,24 @@ pub enum CsvSnapshotImportDateFormat {
     MmDdYySlash,
     DdMmYyyyDash,
     YyyyMmDdSlash,
+    #[serde(rename = "iso_8601_date_time")]
+    Iso8601DateTime,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CsvSnapshotImportTimestampDatePolicy {
+    DateAsWritten,
+    ConvertToLocal,
+    ConvertToUtc,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CsvSnapshotImportMissingTimezonePolicy {
+    Local,
+    Utc,
+    Timezone,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -58,6 +83,8 @@ pub struct CsvSnapshotImportGuessesDto {
     pub amount_column: Option<String>,
     pub date_format: Option<CsvSnapshotImportDateFormat>,
     pub balance_format: Option<CsvSnapshotImportBalanceFormat>,
+    pub timestamp_missing_timezone_policy: Option<CsvSnapshotImportMissingTimezonePolicy>,
+    pub duplicate_date_policy: Option<SnapshotImportDuplicateDatePolicy>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -103,6 +130,10 @@ pub fn inspect(
         .and_then(|column| column_index(&data.columns, column))
         .and_then(|index| guess_date_format(&data.rows, index));
     let balance_format = guess_balance_format(&data, amount_column.as_ref());
+    let timestamp_missing_timezone_policy =
+        guess_timestamp_missing_timezone_policy(date_column.as_ref());
+    let duplicate_date_policy =
+        guess_duplicate_date_policy(&data, date_column.as_ref(), date_format);
 
     Ok(CsvSnapshotImportInspectionDto {
         file_name: data.file_name,
@@ -121,6 +152,8 @@ pub fn inspect(
             amount_column,
             date_format,
             balance_format,
+            timestamp_missing_timezone_policy,
+            duplicate_date_policy,
         },
         total_rows: u32::try_from(data.rows.len()).expect("row count should fit in u32"),
     })
@@ -145,15 +178,7 @@ pub fn candidates(
     Ok(data
         .rows
         .iter()
-        .map(|row| {
-            parse_candidate(
-                row,
-                date_index,
-                amount_index,
-                options.date_format,
-                options.balance_format,
-            )
-        })
+        .map(|row| parse_candidate(row, date_index, amount_index, options))
         .collect())
 }
 
@@ -407,7 +432,15 @@ fn guess_date_format(rows: &[CsvRow], column_index: usize) -> Option<CsvSnapshot
                 .filter(|row| {
                     row.values
                         .get(column_index)
-                        .and_then(|value| parse_date(value, *format))
+                        .and_then(|value| {
+                            parse_date(
+                                value,
+                                *format,
+                                CsvSnapshotImportTimestampDatePolicy::DateAsWritten,
+                                CsvSnapshotImportMissingTimezonePolicy::Local,
+                                "+00:00",
+                            )
+                        })
                         .is_some()
                 })
                 .count()
@@ -416,23 +449,81 @@ fn guess_date_format(rows: &[CsvRow], column_index: usize) -> Option<CsvSnapshot
             rows.iter().take(20).any(|row| {
                 row.values
                     .get(column_index)
-                    .and_then(|value| parse_date(value, *format))
+                    .and_then(|value| {
+                        parse_date(
+                            value,
+                            *format,
+                            CsvSnapshotImportTimestampDatePolicy::DateAsWritten,
+                            CsvSnapshotImportMissingTimezonePolicy::Local,
+                            "+00:00",
+                        )
+                    })
                     .is_some()
             })
         })
+}
+
+fn guess_timestamp_missing_timezone_policy(
+    date_column: Option<&String>,
+) -> Option<CsvSnapshotImportMissingTimezonePolicy> {
+    let name = date_column?.to_lowercase();
+    (name.contains("utc") || name.contains("gmt"))
+        .then_some(CsvSnapshotImportMissingTimezonePolicy::Utc)
+}
+
+fn guess_duplicate_date_policy(
+    data: &CsvData,
+    date_column: Option<&String>,
+    date_format: Option<CsvSnapshotImportDateFormat>,
+) -> Option<SnapshotImportDuplicateDatePolicy> {
+    let date_index = date_column.and_then(|column| column_index(&data.columns, column))?;
+    let date_format = date_format?;
+    let dates = data
+        .rows
+        .iter()
+        .filter_map(|row| {
+            row.values.get(date_index).and_then(|value| {
+                parse_date(
+                    value,
+                    date_format,
+                    CsvSnapshotImportTimestampDatePolicy::DateAsWritten,
+                    CsvSnapshotImportMissingTimezonePolicy::Local,
+                    "+00:00",
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if dates.is_empty() {
+        return None;
+    }
+
+    let ascending_steps = dates.windows(2).filter(|pair| pair[0] < pair[1]).count();
+    let descending_steps = dates.windows(2).filter(|pair| pair[0] > pair[1]).count();
+
+    Some(if descending_steps > ascending_steps {
+        SnapshotImportDuplicateDatePolicy::KeepFirst
+    } else {
+        SnapshotImportDuplicateDatePolicy::KeepLast
+    })
 }
 
 fn parse_candidate(
     row: &CsvRow,
     date_index: usize,
     amount_index: usize,
-    date_format: CsvSnapshotImportDateFormat,
-    balance_format: CsvSnapshotImportBalanceFormat,
+    options: &CsvSnapshotImportOptionsInput,
 ) -> SnapshotImportCandidate {
     let raw_date = row.values.get(date_index).cloned().unwrap_or_default();
     let raw_amount = row.values.get(amount_index).cloned().unwrap_or_default();
-    let date = parse_date(&raw_date, date_format);
-    let balance_minor = parse_amount_minor(&raw_amount, balance_format);
+    let date = parse_date(
+        &raw_date,
+        options.date_format,
+        options.timestamp_date_policy,
+        options.timestamp_missing_timezone_policy,
+        &options.timestamp_missing_timezone,
+    );
+    let balance_minor = parse_amount_minor(&raw_amount, options.balance_format);
     let mut issues = Vec::new();
 
     if raw_date.trim().is_empty() {
@@ -453,10 +544,17 @@ fn parse_candidate(
         date,
         balance_minor,
         issues,
+        skip_duplicate: false,
     }
 }
 
-fn parse_date(raw: &str, format: CsvSnapshotImportDateFormat) -> Option<NaiveDate> {
+fn parse_date(
+    raw: &str,
+    format: CsvSnapshotImportDateFormat,
+    timestamp_date_policy: CsvSnapshotImportTimestampDatePolicy,
+    timestamp_missing_timezone_policy: CsvSnapshotImportMissingTimezonePolicy,
+    timestamp_missing_timezone: &str,
+) -> Option<NaiveDate> {
     let pattern = match format {
         CsvSnapshotImportDateFormat::YyyyMmDd => "%Y-%m-%d",
         CsvSnapshotImportDateFormat::DdMmYyyySlash => "%d/%m/%Y",
@@ -465,8 +563,122 @@ fn parse_date(raw: &str, format: CsvSnapshotImportDateFormat) -> Option<NaiveDat
         CsvSnapshotImportDateFormat::MmDdYySlash => "%m/%d/%y",
         CsvSnapshotImportDateFormat::DdMmYyyyDash => "%d-%m-%Y",
         CsvSnapshotImportDateFormat::YyyyMmDdSlash => "%Y/%m/%d",
+        CsvSnapshotImportDateFormat::Iso8601DateTime => {
+            return parse_iso_8601_date_time_date(
+                raw,
+                timestamp_date_policy,
+                timestamp_missing_timezone_policy,
+                timestamp_missing_timezone,
+            )
+        }
     };
     NaiveDate::parse_from_str(raw.trim(), pattern).ok()
+}
+
+fn parse_iso_8601_date_time_date(
+    raw: &str,
+    timestamp_date_policy: CsvSnapshotImportTimestampDatePolicy,
+    timestamp_missing_timezone_policy: CsvSnapshotImportMissingTimezonePolicy,
+    timestamp_missing_timezone: &str,
+) -> Option<NaiveDate> {
+    let parsed = parse_iso_8601_date_time(raw.trim())?;
+
+    if timestamp_date_policy == CsvSnapshotImportTimestampDatePolicy::DateAsWritten {
+        return Some(match parsed {
+            ParsedIso8601DateTime::WithOffset(timestamp) => timestamp.date_naive(),
+            ParsedIso8601DateTime::WithoutOffset(date_time) => date_time.date(),
+        });
+    }
+
+    let timestamp = match parsed {
+        ParsedIso8601DateTime::WithOffset(timestamp) => timestamp,
+        ParsedIso8601DateTime::WithoutOffset(date_time) => {
+            match timestamp_missing_timezone_policy {
+                CsvSnapshotImportMissingTimezonePolicy::Local => Local
+                    .from_local_datetime(&date_time)
+                    .earliest()?
+                    .with_timezone(&Utc),
+                CsvSnapshotImportMissingTimezonePolicy::Utc => Utc.from_utc_datetime(&date_time),
+                CsvSnapshotImportMissingTimezonePolicy::Timezone => timestamp_missing_timezone
+                    .parse::<Tz>()
+                    .ok()?
+                    .from_local_datetime(&date_time)
+                    .earliest()?
+                    .with_timezone(&Utc),
+            }
+            .fixed_offset()
+        }
+    };
+
+    Some(match timestamp_date_policy {
+        CsvSnapshotImportTimestampDatePolicy::DateAsWritten => unreachable!("handled above"),
+        CsvSnapshotImportTimestampDatePolicy::ConvertToLocal => {
+            timestamp.with_timezone(&Local).date_naive()
+        }
+        CsvSnapshotImportTimestampDatePolicy::ConvertToUtc => {
+            timestamp.with_timezone(&Utc).date_naive()
+        }
+    })
+}
+
+enum ParsedIso8601DateTime {
+    WithOffset(DateTime<FixedOffset>),
+    WithoutOffset(NaiveDateTime),
+}
+
+fn parse_iso_8601_date_time(raw: &str) -> Option<ParsedIso8601DateTime> {
+    let normalized = raw.replace(',', ".");
+    let normalized = normalized
+        .strip_suffix('Z')
+        .or_else(|| normalized.strip_suffix('z'))
+        .map_or(normalized.clone(), |value| format!("{value}+00:00"));
+
+    DateTime::parse_from_rfc3339(&normalized)
+        .ok()
+        .or_else(|| parse_iso_8601_date_time_with_offset(&normalized))
+        .map(ParsedIso8601DateTime::WithOffset)
+        .or_else(|| {
+            parse_iso_8601_date_time_without_offset(&normalized)
+                .map(ParsedIso8601DateTime::WithoutOffset)
+        })
+}
+
+fn parse_iso_8601_date_time_with_offset(raw: &str) -> Option<DateTime<FixedOffset>> {
+    [
+        "%Y-%m-%dT%H:%M:%S%.f%:z",
+        "%Y-%m-%dT%H:%M:%S%.f%z",
+        "%Y-%m-%dT%H:%M%:z",
+        "%Y-%m-%dT%H:%M%z",
+        "%Y-%m-%d %H:%M:%S%.f%:z",
+        "%Y-%m-%d %H:%M:%S%.f%z",
+        "%Y-%m-%d %H:%M%:z",
+        "%Y-%m-%d %H:%M%z",
+        "%Y%m%dT%H%M%S%.f%:z",
+        "%Y%m%dT%H%M%S%.f%z",
+        "%Y%m%dT%H%M%:z",
+        "%Y%m%dT%H%M%z",
+        "%Y%m%d %H%M%S%.f%:z",
+        "%Y%m%d %H%M%S%.f%z",
+        "%Y%m%d %H%M%:z",
+        "%Y%m%d %H%M%z",
+    ]
+    .into_iter()
+    .find_map(|pattern| DateTime::parse_from_str(raw, pattern).ok())
+}
+
+fn parse_iso_8601_date_time_without_offset(raw: &str) -> Option<NaiveDateTime> {
+    [
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d %H:%M:%S%.f",
+        "%Y-%m-%d %H:%M",
+        "%Y%m%dT%H%M%S%.f",
+        "%Y%m%dT%H%M",
+        "%Y%m%d %H%M%S%.f",
+        "%Y%m%d %H%M",
+    ]
+    .into_iter()
+    .find_map(|pattern| NaiveDateTime::parse_from_str(raw, pattern).ok())
 }
 
 fn date_formats() -> Vec<CsvSnapshotImportDateFormat> {
@@ -478,6 +690,7 @@ fn date_formats() -> Vec<CsvSnapshotImportDateFormat> {
         CsvSnapshotImportDateFormat::MmDdYySlash,
         CsvSnapshotImportDateFormat::DdMmYyyyDash,
         CsvSnapshotImportDateFormat::YyyyMmDdSlash,
+        CsvSnapshotImportDateFormat::Iso8601DateTime,
     ]
 }
 
@@ -643,12 +856,19 @@ fn valid_integer_part(value: &str, thousands_separator: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_amount_minor, CsvSnapshotImportBalanceFormat};
+    use chrono::NaiveDate;
+
+    use super::{
+        parse_amount_minor, parse_date, CsvSnapshotImportBalanceFormat,
+        CsvSnapshotImportDateFormat, CsvSnapshotImportMissingTimezonePolicy,
+        CsvSnapshotImportTimestampDatePolicy,
+    };
 
     const COMMA_THOUSANDS: CsvSnapshotImportBalanceFormat =
         CsvSnapshotImportBalanceFormat::ThousandsCommaDecimalDot;
     const DOT_THOUSANDS: CsvSnapshotImportBalanceFormat =
         CsvSnapshotImportBalanceFormat::ThousandsDotDecimalComma;
+    const ISO_8601: CsvSnapshotImportDateFormat = CsvSnapshotImportDateFormat::Iso8601DateTime;
 
     #[test]
     fn parse_amount_minor_accepts_expected_currency_decoration() {
@@ -690,5 +910,79 @@ mod tests {
         assert_eq!(parse_amount_minor("12,34.56", COMMA_THOUSANDS), None);
         assert_eq!(parse_amount_minor("1,234.567", COMMA_THOUSANDS), None);
         assert_eq!(parse_amount_minor("1.23.4,56", DOT_THOUSANDS), None);
+    }
+
+    #[test]
+    fn parse_date_accepts_timestamp_date_as_written() {
+        assert_eq!(
+            parse_iso_8601_date(
+                "2026-01-09T23:30:00-05:00",
+                CsvSnapshotImportTimestampDatePolicy::DateAsWritten,
+            ),
+            Some(NaiveDate::from_ymd_opt(2026, 1, 9).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_date_can_convert_timestamp_to_utc() {
+        assert_eq!(
+            parse_iso_8601_date(
+                "2026-01-09T23:30:00-05:00",
+                CsvSnapshotImportTimestampDatePolicy::ConvertToUtc,
+            ),
+            Some(NaiveDate::from_ymd_opt(2026, 1, 10).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_date_accepts_common_iso_8601_variants() {
+        assert_eq!(
+            parse_iso_8601_date(
+                "20260109 2330",
+                CsvSnapshotImportTimestampDatePolicy::DateAsWritten
+            ),
+            Some(NaiveDate::from_ymd_opt(2026, 1, 9).unwrap())
+        );
+        assert_eq!(
+            parse_iso_8601_date(
+                "2026-01-09T23:30:15.123+0000",
+                CsvSnapshotImportTimestampDatePolicy::DateAsWritten
+            ),
+            Some(NaiveDate::from_ymd_opt(2026, 1, 9).unwrap())
+        );
+        assert_eq!(
+            parse_iso_8601_date(
+                "20260109T233015Z",
+                CsvSnapshotImportTimestampDatePolicy::DateAsWritten
+            ),
+            Some(NaiveDate::from_ymd_opt(2026, 1, 9).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_date_uses_chosen_timezone_when_converting() {
+        assert_eq!(
+            parse_date(
+                "2026-01-09T23:30:00",
+                ISO_8601,
+                CsvSnapshotImportTimestampDatePolicy::ConvertToUtc,
+                CsvSnapshotImportMissingTimezonePolicy::Timezone,
+                "America/New_York",
+            ),
+            Some(NaiveDate::from_ymd_opt(2026, 1, 10).unwrap())
+        );
+    }
+
+    fn parse_iso_8601_date(
+        raw: &str,
+        timestamp_date_policy: CsvSnapshotImportTimestampDatePolicy,
+    ) -> Option<NaiveDate> {
+        parse_date(
+            raw,
+            ISO_8601,
+            timestamp_date_policy,
+            CsvSnapshotImportMissingTimezonePolicy::Local,
+            "Europe/London",
+        )
     }
 }

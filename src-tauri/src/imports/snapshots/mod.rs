@@ -38,11 +38,20 @@ pub enum SnapshotImportUnchangedValuePolicy {
     Include,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SnapshotImportDuplicateDatePolicy {
+    KeepFirst,
+    KeepLast,
+    Error,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct SnapshotImportOptionsInput {
     pub source: SnapshotImportSourceOptionsInput,
     pub existing_date_policy: SnapshotImportExistingDatePolicy,
     pub unchanged_value_policy: SnapshotImportUnchangedValuePolicy,
+    pub duplicate_date_policy: SnapshotImportDuplicateDatePolicy,
     pub overwrite_existing_confirmed: bool,
 }
 
@@ -76,6 +85,7 @@ pub enum SnapshotImportPreviewAction {
     Overwrite,
     SkipExisting,
     SkipUnchanged,
+    SkipDuplicate,
     Invalid,
 }
 
@@ -141,6 +151,7 @@ pub(crate) struct SnapshotImportCandidate {
     pub date: Option<NaiveDate>,
     pub balance_minor: Option<i64>,
     pub issues: Vec<String>,
+    pub skip_duplicate: bool,
 }
 
 pub fn inspect_source(
@@ -165,22 +176,45 @@ pub fn plan_import(
         }
     };
 
-    mark_duplicate_dates(&mut candidates);
+    resolve_duplicate_dates(&mut candidates, options.duplicate_date_policy);
     Ok(build_plan(candidates, options, existing_snapshots, context))
 }
 
-fn mark_duplicate_dates(rows: &mut [SnapshotImportCandidate]) {
-    let mut counts = HashMap::<NaiveDate, usize>::new();
-    for date in rows.iter().filter_map(|row| row.date) {
-        *counts.entry(date).or_insert(0) += 1;
+fn resolve_duplicate_dates(
+    rows: &mut [SnapshotImportCandidate],
+    policy: SnapshotImportDuplicateDatePolicy,
+) {
+    let mut row_indexes_by_date = HashMap::<NaiveDate, Vec<usize>>::new();
+    for (index, date) in rows
+        .iter()
+        .enumerate()
+        .filter_map(|(index, row)| row.date.map(|date| (index, date)))
+    {
+        row_indexes_by_date.entry(date).or_default().push(index);
     }
-    for row in rows {
-        if row
-            .date
-            .is_some_and(|date| counts.get(&date).copied().unwrap_or(0) > 1)
-        {
-            row.issues
-                .push("Duplicate date in selected import file".to_string());
+
+    for row_indexes in row_indexes_by_date
+        .values()
+        .filter(|indexes| indexes.len() > 1)
+    {
+        match policy {
+            SnapshotImportDuplicateDatePolicy::Error => {
+                for index in row_indexes {
+                    rows[*index]
+                        .issues
+                        .push("Duplicate date in selected import file".to_string());
+                }
+            }
+            SnapshotImportDuplicateDatePolicy::KeepFirst => {
+                for index in row_indexes.iter().skip(1) {
+                    rows[*index].skip_duplicate = true;
+                }
+            }
+            SnapshotImportDuplicateDatePolicy::KeepLast => {
+                for index in row_indexes.iter().rev().skip(1) {
+                    rows[*index].skip_duplicate = true;
+                }
+            }
         }
     }
 }
@@ -210,15 +244,31 @@ fn build_plan(
             continue;
         };
 
-        let Some(balance_minor) = row.balance_minor else {
-            planned_by_row.insert(row.source_row_number, invalid_preview_row(row, None, None));
-            continue;
-        };
-
         let previous_balance_minor = timeline.range(..date).next_back().map(|(_, value)| *value);
         let existing_snapshot = existing_by_date
             .get(&date)
             .map(|snapshot| existing_snapshot_dto(snapshot));
+
+        if row.skip_duplicate {
+            planned_by_row.insert(
+                row.source_row_number,
+                preview_row(
+                    row,
+                    SnapshotImportPreviewAction::SkipDuplicate,
+                    existing_snapshot,
+                    previous_balance_minor,
+                ),
+            );
+            continue;
+        }
+
+        let Some(balance_minor) = row.balance_minor else {
+            planned_by_row.insert(
+                row.source_row_number,
+                invalid_preview_row(row, existing_snapshot, previous_balance_minor),
+            );
+            continue;
+        };
 
         if !row.issues.is_empty() {
             planned_by_row.insert(
@@ -427,6 +477,7 @@ fn summary_for_rows(rows: &[SnapshotImportPreviewRowDto]) -> SnapshotImportPrevi
                         row.action,
                         SnapshotImportPreviewAction::SkipExisting
                             | SnapshotImportPreviewAction::SkipUnchanged
+                            | SnapshotImportPreviewAction::SkipDuplicate
                     )
                 })
                 .count(),
@@ -456,5 +507,79 @@ pub(crate) fn issue(field: &str, message: &str) -> SnapshotImportValidationIssue
     SnapshotImportValidationIssue {
         field: field.to_string(),
         message: message.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+
+    use super::{
+        resolve_duplicate_dates, SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy,
+    };
+
+    #[test]
+    fn resolve_duplicate_dates_can_keep_first_row_for_date() {
+        let mut rows = duplicate_rows();
+
+        resolve_duplicate_dates(&mut rows, SnapshotImportDuplicateDatePolicy::KeepFirst);
+
+        assert!(!rows[0].skip_duplicate);
+        assert!(rows[1].skip_duplicate);
+        assert!(!rows[2].skip_duplicate);
+        assert!(rows.iter().all(|row| row.issues.is_empty()));
+    }
+
+    #[test]
+    fn resolve_duplicate_dates_can_keep_last_row_for_date() {
+        let mut rows = duplicate_rows();
+
+        resolve_duplicate_dates(&mut rows, SnapshotImportDuplicateDatePolicy::KeepLast);
+
+        assert!(rows[0].skip_duplicate);
+        assert!(!rows[1].skip_duplicate);
+        assert!(!rows[2].skip_duplicate);
+        assert!(rows.iter().all(|row| row.issues.is_empty()));
+    }
+
+    #[test]
+    fn resolve_duplicate_dates_can_mark_duplicates_invalid() {
+        let mut rows = duplicate_rows();
+
+        resolve_duplicate_dates(&mut rows, SnapshotImportDuplicateDatePolicy::Error);
+
+        assert!(rows[0]
+            .issues
+            .contains(&"Duplicate date in selected import file".to_string()));
+        assert!(rows[1]
+            .issues
+            .contains(&"Duplicate date in selected import file".to_string()));
+        assert!(rows[2].issues.is_empty());
+        assert!(rows.iter().all(|row| !row.skip_duplicate));
+    }
+
+    fn duplicate_rows() -> Vec<SnapshotImportCandidate> {
+        vec![
+            candidate(1, 2026, 1, 9),
+            candidate(2, 2026, 1, 9),
+            candidate(3, 2026, 1, 10),
+        ]
+    }
+
+    fn candidate(
+        source_row_number: u32,
+        year: i32,
+        month: u32,
+        day: u32,
+    ) -> SnapshotImportCandidate {
+        SnapshotImportCandidate {
+            source_row_number,
+            raw_date: format!("{year:04}-{month:02}-{day:02}"),
+            raw_amount: "1.00".to_string(),
+            date: NaiveDate::from_ymd_opt(year, month, day),
+            balance_minor: Some(100),
+            issues: Vec::new(),
+            skip_duplicate: false,
+        }
     }
 }

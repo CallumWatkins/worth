@@ -75,6 +75,10 @@
                 Existing snapshot kept.
               </div>
 
+              <div v-if="row.original.action === 'skip_duplicate'" class="text-muted">
+                Another row for this date was selected.
+              </div>
+
               <div
                 v-if="row.original.action === 'skip_unchanged' && row.original.existing_snapshot != null && row.original.balance_minor === row.original.existing_snapshot.balance_minor"
                 class="text-muted"
@@ -217,6 +221,7 @@ function actionLabel(action: SnapshotImportPreviewAction) {
     return "Overwrite";
   case "skip_existing":
   case "skip_unchanged":
+  case "skip_duplicate":
     return "Skip";
   case "invalid":
     return "Invalid";
@@ -233,6 +238,7 @@ function actionColor(action: SnapshotImportPreviewAction) {
     return "error";
   case "skip_existing":
   case "skip_unchanged":
+  case "skip_duplicate":
     return "neutral";
   }
 }
