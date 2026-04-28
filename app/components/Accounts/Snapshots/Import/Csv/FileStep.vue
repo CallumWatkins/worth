@@ -22,15 +22,28 @@
     </div>
 
     <div v-if="inspection" class="space-y-3">
-      <div class="text-sm text-muted">
-        <span class="font-medium text-highlighted">{{ inspection.file_name }}</span>
-        contains {{ inspection.total_rows }} import row{{ inspection.total_rows === 1 ? '' : 's' }}.
-      </div>
+      <template v-if="hasSampleRows">
+        <div class="flex justify-between">
+          <span class="text-muted text-sm">
+            The selected file contains {{ inspection.total_rows }} row{{ inspection.total_rows === 1 ? '' : 's' }} to import.
+          </span>
+          <UBadge label="Sample" variant="soft" color="neutral" />
+        </div>
 
-      <UTable
-        :data="inspection.sample_rows"
-        :columns="sampleColumns"
-        class="overflow-auto rounded-lg border border-default"
+        <UTable
+          :data="inspection.sample_rows"
+          :columns="sampleColumns"
+          :ui="{ th: 'py-2', td: 'py-2' }"
+          class="overflow-auto rounded-lg border border-default"
+        />
+      </template>
+
+      <UAlert
+        v-else
+        color="error"
+        variant="subtle"
+        title="No import rows found"
+        description="Choose a CSV file that contains at least one row to import."
       />
     </div>
   </div>
@@ -66,4 +79,6 @@ const sampleColumns = computed<TableColumn<CsvSnapshotImportSampleRowDto>[]>(() 
     }
   }
 })) ?? []);
+
+const hasSampleRows = computed(() => (props.inspection?.sample_rows.length ?? 0) > 0);
 </script>

@@ -251,7 +251,7 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
         title: "File",
         icon: "i-lucide-file-up",
         component: csvFileStepComponent,
-        canContinue: () => inspection.value != null,
+        canContinue: () => (inspection.value?.sample_rows.length ?? 0) > 0,
         onBack: clearFile,
         props: () => ({
           selectedFile: selectedFile.value,
