@@ -687,8 +687,23 @@ pub async fn account_snapshot_import_preview(
     input: SnapshotImportSourceInput,
     options: SnapshotImportOptionsInput,
 ) -> Result<SnapshotImportPreviewDto, ApiError> {
-    let pool = &state.pool;
+    account_snapshot_import_preview_with_today(
+        &state.pool,
+        account_id,
+        input,
+        options,
+        Local::now().date_naive(),
+    )
+    .await
+}
 
+async fn account_snapshot_import_preview_with_today(
+    pool: &SqlitePool,
+    account_id: i64,
+    input: SnapshotImportSourceInput,
+    options: SnapshotImportOptionsInput,
+    today: NaiveDate,
+) -> Result<SnapshotImportPreviewDto, ApiError> {
     let Some(account) = db::account_get_full(pool, account_id)
         .await
         .map_err(|_| ApiError::Db)?
@@ -706,7 +721,7 @@ pub async fn account_snapshot_import_preview(
         SnapshotImportPlanningContext {
             account_opened_date: account.opened_date,
             account_closed_date: account.closed_date,
-            today: Local::now().date_naive(),
+            today,
         },
     )
     .map_err(map_snapshot_import_validation)?;
@@ -722,8 +737,23 @@ pub async fn account_snapshot_import_commit(
     input: SnapshotImportSourceInput,
     options: SnapshotImportOptionsInput,
 ) -> Result<SnapshotImportCommitDto, ApiError> {
-    let pool = &state.pool;
+    account_snapshot_import_commit_with_today(
+        &state.pool,
+        account_id,
+        input,
+        options,
+        Local::now().date_naive(),
+    )
+    .await
+}
 
+async fn account_snapshot_import_commit_with_today(
+    pool: &SqlitePool,
+    account_id: i64,
+    input: SnapshotImportSourceInput,
+    options: SnapshotImportOptionsInput,
+    today: NaiveDate,
+) -> Result<SnapshotImportCommitDto, ApiError> {
     let Some(account) = db::account_get_full(pool, account_id)
         .await
         .map_err(|_| ApiError::Db)?
@@ -741,7 +771,7 @@ pub async fn account_snapshot_import_commit(
         SnapshotImportPlanningContext {
             account_opened_date: account.opened_date,
             account_closed_date: account.closed_date,
-            today: Local::now().date_naive(),
+            today,
         },
     )
     .map_err(map_snapshot_import_validation)?;
@@ -1660,4 +1690,267 @@ pub fn export_bindings_to_app_generated() -> anyhow::Result<()> {
 
 pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     specta_builder().invoke_handler()
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+    use serde_json::json;
+    use sqlx::{
+        sqlite::{SqliteConnectOptions, SqlitePoolOptions},
+        SqlitePool,
+    };
+    use std::str::FromStr;
+
+    use super::{
+        account_snapshot_import_commit_with_today, ApiError, SnapshotImportOptionsInput,
+        SnapshotImportSourceInput,
+    };
+    use crate::db;
+
+    #[tokio::test]
+    async fn account_snapshot_import_commit_returns_not_found_for_missing_account() {
+        let pool = test_pool().await;
+
+        let result = account_snapshot_import_commit_with_today(
+            &pool,
+            999,
+            csv_input("date,balance\n2026-01-09,1.00\n"),
+            import_options("overwrite", "include", "keep_last", true),
+            date(2026, 1, 9),
+        )
+        .await;
+
+        assert!(matches!(result, Err(ApiError::NotFound)));
+    }
+
+    #[tokio::test]
+    async fn account_snapshot_import_commit_blocks_invalid_preview_without_writes() {
+        let pool = test_pool().await;
+        let account_id = create_account(&pool).await;
+
+        let result = account_snapshot_import_commit_with_today(
+            &pool,
+            account_id,
+            csv_input("date,balance\nnot-a-date,1.00\n2026-01-09,2.00\n"),
+            import_options("overwrite", "include", "keep_last", true),
+            date(2026, 1, 9),
+        )
+        .await;
+
+        assert_validation_error(
+            result,
+            "import",
+            "Fix invalid rows before importing snapshots",
+        );
+        assert_eq!(
+            snapshot_balances(&pool, account_id).await,
+            Vec::<(NaiveDate, i64)>::new()
+        );
+    }
+
+    #[tokio::test]
+    async fn account_snapshot_import_commit_requires_overwrite_confirmation() {
+        let pool = test_pool().await;
+        let account_id = create_account(&pool).await;
+        insert_snapshot(&pool, account_id, 2026, 1, 9, 100).await;
+
+        let result = account_snapshot_import_commit_with_today(
+            &pool,
+            account_id,
+            csv_input("date,balance\n2026-01-09,2.00\n"),
+            import_options("overwrite", "include", "keep_last", false),
+            date(2026, 1, 9),
+        )
+        .await;
+
+        assert_validation_error(result, "import", "Confirm overwrite to continue");
+        assert_eq!(
+            snapshot_balances(&pool, account_id).await,
+            vec![(date(2026, 1, 9), 100)]
+        );
+    }
+
+    #[tokio::test]
+    async fn account_snapshot_import_commit_persists_creates_overwrites_and_skips() {
+        let pool = test_pool().await;
+        let account_id = create_account(&pool).await;
+        insert_snapshot(&pool, account_id, 2026, 1, 8, 100).await;
+        insert_snapshot(&pool, account_id, 2026, 1, 10, 500).await;
+
+        let result = account_snapshot_import_commit_with_today(
+            &pool,
+            account_id,
+            csv_input(
+                "date,balance\n2026-01-09,1.00\n2026-01-10,6.00\n2026-01-11,7.00\n2026-01-11,8.00\n",
+            ),
+            import_options("overwrite", "exclude", "keep_last", true),
+            date(2026, 1, 9),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result.created_count, 1);
+        assert_eq!(result.overwritten_count, 1);
+        assert_eq!(result.skipped_count, 2);
+        assert_eq!(
+            snapshot_balances(&pool, account_id).await,
+            vec![
+                (date(2026, 1, 8), 100),
+                (date(2026, 1, 10), 600),
+                (date(2026, 1, 11), 800),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn account_snapshot_import_commit_does_not_write_skip_existing_rows() {
+        let pool = test_pool().await;
+        let account_id = create_account(&pool).await;
+        insert_snapshot(&pool, account_id, 2026, 1, 9, 100).await;
+
+        let result = account_snapshot_import_commit_with_today(
+            &pool,
+            account_id,
+            csv_input("date,balance\n2026-01-09,2.00\n2026-01-10,2.00\n"),
+            import_options("skip", "include", "keep_last", false),
+            date(2026, 1, 9),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result.created_count, 1);
+        assert_eq!(result.overwritten_count, 0);
+        assert_eq!(result.skipped_count, 1);
+        assert_eq!(
+            snapshot_balances(&pool, account_id).await,
+            vec![(date(2026, 1, 9), 100), (date(2026, 1, 10), 200)]
+        );
+    }
+
+    async fn test_pool() -> SqlitePool {
+        let options = SqliteConnectOptions::from_str("sqlite::memory:")
+            .unwrap()
+            .foreign_keys(true);
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await
+            .unwrap();
+
+        sqlx::migrate!("./db/migrations").run(&pool).await.unwrap();
+        pool
+    }
+
+    async fn create_account(pool: &SqlitePool) -> i64 {
+        let institution_id = sqlx::query("INSERT INTO institutions (name) VALUES ('Bank')")
+            .execute(pool)
+            .await
+            .unwrap()
+            .last_insert_rowid();
+        let type_id =
+            sqlx::query_scalar::<_, i64>("SELECT id FROM account_types WHERE name = 'current'")
+                .fetch_one(pool)
+                .await
+                .unwrap();
+
+        sqlx::query(
+            r"
+            INSERT INTO accounts (
+                name,
+                institution_id,
+                type_id,
+                currency_code,
+                normal_balance_sign
+            )
+            VALUES ('Everyday', ?, ?, 'GBP', 1)
+            ",
+        )
+        .bind(institution_id)
+        .bind(type_id)
+        .execute(pool)
+        .await
+        .unwrap()
+        .last_insert_rowid()
+    }
+
+    async fn insert_snapshot(
+        pool: &SqlitePool,
+        account_id: i64,
+        year: i32,
+        month: u32,
+        day: u32,
+        balance_minor: i64,
+    ) {
+        sqlx::query(
+            r"
+            INSERT INTO account_balance_snapshots (account_id, balance_date, balance_minor)
+            VALUES (?, ?, ?)
+            ",
+        )
+        .bind(account_id)
+        .bind(date(year, month, day))
+        .bind(balance_minor)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn snapshot_balances(pool: &SqlitePool, account_id: i64) -> Vec<(NaiveDate, i64)> {
+        db::snapshots_for_account(pool, account_id)
+            .await
+            .unwrap()
+            .into_iter()
+            .rev()
+            .map(|snapshot| (snapshot.balance_date, snapshot.balance_minor))
+            .collect()
+    }
+
+    fn csv_input(content: &str) -> SnapshotImportSourceInput {
+        serde_json::from_value(json!({
+            "kind": "csv",
+            "file_name": "snapshots.csv",
+            "content": content,
+            "has_header_row": true,
+        }))
+        .unwrap()
+    }
+
+    fn import_options(
+        existing_date_policy: &str,
+        unchanged_value_policy: &str,
+        duplicate_date_policy: &str,
+        overwrite_existing_confirmed: bool,
+    ) -> SnapshotImportOptionsInput {
+        serde_json::from_value(json!({
+            "source": {
+                "kind": "csv",
+                "date_column": "date",
+                "amount_column": "balance",
+                "date_format": "yyyy_mm_dd",
+                "timestamp_date_policy": "date_as_written",
+                "timestamp_missing_timezone_policy": "local",
+                "timestamp_missing_timezone": "Europe/London",
+                "balance_format": "thousands_comma_decimal_dot",
+            },
+            "existing_date_policy": existing_date_policy,
+            "unchanged_value_policy": unchanged_value_policy,
+            "duplicate_date_policy": duplicate_date_policy,
+            "overwrite_existing_confirmed": overwrite_existing_confirmed,
+        }))
+        .unwrap()
+    }
+
+    fn assert_validation_error<T>(result: Result<T, ApiError>, field: &str, message: &str) {
+        let Err(ApiError::Validation(issues)) = result else {
+            panic!("expected validation error");
+        };
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].field, field);
+        assert_eq!(issues[0].message, message);
+    }
+
+    fn date(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
 }
