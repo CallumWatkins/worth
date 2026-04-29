@@ -13,6 +13,12 @@
 	--color-error: var(--ui-color-error-500);
 }
 
+@layer theme {
+	.dark {
+		--ui-bg: var(--ui-color-neutral-950);
+	}
+}
+
 /* Allow smooth interpolation of glow strength across breakpoint changes */
 @property --glow-strength {
 	syntax: "<number>";
@@ -55,7 +61,6 @@
 		/* Background glow strength (used in body::before) */
 		--glow-strength: 3;
 		transition: --glow-strength 250ms ease;
-		--ui-bg: var(--color-neutral-950);
 		scrollbar-width: thin; /* Firefox */
 		scrollbar-color: rgb(148 163 184 / 0.65) transparent; /* slate-400-ish */
 	}

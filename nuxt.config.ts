@@ -55,6 +55,19 @@ export default defineNuxtConfig({
   vite: {
     clearScreen: false,
     envPrefix: ["VITE_", "TAURI_"],
+    optimizeDeps: {
+      include: [
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
+        "@tanstack/vue-query",
+        "@tauri-apps/api/core",
+        "@tauri-apps/api/event",
+        "@tauri-apps/api/webviewWindow",
+        "@internationalized/date",
+        "zod",
+        "@tanstack/vue-table"
+      ]
+    },
     server: {
       strictPort: true,
       hmr: {

@@ -54,7 +54,7 @@
 <script lang="ts" setup>
 import type { NavigationMenuItem } from "@nuxt/ui";
 
-const items = ref<NavigationMenuItem[]>([
+const items: NavigationMenuItem[] = [
   {
     label: "Dashboard",
     icon: "i-lucide-layout-dashboard",
@@ -75,5 +75,5 @@ const items = ref<NavigationMenuItem[]>([
     icon: "i-lucide-settings",
     to: { name: "settings" }
   }
-]);
+];
 </script>

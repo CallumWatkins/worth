@@ -32,8 +32,8 @@ export const useResourcePageError = ({
 
     if (resourceId.value === null) {
       showError(createError({
-        statusCode: 404,
-        statusMessage: `${resourceName} not found`,
+        status: 404,
+        statusText: `${resourceName} not found`,
         message: invalidIdMessage ?? `The ${resourceNameLower} ID is missing or invalid.`,
         fatal: true
       }));
@@ -43,8 +43,8 @@ export const useResourcePageError = ({
     if (!resourceIsError.value) return;
     if (isApiNotFoundError(resourceError.value)) {
       showError(createError({
-        statusCode: 404,
-        statusMessage: `${resourceName} not found`,
+        status: 404,
+        statusText: `${resourceName} not found`,
         message: notFoundMessage ?? `The ${resourceNameLower} with ID ${resourceId.value} does not exist.`,
         fatal: true
       }));
@@ -53,8 +53,8 @@ export const useResourcePageError = ({
 
     const error = resourceError.value;
     showError(createError({
-      statusCode: 500,
-      statusMessage: `Failed to load ${resourceName}`,
+      status: 500,
+      statusText: `Failed to load ${resourceName}`,
       message: error instanceof Error && error.message.length
         ? error.message
         : fallbackErrorMessage,

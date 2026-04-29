@@ -295,9 +295,9 @@ const props = defineProps<{
 }>();
 
 const { formatShortDate } = useLocaleFormatters();
-const paneRefs = ref<Array<HTMLElement | null>>([]);
+const paneRefs = shallowRef<Array<HTMLElement | null>>([]);
 const shellHeight = ref<number | null>(null);
-const shellRef = ref<HTMLElement | null>(null);
+const shellRef = shallowRef<HTMLElement | null>(null);
 const allocationRotationDeg = -4;
 const allocationRotationRad = allocationRotationDeg * (Math.PI / 180);
 const allocation = [

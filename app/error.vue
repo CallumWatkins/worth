@@ -8,7 +8,7 @@
         <AppNavbar />
         <UMain class="error-page-enter">
           <UError
-            :key="`${error.statusCode}:${error.statusMessage}`"
+            :key="`${error.status}:${error.statusText}`"
             :error="error"
             redirect="/"
             :clear="{
