@@ -313,6 +313,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       {
         name: "Balance",
         type: "line",
+        silent: true,
         data: values,
         smooth: true,
         showSymbol: false,
@@ -420,6 +421,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
     graphic: [
       {
         type: "text",
+        silent: true,
         left: "center",
         top: "39%",
         style: {
@@ -441,6 +443,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
       {
         name: "Allocation",
         type: "pie",
+        cursor: "default",
         radius: ["62%", "72%"],
         center: ["50%", "42%"],
         padAngle: 2,
@@ -449,6 +452,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         labelLine: { show: false },
         data: data.map((d) => ({
           name: d.accountType,
+          cursor: "default",
           value: d.value,
           itemStyle: {
             color: d.color,

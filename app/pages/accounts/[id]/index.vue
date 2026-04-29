@@ -709,6 +709,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       {
         name: "Balance",
         type: "line",
+        silent: true,
         data: values,
         smooth: true,
         showSymbol: false,
