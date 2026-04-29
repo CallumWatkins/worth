@@ -36,6 +36,7 @@
             root: 'min-w-0 overflow-x-hidden',
             base: 'w-full table-fixed'
           }"
+          virtualize
           sticky
           class="max-h-[440px] overflow-y-auto"
         >

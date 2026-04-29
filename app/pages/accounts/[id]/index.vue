@@ -317,6 +317,7 @@
                 :grouping-options="balanceGroupingOptions"
                 :empty="balanceTableEmpty"
                 :ui="{ root: 'min-w-full', td: 'empty:p-0' }"
+                virtualize
                 sticky
                 class="max-h-[500px] overflow-auto"
               >
