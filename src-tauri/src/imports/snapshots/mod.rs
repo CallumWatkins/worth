@@ -512,11 +512,20 @@ pub(crate) fn issue(field: &str, message: &str) -> SnapshotImportValidationIssue
 
 #[cfg(test)]
 mod tests {
-    use chrono::NaiveDate;
+    use chrono::{NaiveDate, TimeZone, Utc};
 
-    use super::{
-        resolve_duplicate_dates, SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy,
+    use super::csv::{
+        CsvSnapshotImportBalanceFormat, CsvSnapshotImportDateFormat,
+        CsvSnapshotImportMissingTimezonePolicy, CsvSnapshotImportTimestampDatePolicy,
     };
+    use super::{
+        plan_import, resolve_duplicate_dates, CsvSnapshotImportOptionsInput,
+        CsvSnapshotImportSourceInput, SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy,
+        SnapshotImportExistingDatePolicy, SnapshotImportOptionsInput,
+        SnapshotImportPlanningContext, SnapshotImportPreviewAction, SnapshotImportSourceInput,
+        SnapshotImportSourceOptionsInput, SnapshotImportUnchangedValuePolicy,
+    };
+    use crate::db::rows::AccountBalanceSnapshotRow;
 
     #[test]
     fn resolve_duplicate_dates_can_keep_first_row_for_date() {
@@ -558,6 +567,349 @@ mod tests {
         assert!(rows.iter().all(|row| !row.skip_duplicate));
     }
 
+    #[test]
+    fn plan_import_creates_chronologically_but_returns_preview_in_source_order() {
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-10,2.00\n2026-01-09,1.00\n2026-01-11,2.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Exclude,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &[],
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![
+                SnapshotImportPreviewAction::Create,
+                SnapshotImportPreviewAction::Create,
+                SnapshotImportPreviewAction::SkipUnchanged,
+            ]
+        );
+        assert_eq!(plan.preview.rows[0].date, date(2026, 1, 10));
+        assert_eq!(plan.preview.rows[0].previous_balance_minor, Some(100));
+        assert_eq!(plan.preview.rows[1].date, date(2026, 1, 9));
+        assert_eq!(plan.preview.rows[1].previous_balance_minor, None);
+        assert_eq!(
+            plan.writes
+                .iter()
+                .map(|write| write.date)
+                .collect::<Vec<_>>(),
+            vec![date(2026, 1, 9).unwrap(), date(2026, 1, 10).unwrap()]
+        );
+        assert_eq!(plan.preview.summary.total_rows, 3);
+        assert_eq!(plan.preview.summary.create_count, 2);
+        assert_eq!(plan.preview.summary.skip_count, 1);
+    }
+
+    #[test]
+    fn plan_import_overwrites_existing_date_when_policy_allows_it() {
+        let existing = vec![snapshot(7, 2026, 1, 9, 100)];
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-09,2.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Exclude,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &existing,
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![SnapshotImportPreviewAction::Overwrite]
+        );
+        assert_eq!(plan.preview.summary.overwrite_count, 1);
+        assert_eq!(plan.writes.len(), 1);
+        assert_eq!(plan.writes[0].existing_snapshot_id, Some(7));
+        assert_eq!(plan.writes[0].balance_minor, 200);
+        assert_eq!(
+            plan.preview.rows[0]
+                .existing_snapshot
+                .as_ref()
+                .unwrap()
+                .balance_minor,
+            100
+        );
+    }
+
+    #[test]
+    fn plan_import_skips_existing_date_when_policy_says_skip() {
+        let existing = vec![snapshot(7, 2026, 1, 9, 100)];
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-09,2.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Skip,
+                SnapshotImportUnchangedValuePolicy::Exclude,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &existing,
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![SnapshotImportPreviewAction::SkipExisting]
+        );
+        assert_eq!(plan.preview.summary.skip_count, 1);
+        assert!(plan.writes.is_empty());
+    }
+
+    #[test]
+    fn plan_import_marks_existing_date_invalid_when_policy_says_error() {
+        let existing = vec![snapshot(7, 2026, 1, 9, 100)];
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-09,2.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Error,
+                SnapshotImportUnchangedValuePolicy::Exclude,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &existing,
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![SnapshotImportPreviewAction::Invalid]
+        );
+        assert_eq!(
+            plan.preview.rows[0].issues,
+            vec!["Snapshot already exists for this date"]
+        );
+        assert_eq!(plan.preview.summary.invalid_count, 1);
+        assert!(plan.writes.is_empty());
+    }
+
+    #[test]
+    fn plan_import_skips_same_existing_balance_before_existing_date_policy() {
+        let existing = vec![snapshot(7, 2026, 1, 9, 100)];
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-09,1.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Error,
+                SnapshotImportUnchangedValuePolicy::Include,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &existing,
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![SnapshotImportPreviewAction::SkipUnchanged]
+        );
+        assert!(plan.preview.rows[0].issues.is_empty());
+        assert!(plan.writes.is_empty());
+    }
+
+    #[test]
+    fn plan_import_applies_unchanged_value_policy_against_previous_effective_balance() {
+        let existing = vec![snapshot(1, 2026, 1, 8, 100)];
+        let excluded = plan_import(
+            &csv_input("date,balance\n2026-01-09,1.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Exclude,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &existing,
+            context(),
+        )
+        .unwrap();
+        let included = plan_import(
+            &csv_input("date,balance\n2026-01-09,1.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Include,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &existing,
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&excluded.preview.rows),
+            vec![SnapshotImportPreviewAction::SkipUnchanged]
+        );
+        assert!(excluded.writes.is_empty());
+        assert_eq!(
+            actions(&included.preview.rows),
+            vec![SnapshotImportPreviewAction::Create]
+        );
+        assert_eq!(included.writes.len(), 1);
+    }
+
+    #[test]
+    fn plan_import_uses_earlier_imported_rows_for_later_unchanged_detection() {
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-10,5.00\n2026-01-09,5.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Exclude,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &[],
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![
+                SnapshotImportPreviewAction::SkipUnchanged,
+                SnapshotImportPreviewAction::Create,
+            ]
+        );
+        assert_eq!(plan.preview.rows[0].previous_balance_minor, Some(500));
+        assert_eq!(plan.writes.len(), 1);
+        assert_eq!(plan.writes[0].date, date(2026, 1, 9).unwrap());
+    }
+
+    #[test]
+    fn plan_import_applies_duplicate_keep_last_policy_through_preview_and_writes() {
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-09,1.00\n2026-01-10,2.00\n2026-01-09,3.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Include,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &[],
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![
+                SnapshotImportPreviewAction::SkipDuplicate,
+                SnapshotImportPreviewAction::Create,
+                SnapshotImportPreviewAction::Create,
+            ]
+        );
+        assert_eq!(plan.preview.summary.create_count, 2);
+        assert_eq!(plan.preview.summary.skip_count, 1);
+        assert_eq!(
+            plan.writes
+                .iter()
+                .map(|write| write.balance_minor)
+                .collect::<Vec<_>>(),
+            vec![300, 200]
+        );
+    }
+
+    #[test]
+    fn plan_import_marks_all_duplicate_dates_invalid_when_policy_errors() {
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-09,1.00\n2026-01-09,2.00\n2026-01-10,3.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Include,
+                SnapshotImportDuplicateDatePolicy::Error,
+            ),
+            &[],
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![
+                SnapshotImportPreviewAction::Invalid,
+                SnapshotImportPreviewAction::Invalid,
+                SnapshotImportPreviewAction::Create,
+            ]
+        );
+        assert!(plan.preview.rows[0]
+            .issues
+            .contains(&"Duplicate date in selected import file".to_string()));
+        assert!(plan.preview.rows[1]
+            .issues
+            .contains(&"Duplicate date in selected import file".to_string()));
+        assert_eq!(plan.preview.summary.invalid_count, 2);
+        assert_eq!(plan.writes.len(), 1);
+    }
+
+    #[test]
+    fn plan_import_preserves_invalid_rows_without_writes() {
+        let plan = plan_import(
+            &csv_input("date,balance\nnot-a-date,1.00\n2026-01-09,nope\n2026-01-10,2.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Include,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &[],
+            context(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actions(&plan.preview.rows),
+            vec![
+                SnapshotImportPreviewAction::Invalid,
+                SnapshotImportPreviewAction::Invalid,
+                SnapshotImportPreviewAction::Create,
+            ]
+        );
+        assert_eq!(
+            plan.preview.rows[0].issues,
+            vec!["Date does not match the selected format"]
+        );
+        assert_eq!(
+            plan.preview.rows[1].issues,
+            vec!["Amount is not a valid currency value"]
+        );
+        assert_eq!(plan.preview.summary.invalid_count, 2);
+        assert_eq!(plan.writes.len(), 1);
+    }
+
+    #[test]
+    fn plan_import_adds_future_and_account_date_warnings() {
+        let context = SnapshotImportPlanningContext {
+            account_opened_date: date(2026, 1, 9),
+            account_closed_date: date(2026, 1, 10),
+            today: date(2026, 1, 8).unwrap(),
+        };
+        let plan = plan_import(
+            &csv_input("date,balance\n2026-01-07,1.00\n2026-01-09,2.00\n2026-01-11,3.00\n"),
+            &options(
+                SnapshotImportExistingDatePolicy::Overwrite,
+                SnapshotImportUnchangedValuePolicy::Include,
+                SnapshotImportDuplicateDatePolicy::KeepLast,
+            ),
+            &[],
+            context,
+        )
+        .unwrap();
+
+        assert_eq!(
+            plan.preview.rows[0].warnings,
+            vec!["Snapshot is before the account opened date of 2026-01-09."]
+        );
+        assert_eq!(
+            plan.preview.rows[1].warnings,
+            vec!["Future-dated snapshot. Balance-over-time charts only show data through today."]
+        );
+        assert_eq!(
+            plan.preview.rows[2].warnings,
+            vec![
+                "Future-dated snapshot. This snapshot will count as the latest balance, but balance-over-time charts only show data through today.",
+                "Snapshot is after the account closed date of 2026-01-10.",
+            ]
+        );
+    }
+
     fn duplicate_rows() -> Vec<SnapshotImportCandidate> {
         vec![
             candidate(1, 2026, 1, 9),
@@ -581,5 +933,67 @@ mod tests {
             issues: Vec::new(),
             skip_duplicate: false,
         }
+    }
+
+    fn csv_input(content: &str) -> SnapshotImportSourceInput {
+        SnapshotImportSourceInput::Csv(CsvSnapshotImportSourceInput {
+            file_name: "snapshots.csv".to_string(),
+            content: content.to_string(),
+            has_header_row: true,
+        })
+    }
+
+    fn options(
+        existing_date_policy: SnapshotImportExistingDatePolicy,
+        unchanged_value_policy: SnapshotImportUnchangedValuePolicy,
+        duplicate_date_policy: SnapshotImportDuplicateDatePolicy,
+    ) -> SnapshotImportOptionsInput {
+        SnapshotImportOptionsInput {
+            source: SnapshotImportSourceOptionsInput::Csv(CsvSnapshotImportOptionsInput {
+                date_column: "date".to_string(),
+                amount_column: "balance".to_string(),
+                date_format: CsvSnapshotImportDateFormat::YyyyMmDd,
+                timestamp_date_policy: CsvSnapshotImportTimestampDatePolicy::DateAsWritten,
+                timestamp_missing_timezone_policy: CsvSnapshotImportMissingTimezonePolicy::Local,
+                timestamp_missing_timezone: "Europe/London".to_string(),
+                balance_format: CsvSnapshotImportBalanceFormat::ThousandsCommaDecimalDot,
+            }),
+            existing_date_policy,
+            unchanged_value_policy,
+            duplicate_date_policy,
+            overwrite_existing_confirmed: false,
+        }
+    }
+
+    fn context() -> SnapshotImportPlanningContext {
+        SnapshotImportPlanningContext {
+            account_opened_date: None,
+            account_closed_date: None,
+            today: date(2026, 1, 8).unwrap(),
+        }
+    }
+
+    fn snapshot(
+        id: i64,
+        year: i32,
+        month: u32,
+        day: u32,
+        balance_minor: i64,
+    ) -> AccountBalanceSnapshotRow {
+        AccountBalanceSnapshotRow {
+            id,
+            account_id: 1,
+            balance_date: date(year, month, day).unwrap(),
+            balance_minor,
+            created_at: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
+        }
+    }
+
+    fn actions(rows: &[super::SnapshotImportPreviewRowDto]) -> Vec<SnapshotImportPreviewAction> {
+        rows.iter().map(|row| row.action).collect()
+    }
+
+    fn date(year: i32, month: u32, day: u32) -> Option<NaiveDate> {
+        NaiveDate::from_ymd_opt(year, month, day)
     }
 }

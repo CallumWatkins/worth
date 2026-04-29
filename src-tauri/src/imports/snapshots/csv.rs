@@ -859,16 +859,161 @@ mod tests {
     use chrono::NaiveDate;
 
     use super::{
-        parse_amount_minor, parse_date, CsvSnapshotImportBalanceFormat,
+        candidates, inspect, parse_amount_minor, parse_date, CsvSnapshotImportBalanceFormat,
         CsvSnapshotImportDateFormat, CsvSnapshotImportMissingTimezonePolicy,
+        CsvSnapshotImportOptionsInput, CsvSnapshotImportSourceInput,
         CsvSnapshotImportTimestampDatePolicy,
     };
+    use crate::imports::snapshots::SnapshotImportDuplicateDatePolicy;
 
     const COMMA_THOUSANDS: CsvSnapshotImportBalanceFormat =
         CsvSnapshotImportBalanceFormat::ThousandsCommaDecimalDot;
     const DOT_THOUSANDS: CsvSnapshotImportBalanceFormat =
         CsvSnapshotImportBalanceFormat::ThousandsDotDecimalComma;
     const ISO_8601: CsvSnapshotImportDateFormat = CsvSnapshotImportDateFormat::Iso8601DateTime;
+
+    #[test]
+    fn inspect_normalizes_headers_and_samples_values() {
+        let inspection = inspect(&source(
+            "Date,,Balance,Balance\n2026-01-09,,1.00,2.00\n2026-01-10,,3.00,4.00\n",
+            true,
+        ))
+        .unwrap();
+
+        let column_names = inspection
+            .columns
+            .iter()
+            .map(|column| column.name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            column_names,
+            vec!["Date", "Column 2", "Balance", "Balance (2)"]
+        );
+        assert_eq!(inspection.total_rows, 2);
+        assert_eq!(inspection.sample_rows[0].source_row_number, 2);
+        assert_eq!(
+            inspection.columns[0].sample_values,
+            vec!["2026-01-09", "2026-01-10"]
+        );
+        assert_eq!(inspection.columns[1].sample_values, Vec::<String>::new());
+    }
+
+    #[test]
+    fn inspect_headerless_csv_generates_columns_and_skips_blank_rows() {
+        let inspection = inspect(&source("2026-01-09,1.00\n\n2026-01-10,2.00\n", false)).unwrap();
+
+        let column_names = inspection
+            .columns
+            .iter()
+            .map(|column| column.name.as_str())
+            .collect::<Vec<_>>();
+        let sample_row_numbers = inspection
+            .sample_rows
+            .iter()
+            .map(|row| row.source_row_number)
+            .collect::<Vec<_>>();
+
+        assert_eq!(column_names, vec!["Column 1", "Column 2"]);
+        assert_eq!(inspection.total_rows, 2);
+        assert_eq!(sample_row_numbers, vec![1, 2]);
+        assert_eq!(inspection.guesses.date_column.as_deref(), Some("Column 1"));
+        assert_eq!(
+            inspection.guesses.amount_column.as_deref(),
+            Some("Column 2")
+        );
+    }
+
+    #[test]
+    fn inspect_limits_sample_rows_and_column_values() {
+        let inspection = inspect(&source(
+            "date,balance\n2026-01-01,1.00\n2026-01-02,2.00\n2026-01-03,3.00\n2026-01-04,4.00\n2026-01-05,5.00\n2026-01-06,6.00\n",
+            true,
+        ))
+        .unwrap();
+
+        assert_eq!(inspection.total_rows, 6);
+        assert_eq!(inspection.sample_rows.len(), 5);
+        assert_eq!(inspection.columns[0].sample_values.len(), 5);
+        assert_eq!(inspection.sample_rows[4].values, vec!["2026-01-05", "5.00"]);
+    }
+
+    #[test]
+    fn inspect_guesses_columns_formats_timezone_and_duplicate_policy() {
+        let inspection = inspect(&source(
+            "posted utc,value\n2026-01-10T02:00:00Z,1.234,56\n2026-01-09T02:00:00Z,2.345,67\n",
+            true,
+        ))
+        .unwrap();
+
+        assert_eq!(
+            inspection.guesses.date_column.as_deref(),
+            Some("posted utc")
+        );
+        assert_eq!(inspection.guesses.amount_column.as_deref(), Some("value"));
+        assert_eq!(
+            inspection.guesses.date_format,
+            Some(CsvSnapshotImportDateFormat::Iso8601DateTime)
+        );
+        assert_eq!(
+            inspection.guesses.balance_format,
+            Some(CsvSnapshotImportBalanceFormat::ThousandsDotDecimalComma)
+        );
+        assert_eq!(
+            inspection.guesses.timestamp_missing_timezone_policy,
+            Some(CsvSnapshotImportMissingTimezonePolicy::Utc)
+        );
+        assert_eq!(
+            inspection.guesses.duplicate_date_policy,
+            Some(SnapshotImportDuplicateDatePolicy::KeepFirst)
+        );
+    }
+
+    #[test]
+    fn candidates_reports_missing_and_invalid_row_values() {
+        let rows = candidates(
+            &source(
+                "date,balance\n,1.00\nnot-a-date,2.00\n2026-01-09,\n2026-01-10,nope\n",
+                true,
+            ),
+            &options(),
+        )
+        .unwrap();
+
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0].issues, vec!["Missing date"]);
+        assert_eq!(
+            rows[1].issues,
+            vec!["Date does not match the selected format"]
+        );
+        assert_eq!(rows[2].issues, vec!["Missing amount"]);
+        assert_eq!(rows[3].issues, vec!["Amount is not a valid currency value"]);
+    }
+
+    #[test]
+    fn candidates_rejects_invalid_selected_columns() {
+        let issues = candidates(
+            &source("date,balance\n2026-01-09,1.00\n", true),
+            &CsvSnapshotImportOptionsInput {
+                date_column: "missing".to_string(),
+                ..options()
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].field, "options.source.date_column");
+        assert_eq!(issues[0].message, "Select a valid column");
+    }
+
+    #[test]
+    fn candidates_pads_flexible_rows_with_missing_trailing_columns() {
+        let rows = candidates(&source("date,balance\n2026-01-09\n", true), &options()).unwrap();
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].source_row_number, 2);
+        assert_eq!(rows[0].raw_amount, "");
+        assert_eq!(rows[0].issues, vec!["Missing amount"]);
+    }
 
     #[test]
     fn parse_amount_minor_accepts_expected_currency_decoration() {
@@ -887,6 +1032,14 @@ mod tests {
         assert_eq!(
             parse_amount_minor("1.234,56 GBP", DOT_THOUSANDS),
             Some(123456)
+        );
+        assert_eq!(
+            parse_amount_minor("+£1,234.5", COMMA_THOUSANDS),
+            Some(123450)
+        );
+        assert_eq!(
+            parse_amount_minor("1,234 GBP", COMMA_THOUSANDS),
+            Some(123400)
         );
     }
 
@@ -910,6 +1063,47 @@ mod tests {
         assert_eq!(parse_amount_minor("12,34.56", COMMA_THOUSANDS), None);
         assert_eq!(parse_amount_minor("1,234.567", COMMA_THOUSANDS), None);
         assert_eq!(parse_amount_minor("1.23.4,56", DOT_THOUSANDS), None);
+        assert_eq!(parse_amount_minor("1,234.", COMMA_THOUSANDS), None);
+        assert_eq!(parse_amount_minor("(1,234.56", COMMA_THOUSANDS), None);
+        assert_eq!(parse_amount_minor("-(1,234.56)", COMMA_THOUSANDS), None);
+    }
+
+    #[test]
+    fn parse_date_accepts_all_configured_date_formats() {
+        let expected = Some(NaiveDate::from_ymd_opt(2026, 1, 9).unwrap());
+
+        assert_eq!(
+            parse_plain_date("2026-01-09", CsvSnapshotImportDateFormat::YyyyMmDd),
+            expected
+        );
+        assert_eq!(
+            parse_plain_date("09/01/2026", CsvSnapshotImportDateFormat::DdMmYyyySlash),
+            expected
+        );
+        assert_eq!(
+            parse_plain_date("09/01/26", CsvSnapshotImportDateFormat::DdMmYySlash),
+            expected
+        );
+        assert_eq!(
+            parse_plain_date("01/09/2026", CsvSnapshotImportDateFormat::MmDdYyyySlash),
+            expected
+        );
+        assert_eq!(
+            parse_plain_date("01/09/26", CsvSnapshotImportDateFormat::MmDdYySlash),
+            expected
+        );
+        assert_eq!(
+            parse_plain_date("09-01-2026", CsvSnapshotImportDateFormat::DdMmYyyyDash),
+            expected
+        );
+        assert_eq!(
+            parse_plain_date("2026/01/09", CsvSnapshotImportDateFormat::YyyyMmDdSlash),
+            expected
+        );
+        assert_eq!(
+            parse_plain_date("31/01/2026", CsvSnapshotImportDateFormat::MmDdYyyySlash),
+            None
+        );
     }
 
     #[test]
@@ -971,6 +1165,50 @@ mod tests {
             ),
             Some(NaiveDate::from_ymd_opt(2026, 1, 10).unwrap())
         );
+    }
+
+    #[test]
+    fn parse_date_rejects_invalid_chosen_timezone() {
+        assert_eq!(
+            parse_date(
+                "2026-01-09T23:30:00",
+                ISO_8601,
+                CsvSnapshotImportTimestampDatePolicy::ConvertToUtc,
+                CsvSnapshotImportMissingTimezonePolicy::Timezone,
+                "Not/AZone",
+            ),
+            None
+        );
+    }
+
+    fn source(content: &str, has_header_row: bool) -> CsvSnapshotImportSourceInput {
+        CsvSnapshotImportSourceInput {
+            file_name: "snapshots.csv".to_string(),
+            content: content.to_string(),
+            has_header_row,
+        }
+    }
+
+    fn options() -> CsvSnapshotImportOptionsInput {
+        CsvSnapshotImportOptionsInput {
+            date_column: "date".to_string(),
+            amount_column: "balance".to_string(),
+            date_format: CsvSnapshotImportDateFormat::YyyyMmDd,
+            timestamp_date_policy: CsvSnapshotImportTimestampDatePolicy::DateAsWritten,
+            timestamp_missing_timezone_policy: CsvSnapshotImportMissingTimezonePolicy::Local,
+            timestamp_missing_timezone: "Europe/London".to_string(),
+            balance_format: COMMA_THOUSANDS,
+        }
+    }
+
+    fn parse_plain_date(raw: &str, format: CsvSnapshotImportDateFormat) -> Option<NaiveDate> {
+        parse_date(
+            raw,
+            format,
+            CsvSnapshotImportTimestampDatePolicy::DateAsWritten,
+            CsvSnapshotImportMissingTimezonePolicy::Local,
+            "Europe/London",
+        )
     }
 
     fn parse_iso_8601_date(
