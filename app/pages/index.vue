@@ -167,7 +167,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { AccountTypeName, BalanceOverTimePeriod } from "~/generated/bindings";
+import type { BalanceOverTimePeriod } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
@@ -352,7 +352,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
 });
 
 interface AllocationDatum {
-  accountType: AccountTypeName
+  label: string
   value: number
   color: string
   glow: string
@@ -364,7 +364,7 @@ const allocationData = computed<AllocationDatum[]>(() => {
   return rows.map((r) => {
     const meta = ACCOUNT_TYPE_META[r.account_type];
     return {
-      accountType: r.account_type,
+      label: meta.label,
       value: convertCurrencyMinorUnitsToMajorAmount(r.balance_minor),
       color: meta.color,
       glow: meta.glow,
@@ -377,19 +377,19 @@ const allocationSelected = ref<Record<string, boolean>>({});
 
 watchEffect(() => {
   for (const d of allocationData.value) {
-    if (allocationSelected.value[d.accountType] === undefined) {
-      allocationSelected.value[d.accountType] = true;
+    if (allocationSelected.value[d.label] === undefined) {
+      allocationSelected.value[d.label] = true;
     }
   }
 });
 
 const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: AllocationDatum[]): ECOption => {
-  const totalVisible = data.reduce((sum, d) => sum + (selected[d.accountType] === false ? 0 : d.value), 0);
-  const percentByKind = new Map<string, number>(
+  const totalVisible = data.reduce((sum, d) => sum + (selected[d.label] === false ? 0 : d.value), 0);
+  const percentByLabel = new Map<string, number>(
     data.map<[string, number]>((d) => {
-      const value = selected[d.accountType] === false ? 0 : d.value;
+      const value = selected[d.label] === false ? 0 : d.value;
       const pct = totalVisible > 0 ? Math.round((value / totalVisible) * 100) : 0;
-      return [d.accountType, pct];
+      return [d.label, pct];
     })
   );
 
@@ -414,8 +414,8 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
       textStyle: {
         color: "#a3a3a3"
       },
-      formatter: (kind: string) => {
-        return `${ACCOUNT_TYPE_META[kind as AccountTypeName].label}  ${percentByKind.get(kind) ?? 0}%`;
+      formatter: (label: string) => {
+        return `${label}  ${percentByLabel.get(label) ?? 0}%`;
       }
     },
     graphic: [
@@ -451,7 +451,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         label: { show: false },
         labelLine: { show: false },
         data: data.map((d) => ({
-          name: d.accountType,
+          name: d.label,
           cursor: "default",
           value: d.value,
           itemStyle: {
