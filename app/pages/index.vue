@@ -79,16 +79,44 @@
             description="Portfolio allocation"
             spotlight
             :ui="{
+              container: 'grid min-w-0 gap-y-2',
               body: 'w-full',
               spotlight: 'bg-default/95'
             }"
           >
-            <VChart
-              :option="balanceAllocationOption"
-              autoresize
-              style="height: 300px; width: 100%"
-              @legendselectchanged="onAllocationLegendSelectChanged"
-            />
+            <div class="relative left-1/2 w-[calc(100%+24px)] min-w-0 -translate-x-1/2">
+              <VChart
+                ref="allocationChart"
+                :option="balanceAllocationOption"
+                autoresize
+                style="height: 300px; width: 100%"
+                @mouseover="onAllocationChartHover($event, true)"
+                @mouseout="onAllocationChartHover($event, false)"
+              />
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-1">
+              <button
+                v-for="item in allocationData"
+                :key="item.label"
+                type="button"
+                class="inline-flex cursor-pointer items-center gap-2 text-[13px] leading-none text-neutral-400 transition hover:text-neutral-200"
+                :class="isAllocationSelected(item.label) ? 'opacity-100' : 'opacity-45'"
+                :aria-pressed="isAllocationSelected(item.label)"
+                @mouseenter="onAllocationLegendHover(item.label, true)"
+                @mouseleave="onAllocationLegendHover(item.label, false)"
+                @click="toggleAllocationLegendItem(item.label)"
+              >
+                <span
+                  class="size-2.5 shrink-0 rounded-full transition duration-200 ease-out"
+                  :style="{
+                    backgroundColor: item.color,
+                    boxShadow: isAllocationHighlighted(item.label) ? `0 0 2px ${item.glowEmphasis}, 0 0 8px ${item.glow}` : `0 0 4px ${item.glow}`,
+                    transform: isAllocationHighlighted(item.label) ? 'scale(1.14)' : 'scale(1)'
+                  }"
+                />
+                <span class="leading-none">{{ item.label }}</span>
+              </button>
+            </div>
           </UPageCard>
           <UPageCard
             class="col-span-2"
@@ -374,6 +402,14 @@ const allocationData = computed<AllocationDatum[]>(() => {
 });
 
 const allocationSelected = ref<Record<string, boolean>>({});
+const allocationChart = ref<{ dispatchAction: (payload: { type: "highlight" | "downplay", seriesIndex: number, name: string }) => void } | null>(null);
+const highlightedAllocationLabel = ref<string | null>(null);
+
+interface AllocationChartEvent {
+  componentType?: string
+  seriesType?: string
+  name?: string
+}
 
 watchEffect(() => {
   for (const d of allocationData.value) {
@@ -385,13 +421,7 @@ watchEffect(() => {
 
 const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: AllocationDatum[]): ECOption => {
   const totalVisible = data.reduce((sum, d) => sum + (selected[d.label] === false ? 0 : d.value), 0);
-  const percentByLabel = new Map<string, number>(
-    data.map<[string, number]>((d) => {
-      const value = selected[d.label] === false ? 0 : d.value;
-      const pct = totalVisible > 0 ? Math.round((value / totalVisible) * 100) : 0;
-      return [d.label, pct];
-    })
-  );
+  const visibleData = data.filter((d) => selected[d.label] !== false);
 
   return {
     backgroundColor: "transparent",
@@ -404,26 +434,12 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         return String(value);
       }
     },
-    legend: {
-      bottom: 0,
-      left: "center",
-      itemWidth: 10,
-      itemHeight: 10,
-      icon: "circle",
-      selected,
-      textStyle: {
-        color: "#a3a3a3"
-      },
-      formatter: (label: string) => {
-        return `${label}  ${percentByLabel.get(label) ?? 0}%`;
-      }
-    },
     graphic: [
       {
         type: "text",
         silent: true,
         left: "center",
-        top: "39%",
+        top: "middle",
         style: {
           text: formatCurrency(totalVisible, "GBP", {
             notation: "compact",
@@ -444,13 +460,13 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         name: "Allocation",
         type: "pie",
         cursor: "default",
-        radius: ["62%", "72%"],
-        center: ["50%", "42%"],
+        radius: ["66%", "76%"],
+        center: ["50%", "50%"],
         padAngle: 2,
         avoidLabelOverlap: true,
         label: { show: false },
         labelLine: { show: false },
-        data: data.map((d) => ({
+        data: visibleData.map((d) => ({
           name: d.label,
           cursor: "default",
           value: d.value,
@@ -476,7 +492,58 @@ const balanceAllocationOption = computed<ECOption>(() => {
   return buildBalanceAllocationOption(allocationSelected.value, allocationData.value);
 });
 
-const onAllocationLegendSelectChanged = (params: { selected?: Record<string, boolean> }) => {
-  allocationSelected.value = params.selected ?? {};
+const isAllocationSelected = (label: string) => allocationSelected.value[label] !== false;
+
+const isAllocationHighlighted = (label: string) => highlightedAllocationLabel.value === label && isAllocationSelected(label);
+
+const dispatchAllocationAction = (type: "highlight" | "downplay", label: string) => {
+  allocationChart.value?.dispatchAction({ type, seriesIndex: 0, name: label });
+};
+
+const onAllocationLegendHover = (label: string, isHighlighted: boolean) => {
+  if (!isAllocationSelected(label)) return;
+
+  if (isHighlighted) {
+    highlightedAllocationLabel.value = label;
+    dispatchAllocationAction("highlight", label);
+    return;
+  }
+
+  if (highlightedAllocationLabel.value === label) {
+    highlightedAllocationLabel.value = null;
+  }
+  dispatchAllocationAction("downplay", label);
+};
+
+const onAllocationChartHover = (params: AllocationChartEvent, isHighlighted: boolean) => {
+  if (params.componentType !== "series" || params.seriesType !== "pie" || params.name == null || params.name === "") return;
+
+  if (isHighlighted) {
+    highlightedAllocationLabel.value = params.name;
+  } else if (highlightedAllocationLabel.value === params.name) {
+    highlightedAllocationLabel.value = null;
+  }
+};
+
+const toggleAllocationLegendItem = (label: string) => {
+  const isEnabling = !isAllocationSelected(label);
+
+  allocationSelected.value = {
+    ...allocationSelected.value,
+    [label]: isEnabling
+  };
+
+  if (isEnabling) {
+    highlightedAllocationLabel.value = label;
+    void nextTick(() => {
+      dispatchAllocationAction("highlight", label);
+    });
+    return;
+  }
+
+  if (highlightedAllocationLabel.value === label) {
+    highlightedAllocationLabel.value = null;
+  }
+  dispatchAllocationAction("downplay", label);
 };
 </script>
