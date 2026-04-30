@@ -33,44 +33,106 @@
         >
           <template #description>
             <div>
-              <span class="text-[2.5rem] text-4xl font-bold text-default mr-4">{{ formatCurrencyMinor(dashboardQuery.data?.total_balance_minor ?? 0, "GBP") }}</span>
-              <span class="inline-flex gap-1 leading-none">
-                <UIcon :name="changeIcon" class="size-4" :class="[changeClass]" />
-                <span :class="changeClass">{{ changePctLabel }}</span>
-                <span class="text-muted text-xs self">vs last month</span>
+              <NumberFlow
+                :key="`total:${dashboardNumberAnimationKey}`"
+                class="dashboard-total-balance mr-4 text-[2.5rem] text-4xl font-bold text-default"
+                :value="animatedTotalBalance"
+                :locales="appLocaleCode"
+                :format="{ style: 'currency', currency: 'GBP' }"
+                :plugins="numberFlowPlugins"
+                :transform-timing="{ duration: 0 }"
+                :spin-timing="numberFlowTiming"
+                :opacity-timing="numberFlowTiming"
+              />
+              <span class="inline-flex items-baseline gap-1 leading-none">
+                <NumberFlow
+                  v-if="targetChangePct != null"
+                  :key="`change:${dashboardNumberAnimationKey}`"
+                  class="dashboard-change-pct"
+                  :class="changeClass"
+                  :value="animatedChangePct"
+                  :locales="appLocaleCode"
+                  :format="{ signDisplay: 'always', minimumFractionDigits: 1, maximumFractionDigits: 1 }"
+                  :plugins="numberFlowPlugins"
+                  :transform-timing="{ duration: 0 }"
+                  :spin-timing="numberFlowTiming"
+                  :opacity-timing="numberFlowTiming"
+                  suffix="%"
+                />
+                <span v-else :class="changeClass">—</span>
+                <span class="text-muted text-xs">vs last month</span>
               </span>
             </div>
           </template>
           <div class="flex gap-4 *:min-w-32">
             <UPageCard
               title="Monthly Yield"
-              :description="monthlyYieldLabel"
               variant="subtle"
               :ui="{
-                title: 'text-muted text-sm whitespace-nowrap',
-                description: monthlyYieldDescriptionClass
+                title: 'text-muted text-sm whitespace-nowrap'
               }"
-            />
+            >
+              <template #description>
+                <NumberFlow
+                  v-if="targetMonthlyYield != null"
+                  :key="`yield:${dashboardNumberAnimationKey}`"
+                  class="dashboard-monthly-yield"
+                  :class="monthlyYieldDescriptionClass"
+                  :value="animatedMonthlyYield"
+                  :locales="appLocaleCode"
+                  :format="{ style: 'currency', currency: 'GBP', signDisplay: 'always' }"
+                  :plugins="numberFlowPlugins"
+                  :transform-timing="{ duration: 0 }"
+                  :spin-timing="numberFlowTiming"
+                  :opacity-timing="numberFlowTiming"
+                />
+                <span v-else :class="monthlyYieldDescriptionClass">—</span>
+              </template>
+            </UPageCard>
             <UPageCard
               :to="{ name: 'accounts' }"
               title="Active Accounts"
-              :description="String(dashboardQuery.data?.active_accounts ?? 0)"
               variant="subtle"
               :ui="{
-                title: 'text-muted text-sm whitespace-nowrap',
-                description: 'text-xl font-bold text-default whitespace-nowrap'
+                title: 'text-muted text-sm whitespace-nowrap'
               }"
-            />
+            >
+              <template #description>
+                <NumberFlow
+                  :key="`accounts:${dashboardNumberAnimationKey}`"
+                  class="dashboard-card-count text-xl font-bold text-default whitespace-nowrap"
+                  :value="animatedActiveAccounts"
+                  :locales="appLocaleCode"
+                  :format="{ maximumFractionDigits: 0 }"
+                  :plugins="numberFlowPlugins"
+                  :transform-timing="{ duration: 0 }"
+                  :spin-timing="numberFlowTiming"
+                  :opacity-timing="numberFlowTiming"
+                />
+              </template>
+            </UPageCard>
             <UPageCard
               :to="{ name: 'institutions' }"
-              title="Institutions"
-              :description="String(dashboardQuery.data?.active_institutions ?? 0)"
+              title="Active Institutions"
               variant="subtle"
               :ui="{
-                title: 'text-muted text-sm whitespace-nowrap',
-                description: 'text-xl font-bold text-default whitespace-nowrap'
+                title: 'text-muted text-sm whitespace-nowrap'
               }"
-            />
+            >
+              <template #description>
+                <NumberFlow
+                  :key="`institutions:${dashboardNumberAnimationKey}`"
+                  class="dashboard-card-count text-xl font-bold text-default whitespace-nowrap"
+                  :value="animatedActiveInstitutions"
+                  :locales="appLocaleCode"
+                  :format="{ maximumFractionDigits: 0 }"
+                  :plugins="numberFlowPlugins"
+                  :transform-timing="{ duration: 0 }"
+                  :spin-timing="numberFlowTiming"
+                  :opacity-timing="numberFlowTiming"
+                />
+              </template>
+            </UPageCard>
           </div>
         </UPageCard>
         <UPageGrid>
@@ -92,6 +154,24 @@
                 style="height: 300px; width: 100%"
                 @mouseover="onAllocationChartHover($event, true)"
                 @mouseout="onAllocationChartHover($event, false)"
+              />
+              <NumberFlow
+                :key="`allocation:${dashboardNumberAnimationKey}`"
+                class="dashboard-allocation-total pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-[28px] font-bold text-neutral-200"
+                :value="animatedAllocationTotal"
+                :locales="appLocaleCode"
+                :format="{
+                  style: 'currency',
+                  currency: 'GBP',
+                  notation: 'compact',
+                  compactDisplay: 'short',
+                  minimumFractionDigits: Math.abs(allocationVisibleTotal) < 1000 ? 2 : 0,
+                  maximumFractionDigits: Math.abs(allocationVisibleTotal) < 1000 ? 2 : 1
+                }"
+                :plugins="numberFlowPlugins"
+                :transform-timing="allocationTotalUsesDashboardTiming ? { duration: 0 } : allocationToggleNumberFlowTiming"
+                :spin-timing="allocationTotalUsesDashboardTiming ? numberFlowTiming : allocationToggleNumberFlowTiming"
+                :opacity-timing="allocationTotalUsesDashboardTiming ? numberFlowTiming : allocationToggleNumberFlowTiming"
               />
             </div>
             <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-1">
@@ -198,10 +278,12 @@
 
 <script lang="ts" setup>
 import type { BalanceOverTimePeriod } from "~/generated/bindings";
+import NumberFlow, { continuous } from "@number-flow/vue";
 import { useQuery } from "@tanstack/vue-query";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
-const { formatCurrency, formatCurrencyMinor, formatDate } = useLocaleFormatters();
+const { formatCurrency, formatDate } = useLocaleFormatters();
+const { code: appLocaleCode } = useAppLocale();
 
 const darkTooltipBase = {
   backgroundColor: "rgba(10, 10, 10, 0.95)",
@@ -225,6 +307,33 @@ const balanceOverTimeQuery = proxyRefs(useQuery({
   queryFn: async () => api.dashboardBalanceOverTime(balanceOverTimePeriod.value)
 }));
 
+const animatedTotalBalance = ref(0);
+const animatedChangePct = ref(0);
+const animatedMonthlyYield = ref(0);
+const animatedActiveAccounts = ref(0);
+const animatedActiveInstitutions = ref(0);
+const animatedAllocationTotal = ref(0);
+const allocationTotalUsesDashboardTiming = ref(true);
+const dashboardNumberAnimationKey = ref(0);
+const numberFlowPlugins = [continuous];
+const numberFlowTiming = {
+  duration: 1000,
+  easing: "cubic-bezier(0,0,0.35,1)"
+} satisfies EffectTiming;
+const allocationToggleNumberFlowTiming = {
+  duration: 500,
+  easing: "cubic-bezier(0.65,0,0.35,1)"
+} satisfies EffectTiming;
+
+const targetChangePct = computed(() => {
+  const changePct = dashboardQuery.data?.change_vs_last_month_pct;
+  return changePct == null ? null : changePct;
+});
+const targetMonthlyYield = computed(() => {
+  const monthlyYieldMinor = dashboardQuery.data?.monthly_yield_minor;
+  return monthlyYieldMinor == null ? null : convertCurrencyMinorUnitsToMajorAmount(monthlyYieldMinor);
+});
+
 const balanceOverTimePeriodItems = computed(() => {
   const disabled = balanceOverTimeQuery.isFetching;
   return [
@@ -238,22 +347,6 @@ const balanceOverTimePeriodItems = computed(() => {
 const changeClass = computed(() => {
   if (dashboardQuery.data?.change_vs_last_month_pct == null) return "text-muted";
   return (dashboardQuery.data?.change_vs_last_month_pct ?? 0) >= 0 ? "text-success" : "text-error";
-});
-
-const changeIcon = computed(() => {
-  if (dashboardQuery.data?.change_vs_last_month_pct == null) return "i-lucide-minus";
-  return (dashboardQuery.data?.change_vs_last_month_pct ?? 0) >= 0 ? "i-lucide-arrow-up" : "i-lucide-arrow-down";
-});
-
-const changePctLabel = computed(() => {
-  if (dashboardQuery.data?.change_vs_last_month_pct == null) return "—";
-  return `${Math.abs(dashboardQuery.data?.change_vs_last_month_pct).toFixed(1)}%`;
-});
-
-const monthlyYieldLabel = computed(() => {
-  if (dashboardQuery.data?.monthly_yield_minor == null) return "—";
-  const sign = dashboardQuery.data?.monthly_yield_minor >= 0 ? "+" : "-";
-  return `${sign}${formatCurrencyMinor(Math.abs(dashboardQuery.data?.monthly_yield_minor), "GBP")}`;
 });
 
 const monthlyYieldDescriptionClass = computed(() => {
@@ -422,8 +515,49 @@ watchEffect(() => {
   }
 });
 
+const allocationVisibleTotal = computed(() => allocationData.value.reduce((sum, d) => sum + (allocationSelected.value[d.label] === false ? 0 : d.value), 0));
+
+let dashboardNumberAnimationRun = 0;
+
+const replayDashboardNumberAnimations = async () => {
+  if (dashboardQuery.data == null) return;
+
+  const run = ++dashboardNumberAnimationRun;
+  dashboardNumberAnimationKey.value += 1;
+  allocationTotalUsesDashboardTiming.value = true;
+  animatedTotalBalance.value = 0;
+  animatedChangePct.value = 0;
+  animatedMonthlyYield.value = 0;
+  animatedActiveAccounts.value = 0;
+  animatedActiveInstitutions.value = 0;
+  animatedAllocationTotal.value = 0;
+
+  await nextTick();
+  for (let i = 0; i < 2; i++) {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
+
+  if (run !== dashboardNumberAnimationRun) return;
+
+  animatedTotalBalance.value = convertCurrencyMinorUnitsToMajorAmount(dashboardQuery.data?.total_balance_minor ?? 0);
+  animatedChangePct.value = targetChangePct.value ?? 0;
+  animatedMonthlyYield.value = targetMonthlyYield.value ?? 0;
+  animatedActiveAccounts.value = dashboardQuery.data?.active_accounts ?? 0;
+  animatedActiveInstitutions.value = dashboardQuery.data?.active_institutions ?? 0;
+  animatedAllocationTotal.value = allocationVisibleTotal.value;
+};
+
+watch(
+  () => dashboardQuery.data,
+  () => void replayDashboardNumberAnimations(),
+  { flush: "post" }
+);
+
+onMounted(() => void replayDashboardNumberAnimations());
+
 const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: AllocationDatum[]): ECOption => {
-  const totalVisible = data.reduce((sum, d) => sum + (selected[d.label] === false ? 0 : d.value), 0);
   const visibleData = data.filter((d) => selected[d.label] !== false);
 
   return {
@@ -437,27 +571,6 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
         return String(value);
       }
     },
-    graphic: [
-      {
-        type: "text",
-        silent: true,
-        left: "center",
-        top: "middle",
-        style: {
-          text: formatCurrency(totalVisible, "GBP", {
-            notation: "compact",
-            compactDisplay: "short",
-            minimumFractionDigits: Math.abs(totalVisible) < 1000 ? 2 : 0,
-            maximumFractionDigits: Math.abs(totalVisible) < 1000 ? 2 : 1
-          }),
-          fontSize: 28,
-          fontWeight: 700,
-          fill: "#e5e5e5",
-          align: "center",
-          verticalAlign: "middle"
-        }
-      }
-    ],
     series: [
       {
         name: "Allocation",
@@ -541,6 +654,8 @@ const toggleAllocationLegendItem = (label: string) => {
     ...allocationSelected.value,
     [label]: isEnabling
   };
+  allocationTotalUsesDashboardTiming.value = false;
+  animatedAllocationTotal.value = allocationVisibleTotal.value;
 
   if (isEnabling && activeAllocationLegendLabel.value === label) {
     highlightedAllocationLabel.value = label;
@@ -556,3 +671,29 @@ const toggleAllocationLegendItem = (label: string) => {
   dispatchAllocationAction("downplay", label);
 };
 </script>
+
+<style scoped>
+.dashboard-total-balance,
+.dashboard-change-pct,
+.dashboard-monthly-yield,
+.dashboard-card-count,
+.dashboard-allocation-total {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-total-balance {
+  line-height: 0.9;
+  --number-flow-mask-height: 0.18em;
+  --number-flow-mask-width: 0.25em;
+}
+
+.dashboard-change-pct,
+.dashboard-monthly-yield,
+.dashboard-card-count,
+.dashboard-allocation-total {
+  line-height: 1;
+  --number-flow-mask-height: 0.15em;
+  --number-flow-mask-width: 0.2em;
+}
+</style>
