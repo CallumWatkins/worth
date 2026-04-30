@@ -110,6 +110,7 @@ pub struct AccountDto {
     pub first_snapshot_date: Option<NaiveDate>,
     pub latest_snapshot_date: Option<NaiveDate>,
     pub latest_balance_minor: i64,
+    pub monthly_change_minor: i64,
     pub activity_by_period: BTreeMap<ActivityPeriod, ActivityDataDto>,
 }
 
@@ -1513,6 +1514,12 @@ async fn build_account_dtos(
         let date_map = snapshots_by_account.get(&a.id).unwrap_or(&empty_dates);
         let seed_before = initial_before.get(&a.id).copied();
         let series_180 = filled_values_for_period(date_map, seed_before, full_start, full_points);
+        let monthly_change_minor = series_180.last().copied().flatten().unwrap_or(0)
+            - series_180
+                .get(series_180.len().saturating_sub(31))
+                .copied()
+                .flatten()
+                .unwrap_or(0);
 
         let activity_by_period: BTreeMap<_, _> = [
             (ActivityPeriod::P1W, 7),
@@ -1553,6 +1560,7 @@ async fn build_account_dtos(
             first_snapshot_date: a.first_snapshot_date,
             latest_snapshot_date: a.latest_snapshot_date,
             latest_balance_minor,
+            monthly_change_minor,
             activity_by_period,
         });
     }
@@ -1694,7 +1702,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Sen
 
 #[cfg(test)]
 mod tests {
-    use chrono::NaiveDate;
+    use chrono::{Duration, Local, NaiveDate};
     use serde_json::json;
     use sqlx::{
         sqlite::{SqliteConnectOptions, SqlitePoolOptions},
@@ -1703,10 +1711,50 @@ mod tests {
     use std::str::FromStr;
 
     use super::{
-        account_snapshot_import_commit_with_today, ApiError, SnapshotImportOptionsInput,
-        SnapshotImportSourceInput,
+        account_snapshot_import_commit_with_today, build_account_dtos, ApiError,
+        SnapshotImportOptionsInput, SnapshotImportSourceInput,
     };
     use crate::db;
+
+    #[tokio::test]
+    async fn account_monthly_change_uses_zero_when_no_balance_thirty_days_ago() {
+        let pool = test_pool().await;
+        let account_id = create_account(&pool).await;
+        let today = Local::now().date_naive();
+        insert_snapshot_on(&pool, account_id, today - Duration::days(10), 1000).await;
+
+        let account = db::account_get_full(&pool, account_id)
+            .await
+            .unwrap()
+            .unwrap();
+        let dto = build_account_dtos(&pool, vec![account])
+            .await
+            .unwrap()
+            .pop()
+            .unwrap();
+
+        assert_eq!(dto.monthly_change_minor, 1000);
+    }
+
+    #[tokio::test]
+    async fn account_monthly_change_ignores_future_dated_snapshots() {
+        let pool = test_pool().await;
+        let account_id = create_account(&pool).await;
+        let today = Local::now().date_naive();
+        insert_snapshot_on(&pool, account_id, today + Duration::days(1), 1000).await;
+
+        let account = db::account_get_full(&pool, account_id)
+            .await
+            .unwrap()
+            .unwrap();
+        let dto = build_account_dtos(&pool, vec![account])
+            .await
+            .unwrap()
+            .pop()
+            .unwrap();
+
+        assert_eq!(dto.monthly_change_minor, 0);
+    }
 
     #[tokio::test]
     async fn account_snapshot_import_commit_returns_not_found_for_missing_account() {
@@ -1882,6 +1930,15 @@ mod tests {
         day: u32,
         balance_minor: i64,
     ) {
+        insert_snapshot_on(pool, account_id, date(year, month, day), balance_minor).await;
+    }
+
+    async fn insert_snapshot_on(
+        pool: &SqlitePool,
+        account_id: i64,
+        balance_date: NaiveDate,
+        balance_minor: i64,
+    ) {
         sqlx::query(
             r"
             INSERT INTO account_balance_snapshots (account_id, balance_date, balance_minor)
@@ -1889,7 +1946,7 @@ mod tests {
             ",
         )
         .bind(account_id)
-        .bind(date(year, month, day))
+        .bind(balance_date)
         .bind(balance_minor)
         .execute(pool)
         .await

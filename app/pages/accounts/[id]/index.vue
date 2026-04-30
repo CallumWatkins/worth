@@ -118,11 +118,11 @@
           >
             <template #description>
               <div
-                v-if="monthlyChangeMinor != null"
+                v-if="accountQuery.data.monthly_change_minor !== 0"
                 class="text-xl font-bold"
-                :class="monthlyChangeMinor >= 0 ? 'text-success' : 'text-error'"
+                :class="accountQuery.data.monthly_change_minor > 0 ? 'text-success' : 'text-error'"
               >
-                {{ formatCurrencyMinor(monthlyChangeMinor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
+                {{ formatCurrencyMinor(accountQuery.data.monthly_change_minor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
               </div>
               <div v-else class="text-xl font-bold text-default">
                 No change
@@ -572,23 +572,6 @@ const chartMeta = computed(() => {
     };
   }
   return ACCOUNT_TYPE_META[kind];
-});
-
-const monthlyChangeMinor = computed(() => {
-  const points = balanceOverTimeQuery.data ?? [];
-  if (points.length < 2) return null;
-
-  const last = points.at(-1)?.balance_minor;
-  const monthAgo = points.at(-31)?.balance_minor;
-  const first = points[0]?.balance_minor;
-
-  if (typeof last !== "number") return null;
-  let change = null;
-  if (typeof monthAgo === "number") change = last - monthAgo;
-  else if (typeof first === "number") change = last - first;
-
-  if (change === 0) return null;
-  return change;
 });
 
 const balanceOverTimeOption = computed<ECOption>(() => {
