@@ -99,11 +99,13 @@
                 v-for="item in allocationData"
                 :key="item.label"
                 type="button"
-                class="inline-flex cursor-pointer items-center gap-2 text-[13px] leading-none text-neutral-400 transition hover:text-neutral-200"
-                :class="isAllocationSelected(item.label) ? 'opacity-100' : 'opacity-45'"
+                class="inline-flex cursor-pointer items-center gap-2 text-[13px] leading-none text-neutral-400 transition hover:text-neutral-200 focus-visible:outline-none focus-visible:text-neutral-200"
+                :class="isAllocationSelected(item.label) || isAllocationLegendActive(item.label) ? 'opacity-100' : 'opacity-45'"
                 :aria-pressed="isAllocationSelected(item.label)"
                 @mouseenter="onAllocationLegendHover(item.label, true)"
                 @mouseleave="onAllocationLegendHover(item.label, false)"
+                @focus="onAllocationLegendHover(item.label, true)"
+                @blur="onAllocationLegendHover(item.label, false)"
                 @click="toggleAllocationLegendItem(item.label)"
               >
                 <span
@@ -403,6 +405,7 @@ const allocationData = computed<AllocationDatum[]>(() => {
 
 const allocationSelected = ref<Record<string, boolean>>({});
 const allocationChart = ref<{ dispatchAction: (payload: { type: "highlight" | "downplay", seriesIndex: number, name: string }) => void } | null>(null);
+const activeAllocationLegendLabel = ref<string | null>(null);
 const highlightedAllocationLabel = ref<string | null>(null);
 
 interface AllocationChartEvent {
@@ -494,6 +497,8 @@ const balanceAllocationOption = computed<ECOption>(() => {
 
 const isAllocationSelected = (label: string) => allocationSelected.value[label] !== false;
 
+const isAllocationLegendActive = (label: string) => activeAllocationLegendLabel.value === label;
+
 const isAllocationHighlighted = (label: string) => highlightedAllocationLabel.value === label && isAllocationSelected(label);
 
 const dispatchAllocationAction = (type: "highlight" | "downplay", label: string) => {
@@ -501,14 +506,18 @@ const dispatchAllocationAction = (type: "highlight" | "downplay", label: string)
 };
 
 const onAllocationLegendHover = (label: string, isHighlighted: boolean) => {
-  if (!isAllocationSelected(label)) return;
-
   if (isHighlighted) {
-    highlightedAllocationLabel.value = label;
-    dispatchAllocationAction("highlight", label);
+    activeAllocationLegendLabel.value = label;
+    if (isAllocationSelected(label)) {
+      highlightedAllocationLabel.value = label;
+      dispatchAllocationAction("highlight", label);
+    }
     return;
   }
 
+  if (activeAllocationLegendLabel.value === label) {
+    activeAllocationLegendLabel.value = null;
+  }
   if (highlightedAllocationLabel.value === label) {
     highlightedAllocationLabel.value = null;
   }
@@ -533,7 +542,7 @@ const toggleAllocationLegendItem = (label: string) => {
     [label]: isEnabling
   };
 
-  if (isEnabling) {
+  if (isEnabling && activeAllocationLegendLabel.value === label) {
     highlightedAllocationLabel.value = label;
     void nextTick(() => {
       dispatchAllocationAction("highlight", label);
@@ -541,7 +550,7 @@ const toggleAllocationLegendItem = (label: string) => {
     return;
   }
 
-  if (highlightedAllocationLabel.value === label) {
+  if (!isEnabling && highlightedAllocationLabel.value === label) {
     highlightedAllocationLabel.value = null;
   }
   dispatchAllocationAction("downplay", label);
