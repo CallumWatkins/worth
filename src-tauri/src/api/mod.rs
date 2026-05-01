@@ -829,6 +829,7 @@ async fn account_snapshot_import_commit_with_today(
             SnapshotImportPreviewAction::SkipExisting
             | SnapshotImportPreviewAction::SkipUnchanged
             | SnapshotImportPreviewAction::SkipDuplicate
+            | SnapshotImportPreviewAction::SkipBlankAmount
             | SnapshotImportPreviewAction::Invalid => {}
         }
     }

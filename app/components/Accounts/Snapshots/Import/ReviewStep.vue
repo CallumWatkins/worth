@@ -80,6 +80,10 @@
                 Another row for this date was selected.
               </div>
 
+              <div v-if="row.original.action === 'skip_blank_amount'" class="text-muted">
+                Blank amount row skipped.
+              </div>
+
               <div
                 v-if="row.original.action === 'skip_unchanged' && row.original.existing_snapshot != null && row.original.balance_minor === row.original.existing_snapshot.balance_minor"
                 class="text-muted"
@@ -223,6 +227,7 @@ function actionLabel(action: SnapshotImportPreviewAction) {
   case "skip_existing":
   case "skip_unchanged":
   case "skip_duplicate":
+  case "skip_blank_amount":
     return "Skip";
   case "invalid":
     return "Invalid";
@@ -240,6 +245,7 @@ function actionColor(action: SnapshotImportPreviewAction) {
   case "skip_existing":
   case "skip_unchanged":
   case "skip_duplicate":
+  case "skip_blank_amount":
     return "neutral";
   }
 }

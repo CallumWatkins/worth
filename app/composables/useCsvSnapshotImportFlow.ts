@@ -46,7 +46,8 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
       timestamp_date_policy: "date_as_written",
       timestamp_missing_timezone_policy: "local",
       timestamp_missing_timezone: getLocalTimezone(),
-      balance_format: "thousands_comma_decimal_dot"
+      balance_format: "thousands_comma_decimal_dot",
+      blank_amount_policy: "error"
     },
     existing_date_policy: "overwrite",
     unchanged_value_policy: "exclude",
@@ -133,7 +134,8 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
           timestamp_date_policy: "date_as_written",
           timestamp_missing_timezone_policy: inspection.value.guesses.timestamp_missing_timezone_policy ?? "local",
           timestamp_missing_timezone: getLocalTimezone(),
-          balance_format: inspection.value.guesses.balance_format ?? "thousands_comma_decimal_dot"
+          balance_format: inspection.value.guesses.balance_format ?? "thousands_comma_decimal_dot",
+          blank_amount_policy: "error"
         },
         existing_date_policy: "overwrite",
         unchanged_value_policy: "exclude",
@@ -231,7 +233,8 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
         timestamp_date_policy: "date_as_written",
         timestamp_missing_timezone_policy: "local",
         timestamp_missing_timezone: getLocalTimezone(),
-        balance_format: "thousands_comma_decimal_dot"
+        balance_format: "thousands_comma_decimal_dot",
+        blank_amount_policy: "error"
       },
       existing_date_policy: "overwrite",
       unchanged_value_policy: "exclude",

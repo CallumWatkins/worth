@@ -25,6 +25,7 @@ pub struct CsvSnapshotImportOptionsInput {
     pub timestamp_missing_timezone_policy: CsvSnapshotImportMissingTimezonePolicy,
     pub timestamp_missing_timezone: String,
     pub balance_format: CsvSnapshotImportBalanceFormat,
+    pub blank_amount_policy: CsvSnapshotImportBlankAmountPolicy,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
@@ -62,6 +63,14 @@ pub enum CsvSnapshotImportMissingTimezonePolicy {
 pub enum CsvSnapshotImportBalanceFormat {
     ThousandsCommaDecimalDot,
     ThousandsDotDecimalComma,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CsvSnapshotImportBlankAmountPolicy {
+    Skip,
+    Zero,
+    Error,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -524,6 +533,7 @@ fn parse_candidate(
         &options.timestamp_missing_timezone,
     );
     let balance_minor = parse_amount_minor(&raw_amount, options.balance_format);
+    let blank_amount = raw_amount.trim().is_empty();
     let mut issues = Vec::new();
 
     if raw_date.trim().is_empty() {
@@ -531,8 +541,12 @@ fn parse_candidate(
     } else if date.is_none() {
         issues.push("Date does not match the selected format".to_string());
     }
-    if raw_amount.trim().is_empty() {
-        issues.push("Missing amount".to_string());
+    if blank_amount {
+        match options.blank_amount_policy {
+            CsvSnapshotImportBlankAmountPolicy::Skip => {}
+            CsvSnapshotImportBlankAmountPolicy::Zero => {}
+            CsvSnapshotImportBlankAmountPolicy::Error => issues.push("Missing amount".to_string()),
+        }
     } else if balance_minor.is_none() {
         issues.push("Amount is not a valid currency value".to_string());
     }
@@ -542,8 +556,16 @@ fn parse_candidate(
         raw_date,
         raw_amount,
         date,
-        balance_minor,
+        balance_minor: if blank_amount
+            && options.blank_amount_policy == CsvSnapshotImportBlankAmountPolicy::Zero
+        {
+            Some(0)
+        } else {
+            balance_minor
+        },
         issues,
+        skip_blank_amount: blank_amount
+            && options.blank_amount_policy == CsvSnapshotImportBlankAmountPolicy::Skip,
         skip_duplicate: false,
     }
 }
@@ -860,9 +882,9 @@ mod tests {
 
     use super::{
         candidates, inspect, parse_amount_minor, parse_date, CsvSnapshotImportBalanceFormat,
-        CsvSnapshotImportDateFormat, CsvSnapshotImportMissingTimezonePolicy,
-        CsvSnapshotImportOptionsInput, CsvSnapshotImportSourceInput,
-        CsvSnapshotImportTimestampDatePolicy,
+        CsvSnapshotImportBlankAmountPolicy, CsvSnapshotImportDateFormat,
+        CsvSnapshotImportMissingTimezonePolicy, CsvSnapshotImportOptionsInput,
+        CsvSnapshotImportSourceInput, CsvSnapshotImportTimestampDatePolicy,
     };
     use crate::imports::snapshots::SnapshotImportDuplicateDatePolicy;
 
@@ -987,6 +1009,38 @@ mod tests {
         );
         assert_eq!(rows[2].issues, vec!["Missing amount"]);
         assert_eq!(rows[3].issues, vec!["Amount is not a valid currency value"]);
+    }
+
+    #[test]
+    fn candidates_can_skip_blank_amounts() {
+        let rows = candidates(
+            &source("date,balance\n2026-01-09,\n", true),
+            &CsvSnapshotImportOptionsInput {
+                blank_amount_policy: CsvSnapshotImportBlankAmountPolicy::Skip,
+                ..options()
+            },
+        )
+        .unwrap();
+
+        assert!(rows[0].issues.is_empty());
+        assert_eq!(rows[0].balance_minor, None);
+        assert!(rows[0].skip_blank_amount);
+    }
+
+    #[test]
+    fn candidates_can_treat_blank_amounts_as_zero() {
+        let rows = candidates(
+            &source("date,balance\n2026-01-09,\n", true),
+            &CsvSnapshotImportOptionsInput {
+                blank_amount_policy: CsvSnapshotImportBlankAmountPolicy::Zero,
+                ..options()
+            },
+        )
+        .unwrap();
+
+        assert!(rows[0].issues.is_empty());
+        assert_eq!(rows[0].balance_minor, Some(0));
+        assert!(!rows[0].skip_blank_amount);
     }
 
     #[test]
@@ -1198,6 +1252,7 @@ mod tests {
             timestamp_missing_timezone_policy: CsvSnapshotImportMissingTimezonePolicy::Local,
             timestamp_missing_timezone: "Europe/London".to_string(),
             balance_format: COMMA_THOUSANDS,
+            blank_amount_policy: CsvSnapshotImportBlankAmountPolicy::Error,
         }
     }
 

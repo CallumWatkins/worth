@@ -103,6 +103,16 @@
       />
     </UFormField>
 
+    <UFormField label="Blank amount cell" description="What to do when an imported row has a date but no amount.">
+      <USelect
+        :model-value="modelValue.source.blank_amount_policy"
+        :items="blankAmountPolicyItems"
+        :disabled="busy"
+        class="w-full"
+        @update:model-value="updateSourceOption('blank_amount_policy', $event as CsvSnapshotImportBlankAmountPolicy)"
+      />
+    </UFormField>
+
     <UFormField label="Multiple rows for same date" description="What to do when multiple imported rows resolve to the same snapshot date.">
       <USelect
         :model-value="modelValue.duplicate_date_policy"
@@ -138,6 +148,7 @@
 <script lang="ts" setup>
 import type {
   CsvSnapshotImportBalanceFormat,
+  CsvSnapshotImportBlankAmountPolicy,
   CsvSnapshotImportDateFormat,
   CsvSnapshotImportMissingTimezonePolicy,
   CsvSnapshotImportOptionsInput,
@@ -187,6 +198,12 @@ const selectedTimezoneOffset = computed(() => timezoneItems.find((item) => item.
 const balanceFormatItems: Array<{ label: string, value: CsvSnapshotImportBalanceFormat }> = [
   { label: "1,234.56", value: "thousands_comma_decimal_dot" },
   { label: "1.234,56", value: "thousands_dot_decimal_comma" }
+];
+
+const blankAmountPolicyItems: Array<{ label: string, value: CsvSnapshotImportBlankAmountPolicy }> = [
+  { label: "Skip row", value: "skip" },
+  { label: "Treat as zero", value: "zero" },
+  { label: "Treat as error", value: "error" }
 ];
 
 const duplicateDatePolicyItems: Array<{ label: string, value: SnapshotImportDuplicateDatePolicy }> = [
