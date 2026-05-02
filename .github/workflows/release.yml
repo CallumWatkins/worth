@@ -52,6 +52,10 @@ jobs:
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_SOURCEMAPS: "true"
+          APP_VERSION: ${{ github.sha }}
         with:
           tagName: worth-v__VERSION__
           releaseName: Worth v__VERSION__

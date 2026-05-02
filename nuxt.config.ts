@@ -7,7 +7,8 @@ export default defineNuxtConfig({
     "reka-ui/nuxt",
     "@nuxt/eslint",
     "nuxt-echarts",
-    "@nuxtjs/i18n"
+    "@nuxtjs/i18n",
+    "@posthog/nuxt"
   ],
   app: {
     head: {
@@ -98,5 +99,39 @@ export default defineNuxtConfig({
     typedPages: true
   },
   telemetry: false,
-  compatibilityDate: "2026-01-01"
+  compatibilityDate: "2026-01-01",
+  sourcemap: {
+    client: "hidden"
+  },
+  posthogConfig: {
+    publicKey: "phc_pREdKqdwjhVFDkWkFrTzzEruDgVM7vfxYDyyWCPFz737",
+    host: "https://i.useworth.app",
+    clientConfig: {
+      defaults: "2026-01-30",
+      capture_exceptions: true,
+      autocapture: false,
+      capture_pageview: false,
+      capture_pageleave: false,
+      capture_dead_clicks: false,
+      rageclick: false,
+      disable_session_recording: true,
+      enable_recording_console_log: false,
+      enable_heatmaps: false,
+      disable_surveys: true,
+      person_profiles: "identified_only",
+      mask_all_text: true,
+      mask_all_element_attributes: true,
+      advanced_disable_feature_flags: true,
+      advanced_disable_feature_flags_on_first_load: true,
+      internal_or_test_user_hostname: process.env.NODE_ENV === "development" ? "localhost" : null
+    },
+    sourcemaps: {
+      enabled: process.env.POSTHOG_SOURCEMAPS === "true",
+      projectId: process.env.POSTHOG_PROJECT_ID!,
+      personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY!,
+      releaseName: "worth-desktop",
+      releaseVersion: process.env.APP_VERSION,
+      deleteAfterUpload: true
+    }
+  }
 });
