@@ -25,6 +25,7 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }));
+        builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
     }
 
     builder
