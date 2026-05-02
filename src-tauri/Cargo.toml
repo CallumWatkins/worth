@@ -48,3 +48,6 @@ schemars = { version = "1", features = [ "chrono04" ] }
 garde = { version = "0.22", features = [ "derive", "regex" ] }
 inventory = "0.3"
 worth_macros = { path = "crates/worth_macros" }
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2.4.2"
