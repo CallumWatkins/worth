@@ -655,7 +655,8 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       right: 0,
       top: 0,
       bottom: 0,
-      containLabel: true
+      outerBoundsMode: "same",
+      outerBoundsContain: "axisLabel"
     },
     xAxis: {
       type: "category",
