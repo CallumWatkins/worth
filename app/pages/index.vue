@@ -407,6 +407,11 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       axisPointer: {
         type: "line",
         lineStyle: { color: "rgba(244, 244, 245, 0.25)" }
+      },
+      valueFormatter: (value: unknown) => {
+        const n = typeof value === "number" ? value : Number(value);
+        if (!Number.isFinite(n)) return String(value);
+        return formatCurrency(n, settings.value.default_display_currency_code);
       }
     },
     grid: {
