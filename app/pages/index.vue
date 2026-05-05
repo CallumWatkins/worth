@@ -157,7 +157,7 @@
               />
               <NumberFlow
                 :key="`allocation:${dashboardNumberAnimationKey}`"
-                class="dashboard-allocation-total pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-[28px] font-bold text-neutral-200"
+                class="dashboard-allocation-total pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-[1.75rem] font-bold text-toned"
                 :value="animatedAllocationTotal"
                 :locales="appLocaleCode"
                 :format="{
@@ -179,7 +179,7 @@
                 v-for="item in allocationData"
                 :key="item.label"
                 type="button"
-                class="inline-flex cursor-pointer items-center gap-2 text-[13px] leading-none text-neutral-400 transition hover:text-neutral-200 focus-visible:outline-none focus-visible:text-neutral-200"
+                class="inline-flex cursor-pointer items-center gap-2 text-[0.8rem] leading-none text-muted transition hover:text-toned focus-visible:outline-none focus-visible:text-toned"
                 :class="isAllocationSelected(item.label) || isAllocationLegendActive(item.label) ? 'opacity-100' : 'opacity-45'"
                 :aria-pressed="isAllocationSelected(item.label)"
                 @mouseenter="onAllocationLegendHover(item.label, true)"
@@ -238,8 +238,8 @@
                     color="neutral"
                     size="sm"
                     :ui="{
-                      indicator: 'bg-neutral-700',
-                      label: 'text-neutral-300'
+                      indicator: 'bg-inverted/10',
+                      label: 'text-toned'
                     }"
                   />
                 </div>
@@ -257,7 +257,7 @@
                 <UIcon
                   v-if="balanceOverTimeQuery.isFetching"
                   name="i-lucide-loader-2"
-                  class="size-4 animate-spin text-neutral-400"
+                  class="size-4 animate-spin text-muted"
                 />
                 <span v-else>No data</span>
               </div>

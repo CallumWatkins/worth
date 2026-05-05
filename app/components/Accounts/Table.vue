@@ -188,6 +188,7 @@ const emit = defineEmits<{
 }>();
 
 const settings = useSettings();
+const colorMode = useColorMode();
 
 const UButton = resolveComponent("UButton");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
@@ -306,12 +307,14 @@ function getRowActivityValues(row: TableRow<Account>) {
 
 function getRowActivityColor(row: TableRow<Account>) {
   if (!row.getIsGrouped()) {
-    return ACCOUNT_TYPE_META[row.original.account_type.name].lineColor;
+    const meta = ACCOUNT_TYPE_META[row.original.account_type.name];
+    return colorMode.value === "dark" ? meta.lineColorDark : meta.lineColor;
   }
 
   const groupingId = row.groupingColumnId;
   if (groupingId === "type_group") {
-    return ACCOUNT_TYPE_META[row.getValue<AccountTypeName>("type_group")].lineColor;
+    const meta = ACCOUNT_TYPE_META[row.getValue<AccountTypeName>("type_group")];
+    return colorMode.value === "dark" ? meta.lineColorDark : meta.lineColor;
   }
 
   // Institution (or unknown) groups: neutral line

@@ -199,8 +199,8 @@
                     color="neutral"
                     size="sm"
                     :ui="{
-                      indicator: 'bg-neutral-700',
-                      label: 'text-neutral-300'
+                      indicator: 'bg-inverted/10',
+                      label: 'text-toned'
                     }"
                   />
                 </div>
@@ -220,7 +220,7 @@
                 <UIcon
                   v-if="balanceOverTimeQuery.isFetching"
                   name="i-lucide-loader-2"
-                  class="size-4 animate-spin text-neutral-400"
+                  class="size-4 animate-spin text-muted"
                 />
                 <span v-else>No data</span>
               </div>
