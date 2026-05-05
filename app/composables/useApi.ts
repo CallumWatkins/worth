@@ -1,5 +1,6 @@
 import type { ApiError, Result, ValidationIssue } from "~/generated/bindings";
 import { commands } from "~/generated/bindings";
+import { createReportedApiError, getApiErrorProperties, reportHandledError } from "~/utils/error-reporting";
 
 export const formatApiError = (error: ApiError): string => {
   if (error === "Db") return "Database error";
@@ -21,11 +22,13 @@ export const validationIssuesFromApiError = (error: ApiError): ValidationIssue[]
 
 export class ApiCommandError extends Error {
   public readonly apiError: ApiError;
+  public readonly commandName?: string;
 
-  constructor(apiError: ApiError) {
+  constructor(apiError: ApiError, commandName?: string) {
     super(formatApiError(apiError));
     this.name = "ApiCommandError";
     this.apiError = apiError;
+    this.commandName = commandName;
   }
 }
 
@@ -36,15 +39,21 @@ export const extractValidationIssues = (error: unknown): ValidationIssue[] => {
   return [];
 };
 
-export const unwrapResult = <T>(result: Result<T, ApiError>): T => {
+export const unwrapResult = <T>(result: Result<T, ApiError>, commandName?: string): T => {
   if (result.status === "ok")
     return result.data;
 
-  throw new ApiCommandError(result.error);
+  reportHandledError(createReportedApiError(result.error), {
+    source: "api_result",
+    command_name: commandName ?? "unknown",
+    ...getApiErrorProperties(result.error)
+  });
+
+  throw new ApiCommandError(result.error, commandName);
 };
 
-export const invokeResult = async <T>(promise: Promise<Result<T, ApiError>>): Promise<T> => {
-  return unwrapResult(await promise);
+export const invokeResult = async <T>(promise: Promise<Result<T, ApiError>>, commandName?: string): Promise<T> => {
+  return unwrapResult(await promise, commandName);
 };
 
 export type Api = {
@@ -61,7 +70,21 @@ const api = new Proxy(commands, {
     if (!(prop in target)) return undefined;
 
     const command = target[prop as keyof typeof target] as ResultCommand;
-    return async (...args: unknown[]) => invokeResult(command(...args));
+    const commandName = String(prop);
+    return async (...args: unknown[]) => {
+      try {
+        return await invokeResult(command(...args), commandName);
+      } catch (error) {
+        if (!(error instanceof ApiCommandError)) {
+          reportHandledError(error, {
+            source: "api_transport",
+            command_name: commandName
+          });
+        }
+
+        throw error;
+      }
+    };
   }
 }) as unknown as Api;
 

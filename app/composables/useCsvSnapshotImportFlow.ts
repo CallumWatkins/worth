@@ -10,6 +10,8 @@ import type { SnapshotImportFlowDefinition } from "~/utils/snapshot-import-flows
 import SnapshotImportCsvFileStep from "~/components/Accounts/Snapshots/Import/Csv/FileStep.vue";
 import SnapshotImportCsvOptionsStep from "~/components/Accounts/Snapshots/Import/Csv/OptionsStep.vue";
 import SnapshotImportReviewStep from "~/components/Accounts/Snapshots/Import/ReviewStep.vue";
+import { ApiCommandError } from "~/composables/useApi";
+import { reportHandledError } from "~/utils/error-reporting";
 
 const csvFileStepComponent = markRaw(SnapshotImportCsvFileStep) as Component;
 const csvOptionsStepComponent = markRaw(SnapshotImportCsvOptionsStep) as Component;
@@ -145,6 +147,10 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
     } catch (error) {
       if (!isCurrentInspectRequest(requestId, file, fileHasHeaderRow)) return;
 
+      if (!(error instanceof ApiCommandError)) {
+        reportHandledError(error, { source: "csv_import_inspect" });
+      }
+
       inspection.value = null;
       params.setErrorMessage(error instanceof Error ? error.message : "Failed to inspect import source");
     } finally {
@@ -172,6 +178,10 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
       preview.value = await api.accountSnapshotImportPreview(params.accountId.value, sourceInput.value, options.value);
       return true;
     } catch (error) {
+      if (!(error instanceof ApiCommandError)) {
+        reportHandledError(error, { source: "csv_import_preview" });
+      }
+
       params.setErrorMessage(error instanceof Error ? error.message : "Failed to preview import");
       return false;
     } finally {
@@ -197,6 +207,10 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
       params.onComplete();
       return true;
     } catch (error) {
+      if (!(error instanceof ApiCommandError)) {
+        reportHandledError(error, { source: "csv_import_commit" });
+      }
+
       params.setErrorMessage(error instanceof Error ? error.message : "Failed to import snapshots");
       return false;
     }

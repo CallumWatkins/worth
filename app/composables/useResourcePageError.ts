@@ -35,6 +35,11 @@ export const useResourcePageError = ({
         status: 404,
         statusText: `${resourceName} not found`,
         message: invalidIdMessage ?? `The ${resourceNameLower} ID is missing or invalid.`,
+        data: {
+          source: "resource_page",
+          resource: resourceNameLower,
+          reason: "invalid_id"
+        },
         fatal: true
       }));
       return;
@@ -46,6 +51,11 @@ export const useResourcePageError = ({
         status: 404,
         statusText: `${resourceName} not found`,
         message: notFoundMessage ?? `The ${resourceNameLower} with ID ${resourceId.value} does not exist.`,
+        data: {
+          source: "resource_page",
+          resource: resourceNameLower,
+          reason: "api_not_found"
+        },
         fatal: true
       }));
       return;
@@ -58,6 +68,11 @@ export const useResourcePageError = ({
       message: error instanceof Error && error.message.length
         ? error.message
         : fallbackErrorMessage,
+      data: {
+        source: "resource_page",
+        resource: resourceNameLower,
+        reason: "load_failed"
+      },
       fatal: true
     }));
   });
