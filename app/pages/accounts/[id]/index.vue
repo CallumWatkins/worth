@@ -568,7 +568,9 @@ const chartMeta = computed(() => {
     return {
       color: "#22c55e",
       glow: "rgba(34, 197, 94, 0.55)",
-      glowEmphasis: "rgba(34, 197, 94, 0.85)"
+      glowFill: "rgba(34, 197, 94, 0.5)",
+      glowEmphasis: "rgba(34, 197, 94, 0.85)",
+      glowTransparent: "rgba(34, 197, 94, 0)"
     };
   }
   return ACCOUNT_TYPE_META[kind];
@@ -713,8 +715,8 @@ const balanceOverTimeOption = computed<ECOption>(() => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: invertAreaGradient ? "rgba(0, 0, 0, 0)" : chartMeta.value.glowEmphasis },
-              { offset: 1, color: invertAreaGradient ? chartMeta.value.glowEmphasis : "rgba(0, 0, 0, 0)" }
+              { offset: 0, color: invertAreaGradient ? chartMeta.value.glowTransparent : chartMeta.value.glowFill },
+              { offset: 1, color: invertAreaGradient ? chartMeta.value.glowFill : chartMeta.value.glowTransparent }
             ]
           }
         },

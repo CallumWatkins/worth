@@ -7,7 +7,9 @@ export interface AccountTypeMeta {
    */
   color: string
   glow: string
+  glowFill: string
   glowEmphasis: string
+  glowTransparent: string
   /**
    * Tailwind classes used for the account type badge.
    */
@@ -104,8 +106,10 @@ export const ACCOUNT_TYPE_META = Object.fromEntries(
   (Object.keys(ACCOUNT_TYPE_CONFIG) as AccountTypeName[]).map((kind) => {
     const cfg = ACCOUNT_TYPE_CONFIG[kind];
     const glow = rgbaFromHex(cfg.color, 0.55);
+    const glowFill = rgbaFromHex(cfg.color, 0.5);
     const glowEmphasis = rgbaFromHex(cfg.color, 0.85);
+    const glowTransparent = rgbaFromHex(cfg.color, 0);
     const lineColor = cfg.color;
-    return [kind, { ...cfg, glow, glowEmphasis, lineColor }] as const;
+    return [kind, { ...cfg, glow, glowFill, glowEmphasis, glowTransparent, lineColor }] as const;
   })
 ) as Record<AccountTypeName, AccountTypeMeta>;

@@ -458,7 +458,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: "rgba(34, 197, 94, 0.35)" },
+              { offset: 0, color: "rgba(34, 197, 94, 0.5)" },
               { offset: 1, color: "rgba(34, 197, 94, 0)" }
             ]
           }
