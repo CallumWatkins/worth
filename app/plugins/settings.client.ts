@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/vue-query";
 
 export default defineNuxtPlugin({
   name: "settings",
-  dependsOn: ["vue-query", "posthog-client", "i18n:plugin:route-locale-detect"],
+  dependsOn: ["vue-query", "posthog-super-properties", "i18n:plugin:route-locale-detect"],
   async setup(nuxtApp) {
     const api = useApi();
     const queryClient = useQueryClient();
