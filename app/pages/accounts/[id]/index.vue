@@ -720,13 +720,6 @@ const balanceOverTimeOption = computed<ECOption>(() => {
               { offset: 1, color: invertAreaGradient ? chartMeta.value.glowFill : chartMeta.value.glowTransparent }
             ]
           }
-        },
-        emphasis: {
-          focus: "series",
-          lineStyle: {
-            shadowBlur: 14,
-            shadowColor: chartMeta.value.glowEmphasis
-          }
         }
       }
     ]

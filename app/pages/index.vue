@@ -462,13 +462,6 @@ const balanceOverTimeOption = computed<ECOption>(() => {
               { offset: 1, color: "rgba(34, 197, 94, 0)" }
             ]
           }
-        },
-        emphasis: {
-          focus: "series",
-          lineStyle: {
-            shadowBlur: 14,
-            shadowColor: "rgba(34, 197, 94, 0.85)"
-          }
         }
       }
     ]
