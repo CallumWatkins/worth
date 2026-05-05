@@ -578,8 +578,7 @@ const chartMeta = computed(() => {
 
 const balanceOverTimeOption = computed<ECOption>(() => {
   const points = balanceOverTimeQuery.data ?? [];
-  const dates = points.map((p) => p.date);
-  const values = points.map((p) => convertCurrencyMinorUnitsToMajorAmount(p.balance_minor));
+  const values = points.map((p) => [p.date, convertCurrencyMinorUnitsToMajorAmount(p.balance_minor)]);
 
   const invertAreaGradient = (() => {
     if (accountQuery.data?.normal_balance_sign !== -1) return false;
@@ -596,45 +595,6 @@ const balanceOverTimeOption = computed<ECOption>(() => {
     return max <= 0 && min < 0;
   })();
 
-  const labelInterval = (idx: number, value: string) => {
-    if (idx === 0 || idx === dates.length - 1) return true;
-
-    const parts = value.split("-");
-    const y = Number(parts[0] ?? 0);
-    const m = Number(parts[1] ?? 0);
-    const d = Number(parts[2] ?? 0);
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false;
-
-    switch (balanceOverTimePeriod.value) {
-    case "1M":
-      return d === 1 || d === 8 || d === 15 || d === 22 || d === 29;
-    case "6M":
-      return d === 15;
-    case "1Y":
-      return d === 15 && (m % 2 === 1);
-    case "MAX":
-      return m === 1 && d === 1;
-    }
-  };
-
-  const labelFormatter = (value: string) => {
-    const parts = value.split("-");
-    const y = Number(parts[0] ?? 0);
-    const m = Number(parts[1] ?? 0);
-    const d = Number(parts[2] ?? 0);
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return value;
-
-    switch (balanceOverTimePeriod.value) {
-    case "1M":
-      return formatDate(value, { day: "numeric", month: "short" }, value);
-    case "6M":
-    case "1Y":
-      return formatDate(value, { month: "short" }, value);
-    case "MAX":
-      return formatDate(value, { year: "numeric" }, value);
-    }
-  };
-
   return {
     backgroundColor: "transparent",
     tooltip: {
@@ -642,13 +602,12 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       trigger: "axis",
       axisPointer: {
         type: "line",
-        lineStyle: { color: "rgba(244, 244, 245, 0.25)" }
+        lineStyle: { color: "rgba(244, 244, 245, 0.25)" },
+        label: {
+          formatter: ({ value }) => formatShortDate(new Date(value))
+        }
       },
-      valueFormatter: (value: unknown) => {
-        const n = typeof value === "number" ? value : Number(value);
-        if (!Number.isFinite(n)) return String(value);
-        return formatCurrency(n, accountCurrencyCode.value);
-      }
+      valueFormatter: (value) => formatCurrency(value as number, accountCurrencyCode.value)
     },
     grid: {
       left: 0,
@@ -659,17 +618,10 @@ const balanceOverTimeOption = computed<ECOption>(() => {
       outerBoundsContain: "axisLabel"
     },
     xAxis: {
-      type: "category",
-      data: dates,
-      boundaryGap: false,
+      type: "time",
       axisTick: { show: false },
       axisLine: { show: false },
-      splitLine: { show: false },
-      axisLabel: {
-        hideOverlap: true,
-        interval: labelInterval,
-        formatter: labelFormatter
-      }
+      splitLine: { show: false }
     },
     yAxis: {
       type: "value",

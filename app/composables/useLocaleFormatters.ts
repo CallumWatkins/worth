@@ -44,8 +44,8 @@ export function useLocaleFormatters() {
     return formatCurrency(convertCurrencyMinorUnitsToMajorAmount(minor), currencyCode, options);
   }
 
-  function formatDate(iso: string | null | undefined, options: Intl.DateTimeFormatOptions, fallback = "—") {
-    const date = getDateObjectFromCalendarDateIsoString(iso);
+  function formatDate(value: Date | string | null | undefined, options: Intl.DateTimeFormatOptions, fallback = "—") {
+    const date = value instanceof Date ? value : getDateObjectFromCalendarDateIsoString(value);
 
     if (date == null || Number.isNaN(date.getTime())) {
       return fallback;
@@ -54,8 +54,8 @@ export function useLocaleFormatters() {
     return getDateFormatter(code.value, options).format(date);
   }
 
-  function formatShortDate(iso: string | null | undefined, fallback = "—") {
-    return formatDate(iso, {
+  function formatShortDate(value: Date | string | null | undefined, fallback = "—") {
+    return formatDate(value, {
       day: "2-digit",
       month: "short",
       year: "numeric"
