@@ -38,7 +38,7 @@
                 class="dashboard-total-balance mr-4 text-[2.5rem] text-4xl font-bold text-default"
                 :value="animatedTotalBalance"
                 :locales="appLocaleCode"
-                :format="{ style: 'currency', currency: 'GBP' }"
+                :format="{ style: 'currency', currency: settings.default_display_currency_code }"
                 :plugins="numberFlowPlugins"
                 :transform-timing="{ duration: 0 }"
                 :spin-timing="numberFlowTiming"
@@ -80,7 +80,7 @@
                   :class="monthlyYieldDescriptionClass"
                   :value="animatedMonthlyYield"
                   :locales="appLocaleCode"
-                  :format="{ style: 'currency', currency: 'GBP', signDisplay: 'always' }"
+                  :format="{ style: 'currency', currency: settings.default_display_currency_code, signDisplay: 'always' }"
                   :plugins="numberFlowPlugins"
                   :transform-timing="{ duration: 0 }"
                   :spin-timing="numberFlowTiming"
@@ -162,7 +162,7 @@
                 :locales="appLocaleCode"
                 :format="{
                   style: 'currency',
-                  currency: 'GBP',
+                  currency: settings.default_display_currency_code,
                   notation: 'compact',
                   compactDisplay: 'short',
                   minimumFractionDigits: Math.abs(allocationVisibleTotal) < 1000 ? 2 : 0,
@@ -283,6 +283,7 @@ import { useQuery } from "@tanstack/vue-query";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
 const { formatCurrency, formatDate } = useLocaleFormatters();
+const settings = useSettings();
 const { code: appLocaleCode } = useAppLocale();
 
 const darkTooltipBase = {
@@ -567,7 +568,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
       trigger: "item",
       valueFormatter: (value: unknown) => {
         const n = typeof value === "number" ? value : Number(value);
-        if (Number.isFinite(n)) return formatCurrency(n, "GBP", { maximumFractionDigits: 0 });
+        if (Number.isFinite(n)) return formatCurrency(n, settings.value.default_display_currency_code, { maximumFractionDigits: 0 });
         return String(value);
       }
     },

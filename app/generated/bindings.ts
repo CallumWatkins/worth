@@ -5,6 +5,22 @@
 
 
 export const commands = {
+async settingsGet() : Promise<Result<AppSettingsDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("settings_get") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async settingsUpdate(input: AppSettingsUpdateInput) : Promise<Result<AppSettingsDto, ApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("settings_update", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async accountsList() : Promise<Result<AccountDto[], ApiError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("accounts_list") };
@@ -214,6 +230,9 @@ export type AccountUpsertInput = { institution: InstitutionRef; name: string; ac
 export type ActivityDataDto = { values: (number | null)[]; delta_minor: number }
 export type ActivityPeriod = "1W" | "1M" | "3M" | "6M"
 export type ApiError = "Db" | "NotFound" | { Validation: ValidationIssue[] }
+export type AppLocaleCode = "system" | "en-GB"
+export type AppSettingsDto = { analytics_enabled: boolean; default_display_currency_code: CurrencyCode; display_locale: AppLocaleCode; theme: ThemePreference }
+export type AppSettingsUpdateInput = { analytics_enabled?: boolean | null; default_display_currency_code?: CurrencyCode | null; display_locale?: AppLocaleCode | null; theme?: ThemePreference | null }
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX"
 export type BalancePointDto = { date: string; balance_minor: number }
 export type CreatedIdDto = { id: number }
@@ -253,6 +272,7 @@ export type SnapshotImportPreviewSummaryDto = { total_rows: number; create_count
 export type SnapshotImportSourceInput = ({ kind: "csv" } & CsvSnapshotImportSourceInput)
 export type SnapshotImportSourceOptionsInput = ({ kind: "csv" } & CsvSnapshotImportOptionsInput)
 export type SnapshotImportUnchangedValuePolicy = "exclude" | "include"
+export type ThemePreference = "system" | "light" | "dark"
 export type ValidationIssue = { field: string; message: string }
 
 /** tauri-specta globals **/

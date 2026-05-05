@@ -37,6 +37,77 @@ pub async fn init_pool(app: &tauri::AppHandle) -> tauri::Result<SqlitePool> {
     Ok(pool)
 }
 
+pub async fn app_settings_get(pool: &SqlitePool) -> Result<rows::AppSettingsRow, sqlx::Error> {
+    sqlx::query_as::<_, rows::AppSettingsRow>(
+        r"
+        SELECT
+            id,
+            analytics_enabled,
+            default_display_currency_code,
+            display_locale,
+            theme,
+            created_at,
+            updated_at
+        FROM
+            app_settings
+        WHERE
+            id = 1
+        ",
+    )
+    .fetch_one(pool)
+    .await
+}
+
+#[derive(Debug, Clone)]
+pub struct AppSettingsMutationInput {
+    pub analytics_enabled: Option<bool>,
+    pub default_display_currency_code: Option<String>,
+    pub display_locale: Option<String>,
+    pub theme: Option<String>,
+}
+
+pub async fn app_settings_update(
+    pool: &SqlitePool,
+    input: &AppSettingsMutationInput,
+) -> Result<rows::AppSettingsRow, sqlx::Error> {
+    let mut qb = QueryBuilder::<Sqlite>::new("UPDATE app_settings SET ");
+    let mut separated = qb.separated(", ");
+    let mut changed = false;
+
+    if let Some(analytics_enabled) = input.analytics_enabled {
+        separated
+            .push("analytics_enabled = ")
+            .push_bind_unseparated(analytics_enabled);
+        changed = true;
+    }
+    if let Some(default_display_currency_code) = &input.default_display_currency_code {
+        separated
+            .push("default_display_currency_code = ")
+            .push_bind_unseparated(default_display_currency_code);
+        changed = true;
+    }
+    if let Some(display_locale) = &input.display_locale {
+        separated
+            .push("display_locale = ")
+            .push_bind_unseparated(display_locale);
+        changed = true;
+    }
+    if let Some(theme) = &input.theme {
+        separated.push("theme = ").push_bind_unseparated(theme);
+        changed = true;
+    }
+
+    if !changed {
+        return app_settings_get(pool).await;
+    }
+
+    separated.push("updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')");
+    qb.push(" WHERE id = 1");
+    qb.build().execute(pool).await?;
+
+    app_settings_get(pool).await
+}
+
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct AccountListRow {
     pub id: i64,
@@ -1316,4 +1387,37 @@ pub async fn institution_delete(
     .await?;
 
     Ok(result.rows_affected() > 0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn app_settings_update_patches_analytics_enabled() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(":memory:")
+            .await
+            .expect("connect in-memory db");
+
+        sqlx::migrate!("./db/migrations")
+            .run(&pool)
+            .await
+            .expect("run migrations");
+
+        let updated = app_settings_update(
+            &pool,
+            &AppSettingsMutationInput {
+                analytics_enabled: Some(false),
+                default_display_currency_code: None,
+                display_locale: None,
+                theme: None,
+            },
+        )
+        .await
+        .expect("update analytics enabled");
+
+        assert!(!updated.analytics_enabled);
+    }
 }

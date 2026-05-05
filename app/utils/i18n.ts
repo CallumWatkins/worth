@@ -10,6 +10,7 @@ export const APP_LOCALES = [
 
 export type AppLocaleDefinition = (typeof APP_LOCALES)[number];
 export type AppLocaleCode = AppLocaleDefinition["code"];
+export type AppLocalePreference = "system" | AppLocaleCode;
 
 export const DEFAULT_LOCALE: AppLocaleCode = APP_LOCALES[0].code;
 
@@ -23,9 +24,13 @@ export const NUXT_I18N_LOCALES = APP_LOCALES.map(({ code, language, name, dir })
 export const APP_I18N_CONFIG = {
   defaultLocale: DEFAULT_LOCALE,
   locales: NUXT_I18N_LOCALES,
+  detectBrowserLanguage: {
+    fallbackLocale: DEFAULT_LOCALE,
+    useCookie: false
+  },
   strategy: "no_prefix"
 } as const;
 
-export function resolveAppLocale(code: string | null | undefined): AppLocaleDefinition {
+export function resolveAppLocale(code: string): AppLocaleDefinition {
   return APP_LOCALES.find((locale) => locale.code === code) ?? APP_LOCALES[0];
 }

@@ -126,14 +126,14 @@
     <template #balance-cell="{ row }">
       <div v-if="row.getIsGrouped()" class="text-right">
         <div class="font-semibold text-highlighted">
-          {{ formatCurrencyMinor(row.getValue<number>("balance"), "GBP") }}
+          {{ formatCurrencyMinor(row.getValue<number>("balance"), settings.default_display_currency_code) }}
         </div>
         <div class="text-xs text-muted">
           Group total
         </div>
       </div>
       <span v-else>
-        {{ formatCurrencyMinor(row.original.latest_balance_minor, "GBP") }}
+        {{ formatCurrencyMinor(row.original.latest_balance_minor, row.original.currency_code) }}
       </span>
     </template>
 
@@ -186,6 +186,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   clearFilters: []
 }>();
+
+const settings = useSettings();
 
 const UButton = resolveComponent("UButton");
 const UDropdownMenu = resolveComponent("UDropdownMenu");

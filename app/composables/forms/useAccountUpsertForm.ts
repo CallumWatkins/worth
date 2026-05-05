@@ -28,18 +28,21 @@ function normalizeInstitutionName(name: string) {
 }
 
 export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
-  const defaults: RequiredOrUndefined<AccountFormInputValues> = {
-    account_type: "current",
-    currency_code: "GBP",
-    institution: undefined,
-    name: undefined,
-    normal_balance_sign: 1,
-    opened_date: undefined,
-    closed_date: undefined
+  const settings = useSettings();
+  const defaults = (): RequiredOrUndefined<AccountFormInputValues> => {
+    return {
+      account_type: "current",
+      currency_code: settings.value.default_display_currency_code,
+      institution: undefined,
+      name: undefined,
+      normal_balance_sign: 1,
+      opened_date: undefined,
+      closed_date: undefined
+    };
   };
 
   const state = shallowReactive<Partial<AccountFormInputValues>>({
-    ...defaults
+    ...defaults()
   });
 
   const institutionItems = computed(() => {
@@ -154,7 +157,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
   ];
 
   function reset() {
-    Object.assign(state, defaults);
+    Object.assign(state, defaults());
     setExistingInstitution(defaultInstitutionFallback(institutionItems, params.getDefaultInstitutionId));
     institutionSearchTerm.value = "";
   }

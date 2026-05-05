@@ -1,4 +1,7 @@
-CREATE TABLE institutions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);
+CREATE TABLE institutions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE
+);
 
 CREATE TABLE account_types (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
 
@@ -23,6 +26,16 @@ CREATE TABLE account_balance_snapshots (
   balance_minor INTEGER NOT NULL,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (account_id, balance_date)
+);
+
+CREATE TABLE app_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  analytics_enabled INTEGER NOT NULL DEFAULT 1 CHECK (analytics_enabled IN (0, 1)),
+  default_display_currency_code TEXT NOT NULL DEFAULT 'GBP',
+  display_locale TEXT NOT NULL DEFAULT 'system',
+  theme TEXT NOT NULL DEFAULT 'dark' CHECK (theme IN ('system', 'light', 'dark')),
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
 CREATE INDEX idx_balance_account_date ON account_balance_snapshots (account_id, balance_date);
@@ -262,3 +275,8 @@ VALUES
   ('pension'),
   ('cash'),
   ('loan');
+
+INSERT INTO
+  app_settings (id)
+VALUES
+  (1);

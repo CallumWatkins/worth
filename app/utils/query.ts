@@ -1,6 +1,9 @@
 import type { BalanceOverTimePeriod } from "~/generated/bindings";
 
 export const queryKeys = {
+  settings: {
+    get: () => ["settings", "get"] as const
+  },
   accounts: {
     prefixes: {
       root: () => ["accounts"] as const,

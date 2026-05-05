@@ -82,7 +82,7 @@
         </template>
 
         <template #balance-cell="{ row }">
-          {{ formatCurrencyMinor(row.original.total_balance_minor, "GBP") }}
+          {{ formatCurrencyMinor(row.original.total_balance_minor, settings.default_display_currency_code) }}
         </template>
       </UTable>
 
@@ -120,6 +120,7 @@ const institutionsQuery = proxyRefs(useQuery({
 
 const institutionsData = computed<Institution[]>(() => institutionsQuery.data ?? []);
 const { formatCurrencyMinor } = useLocaleFormatters();
+const settings = useSettings();
 
 const sorting = ref([
   {

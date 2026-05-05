@@ -103,6 +103,109 @@ impl FromStr for CurrencyCode {
     }
 }
 
+#[crate::export_schema]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Type,
+    JsonSchema,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum ThemePreference {
+    System,
+    Light,
+    Dark,
+}
+
+impl ThemePreference {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ThemePreference::System => "system",
+            ThemePreference::Light => "light",
+            ThemePreference::Dark => "dark",
+        }
+    }
+}
+
+impl FromStr for ThemePreference {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "system" => Ok(ThemePreference::System),
+            "light" => Ok(ThemePreference::Light),
+            "dark" => Ok(ThemePreference::Dark),
+            _ => Err("Invalid theme preference"),
+        }
+    }
+}
+
+#[crate::export_schema]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Type,
+    JsonSchema,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+)]
+pub enum AppLocaleCode {
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "en-GB")]
+    EnGb,
+}
+
+impl AppLocaleCode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AppLocaleCode::System => "system",
+            AppLocaleCode::EnGb => "en-GB",
+        }
+    }
+}
+
+impl FromStr for AppLocaleCode {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "system" => Ok(AppLocaleCode::System),
+            "en-GB" => Ok(AppLocaleCode::EnGb),
+            _ => Err("Invalid locale code"),
+        }
+    }
+}
+
+#[crate::export_schema]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
+pub struct AppSettingsUpdateInput {
+    #[garde(skip)]
+    #[specta(optional)]
+    pub analytics_enabled: Option<bool>,
+    #[garde(skip)]
+    #[specta(optional)]
+    pub default_display_currency_code: Option<CurrencyCode>,
+    #[garde(skip)]
+    #[specta(optional)]
+    pub display_locale: Option<AppLocaleCode>,
+    #[garde(skip)]
+    #[specta(optional)]
+    pub theme: Option<ThemePreference>,
+}
+
 const INSTITUTION_NAME_REQUIRED: &str = "Enter an institution name";
 const INSTITUTION_NAME_MAX_LENGTH: &str = "Institution name must be 120 characters or fewer";
 const ACCOUNT_NAME_REQUIRED: &str = "Enter an account name";

@@ -38,3 +38,15 @@ pub struct AccountBalanceSnapshotRow {
     pub balance_minor: i64,
     pub created_at: DateTime<Utc>,
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AppSettingsRow {
+    pub id: i64,
+    pub analytics_enabled: bool,
+    pub default_display_currency_code: String,
+    pub display_locale: String,
+    pub theme: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}

@@ -10,7 +10,8 @@ use tauri::State;
 
 use crate::contracts::{
     AccountSnapshotUpdateInput, AccountSnapshotsCreateInput, AccountSnapshotsDeleteInput,
-    AccountTypeName, AccountUpsertInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput,
+    AccountTypeName, AccountUpsertInput, AppLocaleCode, AppSettingsUpdateInput, CurrencyCode,
+    InstitutionRef, InstitutionUpsertInput, ThemePreference,
 };
 use crate::imports::snapshots::{
     SnapshotImportCommitDto, SnapshotImportInspectionDto, SnapshotImportOptionsInput,
@@ -34,6 +35,14 @@ pub enum ApiError {
 pub struct ValidationIssue {
     pub field: String,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AppSettingsDto {
+    pub analytics_enabled: bool,
+    pub default_display_currency_code: CurrencyCode,
+    pub display_locale: AppLocaleCode,
+    pub theme: ThemePreference,
 }
 
 #[derive(
@@ -191,6 +200,38 @@ pub enum SearchResultDto {
         id: i64,
         name: String,
     },
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_get(state: State<'_, AppState>) -> Result<AppSettingsDto, ApiError> {
+    let pool = &state.pool;
+    let row = db::app_settings_get(pool).await.map_err(|_| ApiError::Db)?;
+    app_settings_dto_from_row(row)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_update(
+    state: State<'_, AppState>,
+    input: AppSettingsUpdateInput,
+) -> Result<AppSettingsDto, ApiError> {
+    let pool = &state.pool;
+    let mutation = db::AppSettingsMutationInput {
+        analytics_enabled: input.analytics_enabled,
+        default_display_currency_code: input
+            .default_display_currency_code
+            .map(|currency| currency.as_str().to_owned()),
+        display_locale: input
+            .display_locale
+            .map(|locale| locale.as_str().to_owned()),
+        theme: input.theme.map(|theme| theme.as_str().to_owned()),
+    };
+
+    let row = db::app_settings_update(pool, &mutation)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    app_settings_dto_from_row(row)
 }
 
 #[tauri::command]
@@ -1085,6 +1126,18 @@ struct ValidatedAccountUpsert {
     closed_date: Option<NaiveDate>,
 }
 
+fn app_settings_dto_from_row(row: db::rows::AppSettingsRow) -> Result<AppSettingsDto, ApiError> {
+    Ok(AppSettingsDto {
+        analytics_enabled: row.analytics_enabled,
+        default_display_currency_code: row
+            .default_display_currency_code
+            .parse()
+            .map_err(|_| ApiError::Db)?,
+        display_locale: row.display_locale.parse().map_err(|_| ApiError::Db)?,
+        theme: row.theme.parse().map_err(|_| ApiError::Db)?,
+    })
+}
+
 async fn institution_detail_by_id(
     pool: &SqlitePool,
     institution_id: i64,
@@ -1651,6 +1704,8 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     use tauri_specta::{collect_commands, Builder};
 
     Builder::<tauri::Wry>::new().commands(collect_commands![
+        settings_get,
+        settings_update,
         accounts_list,
         accounts_create,
         accounts_update,
