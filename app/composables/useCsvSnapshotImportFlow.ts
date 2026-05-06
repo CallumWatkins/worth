@@ -72,6 +72,16 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
 
   const hasPendingOverwrites = computed(() => (preview.value?.summary.overwrite_count ?? 0) > 0);
 
+  const hasImportableRows = computed(() => {
+    const summary = preview.value?.summary;
+    return summary != null && (summary.create_count + summary.overwrite_count) > 0;
+  });
+
+  const hasOnlySkippedRows = computed(() => {
+    const summary = preview.value?.summary;
+    return summary != null && summary.skip_count === summary.total_rows;
+  });
+
   const columnItems = computed(() => {
     return (inspection.value?.columns ?? []).map((column) => ({
       label: column.name,
@@ -191,6 +201,12 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
 
   async function complete() {
     if (params.accountId.value == null || sourceInput.value == null || preview.value == null) return false;
+    if (hasOnlySkippedRows.value) {
+      params.setErrorMessage(null);
+      params.onComplete();
+      return true;
+    }
+
     if (hasPendingOverwrites.value && !options.value.overwrite_existing_confirmed) {
       params.setErrorMessage("Confirm overwrite to continue");
       return false;
@@ -270,9 +286,10 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
         && sourceInput.value != null
         && preview.value != null
         && preview.value.summary.invalid_count === 0
-        && (preview.value.summary.create_count + preview.value.summary.overwrite_count) > 0
+        && (hasImportableRows.value || hasOnlySkippedRows.value)
         && (!hasPendingOverwrites.value || options.value.overwrite_existing_confirmed);
     },
+    isCompleteNoop: () => hasOnlySkippedRows.value,
     complete,
     steps: () => [
       {

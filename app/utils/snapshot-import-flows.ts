@@ -21,6 +21,7 @@ export interface SnapshotImportFlowDefinition {
   isBusy: () => boolean
   reset: () => void
   canComplete: () => boolean
+  isCompleteNoop?: () => boolean
   complete: () => Promise<boolean>
   completeLabel: string
 }

@@ -84,6 +84,16 @@
               Continue
             </UButton>
             <UButton
+              v-else-if="showComplete && isCompleteNoop"
+              color="neutral"
+              variant="subtle"
+              :disabled="!canComplete || busy"
+              :loading="busy"
+              @click="completeImport"
+            >
+              Done
+            </UButton>
+            <UButton
               v-else-if="showComplete"
               :disabled="!canComplete || busy"
               :loading="busy"
@@ -151,6 +161,7 @@ const stepItems = computed<StepperItem[]>(() => [
 const busy = computed(() => selectedFlow.value?.isBusy() ?? false);
 const canContinue = computed(() => currentStep.value?.canContinue() ?? false);
 const canComplete = computed(() => selectedFlow.value?.canComplete() ?? false);
+const isCompleteNoop = computed(() => selectedFlow.value?.isCompleteNoop?.() ?? false);
 const showContinue = computed(() => stepIndex.value > 0 && stepIndex.value < flowSteps.value.length);
 const showComplete = computed(() => stepIndex.value > 0 && stepIndex.value === flowSteps.value.length);
 

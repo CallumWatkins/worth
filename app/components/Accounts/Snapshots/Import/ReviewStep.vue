@@ -28,6 +28,14 @@
         :description="`${warningCount} ${warningCount === 1 ? 'warning' : 'warnings'} found. Review the highlighted notes below before importing.`"
       />
 
+      <UAlert
+        v-else-if="preview.summary.skip_count === preview.summary.total_rows"
+        color="neutral"
+        variant="subtle"
+        title="No changes to import"
+        description="All rows will be skipped. Review the notes below to find out why."
+      />
+
       <div class="relative rounded-lg after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded-lg after:border after:border-default">
         <UTable
           :data="preview.rows"
