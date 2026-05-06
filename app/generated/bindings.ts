@@ -273,7 +273,7 @@ export type SnapshotImportSourceInput = ({ kind: "csv" } & CsvSnapshotImportSour
 export type SnapshotImportSourceOptionsInput = ({ kind: "csv" } & CsvSnapshotImportOptionsInput)
 export type SnapshotImportUnchangedValuePolicy = "exclude" | "include"
 export type ThemePreference = "system" | "light" | "dark"
-export type ValidationIssue = { field: string; message: string }
+export type ValidationIssue = { field: string; message: string; telemetry_message: string | null }
 
 /** tauri-specta globals **/
 

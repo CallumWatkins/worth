@@ -121,6 +121,7 @@ pub struct SnapshotImportCommitDto {
 pub struct SnapshotImportValidationIssue {
     pub field: String,
     pub message: String,
+    pub telemetry_message: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -524,6 +525,7 @@ pub(crate) fn issue(field: &str, message: &str) -> SnapshotImportValidationIssue
     SnapshotImportValidationIssue {
         field: field.to_string(),
         message: message.to_string(),
+        telemetry_message: Some(message.to_string()),
     }
 }
 

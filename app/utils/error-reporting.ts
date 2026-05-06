@@ -31,7 +31,8 @@ export function getApiErrorProperties(error: ApiError): Properties {
     return {
       api_error_kind: "Validation",
       validation_issue_count: error.Validation.length,
-      validation_fields: error.Validation.map((issue) => issue.field)
+      validation_fields: error.Validation.map((issue) => issue.field),
+      validation_messages: error.Validation.map((issue) => issue.telemetry_message)
     };
   }
 

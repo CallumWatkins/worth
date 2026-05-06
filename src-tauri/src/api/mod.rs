@@ -33,8 +33,19 @@ pub enum ApiError {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ValidationIssue {
+    /// Form field path associated with the validation issue.
+    ///
+    /// Uses dot/index notation for nested fields, for example
+    /// `institution.input.name` or `snapshots.0.date`.
     pub field: String,
+    /// User-facing validation message shown in the app UI.
     pub message: String,
+    /// Message that is safe to share as telemetry.
+    ///
+    /// This should either match `message` when it contains no sensitive data, contain
+    /// a redacted/generalized alternative, or be `None` to suppress the validation
+    /// message from telemetry entirely.
+    pub telemetry_message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -1409,10 +1420,32 @@ fn validate_account_snapshots_delete(
     Ok(snapshot_ids)
 }
 
+/// Creates a validation issue whose UI message is also safe to send as telemetry.
+///
+/// Use this only when `message` does not include user-entered values, raw imported
+/// data, or other sensitive details.
 fn validation_issue(field: &str, message: &str) -> ValidationIssue {
     ValidationIssue {
         field: field.to_string(),
         message: message.to_string(),
+        telemetry_message: Some(message.to_string()),
+    }
+}
+
+/// Creates a validation issue with a separately controlled telemetry message.
+///
+/// Use this when the UI message is useful locally but may contain sensitive details.
+/// Pass `None` to suppress the message from telemetry, or pass a redacted/generalized
+/// alternative that is safe to send.
+fn validation_issue_with_telemetry_message(
+    field: &str,
+    message: &str,
+    telemetry_message: Option<&str>,
+) -> ValidationIssue {
+    ValidationIssue {
+        field: field.to_string(),
+        message: message.to_string(),
+        telemetry_message: telemetry_message.map(str::to_string),
     }
 }
 
@@ -1436,7 +1469,13 @@ fn map_snapshot_import_validation(issues: Vec<SnapshotImportValidationIssue>) ->
     ApiError::Validation(
         issues
             .into_iter()
-            .map(|issue| validation_issue(&issue.field, &issue.message))
+            .map(|issue| {
+                validation_issue_with_telemetry_message(
+                    &issue.field,
+                    &issue.message,
+                    issue.telemetry_message.as_deref(),
+                )
+            })
             .collect(),
     )
 }
