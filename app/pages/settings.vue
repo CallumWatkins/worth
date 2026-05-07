@@ -29,8 +29,8 @@
       >
         <div class="space-y-6">
           <UFormField
-            label="Share anonymous usage and crash data"
-            description="Helps improve Worth with anonymous feature and crash events. Personal or financial details are never sent."
+            label="Share anonymous diagnostics and feedback"
+            description="Helps improve Worth by sharing anonymous usage events, crash reports, and any feedback you choose to send. Personal or financial details are never sent."
             orientation="horizontal"
             class="items-center gap-25"
           >
@@ -104,6 +104,22 @@
           </UFormField>
         </div>
       </UPageCard>
+
+      <UPageCard
+        v-if="hasFeedbackSurvey"
+        title="Feedback"
+        description="Help shape the future of Worth."
+        :ui="{
+          container: 'lg:flex flex-row gap-25 items-center'
+        }"
+      >
+        <UButton
+          icon="i-lucide-message-circle-heart"
+          @click="openFeedbackSurvey"
+        >
+          Give feedback
+        </UButton>
+      </UPageCard>
     </UPageBody>
   </UContainer>
 </template>
@@ -129,6 +145,7 @@ const defaultDisplayCurrencyCode = ref<CurrencyCode>();
 const displayLocale = ref<AppLocaleCode>();
 const theme = ref<ThemePreference>();
 const isSettingsBusy = computed(() => settingsQuery.isPending || unref(updateSettings.isPending));
+const { hasFeedbackSurvey, openFeedbackSurvey } = useFeedbackSurvey();
 
 const currencyItems = supportedCurrencyCodes.map((currencyCode) => ({
   label: currencyCode,

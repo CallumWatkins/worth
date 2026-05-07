@@ -117,7 +117,6 @@ export default defineNuxtConfig({
       disable_session_recording: true,
       enable_recording_console_log: false,
       enable_heatmaps: false,
-      disable_surveys: true,
       person_profiles: "identified_only",
       mask_all_text: true,
       mask_all_element_attributes: true,
