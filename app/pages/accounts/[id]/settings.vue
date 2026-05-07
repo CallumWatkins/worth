@@ -30,14 +30,18 @@
               v-if="submitError"
               color="error"
               variant="subtle"
+              orientation="horizontal"
               :title="submitError"
+              :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
             />
 
             <UAlert
               v-if="institutionsQuery.isError"
               color="error"
               variant="subtle"
+              orientation="horizontal"
               :title="institutionsQuery.error.message"
+              :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
             />
 
             <UFormField
@@ -265,6 +269,7 @@ const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 const { updateAccount } = useAccountMutations();
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const form = useTemplateRef<ComponentExposed<typeof UForm<typeof accountFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 

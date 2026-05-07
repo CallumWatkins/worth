@@ -212,7 +212,9 @@
               class="mb-4"
               color="error"
               variant="subtle"
+              orientation="horizontal"
               :title="balanceOverTimeQuery.error.message"
+              :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
             />
 
             <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
@@ -305,7 +307,9 @@
                 class="mb-4"
                 color="error"
                 variant="subtle"
+                orientation="horizontal"
                 :title="snapshotsQuery.error.message"
+                :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
               />
 
               <UTable
@@ -466,6 +470,7 @@ const route = useRoute("accounts-id");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
 const { formatCurrency, formatCurrencyMinor, formatDate, formatShortDate } = useLocaleFormatters();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 
 const UButton = resolveComponent("UButton");
 const UCheckbox = resolveComponent("UCheckbox");

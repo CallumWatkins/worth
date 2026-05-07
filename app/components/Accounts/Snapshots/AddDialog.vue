@@ -12,7 +12,9 @@
           v-if="submitError"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="submitError"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <div class="overflow-auto rounded-lg border border-default">
@@ -203,6 +205,7 @@ const props = defineProps<{
 const open = defineModel<boolean>("open", { required: true });
 
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const {
   createSnapshots,
   submitError,

@@ -10,11 +10,27 @@
           <UError
             :key="`${error.status}:${error.statusText}`"
             :error="error"
-            redirect="/"
-            :clear="{
-              label: 'Back to Dashboard'
-            }"
-          />
+            :clear="false"
+          >
+            <template #links>
+              <UButton
+                size="lg"
+                @click="clearError({ redirect: '/' })"
+              >
+                Back to Dashboard
+              </UButton>
+              <UButton
+                v-if="hasErrorDetailsSurvey"
+                size="lg"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-message-circle-warning"
+                @click="openErrorDetailsSurvey"
+              >
+                Send details
+              </UButton>
+            </template>
+          </UError>
         </UMain>
       </UApp>
     </Body>
@@ -31,6 +47,7 @@ const props = defineProps<{
 }>();
 
 const { dir, lang, uiLocale } = useAppLocale();
+const { hasErrorDetailsSurvey, openErrorDetailsSurvey } = useErrorDetailsSurvey();
 
 onMounted(() => {
   const status = props.error.status ?? props.error.statusCode ?? 500;

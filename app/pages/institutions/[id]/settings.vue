@@ -30,7 +30,9 @@
               v-if="submitError"
               color="error"
               variant="subtle"
+              orientation="horizontal"
               :title="submitError"
+              :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
             />
 
             <UFormField label="Institution name" name="name">
@@ -99,6 +101,7 @@ import { useQuery } from "@tanstack/vue-query";
 const route = useRoute("institutions-id-settings");
 const api = useApi();
 const { updateInstitution } = useInstitutionMutations();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const form = useTemplateRef<ComponentExposed<typeof UForm<typeof institutionFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 

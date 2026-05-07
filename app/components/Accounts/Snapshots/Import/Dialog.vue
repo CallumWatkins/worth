@@ -20,7 +20,9 @@
           v-if="errorMessage"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="errorMessage"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <div v-if="stepIndex === 0" class="space-y-5">
@@ -121,6 +123,7 @@ const props = defineProps<{
 
 const open = defineModel<boolean>("open", { required: true });
 
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const stepIndex = ref(0);
 const selectedFlowId = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);

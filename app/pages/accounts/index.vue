@@ -31,7 +31,9 @@
         v-if="accountsQuery.isError"
         color="error"
         variant="subtle"
+        orientation="horizontal"
         :title="accountsQuery.error.message"
+        :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
       />
 
       <EmptyPageState
@@ -63,6 +65,7 @@
 import { useQuery } from "@tanstack/vue-query";
 
 const api = useApi();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const hideColumns = ref<AccountsHideColumn[]>([]);
 const createDialogOpen = ref(false);
 

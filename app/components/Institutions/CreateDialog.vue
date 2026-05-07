@@ -19,7 +19,9 @@
           v-if="submitError"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="submitError"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <UFormField label="Institution name" name="name">
@@ -61,6 +63,7 @@ const open = defineModel<boolean>("open", { required: true });
 const submitError = ref<string | null>(null);
 const form = useTemplateRef<ComponentExposed<typeof UForm<typeof institutionFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const { state, reset } = useInstitutionUpsertForm();
 
 const { createInstitution } = useInstitutionMutations();

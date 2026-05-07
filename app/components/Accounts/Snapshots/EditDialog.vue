@@ -11,7 +11,9 @@
           v-if="!currentSnapshot"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           title="Snapshot not found"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <template v-else>
@@ -24,7 +26,9 @@
             v-if="submitError"
             color="error"
             variant="subtle"
+            orientation="horizontal"
             :title="submitError"
+            :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
           />
 
           <div class="grid grid-cols-2 gap-3">
@@ -173,6 +177,7 @@ const open = defineModel<boolean>("open", { required: true });
 
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 const { updateSnapshot } = useAccountSnapshotMutations();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 
 const submitError = ref<string | null>(null);
 const amountTouched = ref(false);

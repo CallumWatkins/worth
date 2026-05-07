@@ -14,14 +14,18 @@
         v-if="settingsQuery.isError"
         color="error"
         variant="subtle"
+        orientation="horizontal"
         :title="settingsQuery.error.message"
+        :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
       />
 
       <UAlert
         v-if="saveError"
         color="error"
         variant="subtle"
+        orientation="horizontal"
         :title="saveError"
+        :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
       />
 
       <UPageCard
@@ -146,6 +150,7 @@ const displayLocale = ref<AppLocaleCode>();
 const theme = ref<ThemePreference>();
 const isSettingsBusy = computed(() => settingsQuery.isPending || unref(updateSettings.isPending));
 const { hasFeedbackSurvey, openFeedbackSurvey } = useFeedbackSurvey();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 
 const currencyItems = supportedCurrencyCodes.map((currencyCode) => ({
   label: currencyCode,

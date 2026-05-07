@@ -19,14 +19,18 @@
           v-if="submitError"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="submitError"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <UAlert
           v-if="institutionsQuery.isError"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="institutionsQuery.error.message"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <UFormField
@@ -159,6 +163,7 @@ const form = useTemplateRef<ComponentExposed<typeof UForm<typeof accountFormSche
 const api = useApi();
 const { createAccount } = useAccountMutations();
 const setBackendValidationErrors = useBackendValidationErrors(form);
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 
 const submitError = ref<string | null>(null);
 

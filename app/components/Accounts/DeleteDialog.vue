@@ -22,14 +22,18 @@
           v-if="submitError"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="submitError"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <UAlert
           v-if="deletePreviewQuery.isError"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="deletePreviewQuery.error.message"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <template v-if="deletePreviewQuery.isSuccess">
@@ -101,6 +105,7 @@ const CONFIRM_PHRASE = "delete";
 const open = defineModel<boolean>("open", { required: true });
 const api = useApi();
 const { deleteAccount } = useAccountMutations();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 
 const confirmationState = reactive({ confirmationInput: "" });
 const submitError = ref<string | null>(null);

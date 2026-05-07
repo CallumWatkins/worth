@@ -24,7 +24,9 @@
         v-if="institutionsQuery.isError"
         color="error"
         variant="subtle"
+        orientation="horizontal"
         :title="institutionsQuery.error.message"
+        :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
       />
 
       <EmptyPageState
@@ -109,6 +111,7 @@ const UButton = resolveComponent("UButton");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
 
 const api = useApi();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const createDialogOpen = ref(false);
 const deleteOpen = ref(false);
 const deleteInstitutionId = ref<number | null>(null);

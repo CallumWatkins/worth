@@ -5,7 +5,9 @@
       class="pt-6"
       color="error"
       variant="subtle"
+      orientation="horizontal"
       :title="dashboardQuery.error.message"
+      :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
     />
 
     <EmptyAppOnboarding v-else-if="dashboardQuery.isSuccess && dashboardQuery.data.total_accounts === 0" />
@@ -250,7 +252,9 @@
               class="mb-4"
               color="error"
               variant="subtle"
+              orientation="horizontal"
               :title="balanceOverTimeQuery.error.message"
+              :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
             />
             <div v-if="!balanceOverTimeQuery.data?.length" class="h-[300px] flex items-center justify-center text-muted">
               <div class="inline-flex items-center gap-2">
@@ -285,6 +289,7 @@ import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 const { formatCurrency, formatShortDate } = useLocaleFormatters();
 const settings = useSettings();
 const { code: appLocaleCode } = useAppLocale();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 
 const darkTooltipBase = {
   backgroundColor: "rgba(10, 10, 10, 0.95)",

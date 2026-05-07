@@ -7,7 +7,7 @@
     @update:open="handleOpenUpdate"
   >
     <template #body>
-      <p class="text-sm text-muted">
+      <p class="text-sm text-toned">
         Your feedback helps me understand what is useful, confusing, broken, or missing, and is greatly appreciated. Please avoid including any personal financial details.
       </p>
       <UForm

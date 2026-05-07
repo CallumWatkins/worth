@@ -19,7 +19,9 @@
           v-if="submitError"
           color="error"
           variant="subtle"
+          orientation="horizontal"
           :title="submitError"
+          :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
         />
 
         <div class="space-y-1.5 text-sm text-toned">
@@ -92,6 +94,7 @@ const open = defineModel<boolean>("open", { required: true });
 
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 const { deleteSnapshots } = useAccountSnapshotMutations();
+const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 
 const submitError = ref<string | null>(null);
 const dialogSnapshots = ref<AccountBalanceSnapshotDto[]>([]);
