@@ -58,15 +58,18 @@ export default defineNuxtConfig({
     envPrefix: ["VITE_", "TAURI_"],
     optimizeDeps: {
       include: [
-        "@vue/devtools-core",
-        "@vue/devtools-kit",
+        "@internationalized/date",
+        "@number-flow/vue",
         "@tanstack/vue-query",
+        "@tanstack/vue-table",
         "@tauri-apps/api/core",
         "@tauri-apps/api/event",
         "@tauri-apps/api/webviewWindow",
-        "@internationalized/date",
-        "zod",
-        "@tanstack/vue-table"
+        "@tauri-apps/plugin-opener",
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
+        "posthog-js",
+        "zod"
       ]
     },
     server: {
