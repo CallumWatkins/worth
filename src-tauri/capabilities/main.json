@@ -9,6 +9,12 @@
       "allow": [
         {
           "url": "https://ko-fi.com/callumwatkins"
+        },
+        {
+          "url": "https://github.com/CallumWatkins/worth"
+        },
+        {
+          "url": "https://www.callumwatkins.com"
         }
       ]
     }

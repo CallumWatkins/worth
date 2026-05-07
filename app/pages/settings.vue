@@ -109,35 +109,67 @@
         </div>
       </UPageCard>
 
-      <UPageCard
-        v-if="hasFeedbackSurvey"
-        title="Feedback"
-        description="Help shape the future of Worth."
-        :ui="{
-          container: 'lg:flex flex-row gap-25 items-center'
-        }"
-      >
-        <UButton
-          icon="i-lucide-message-circle-heart"
-          @click="openFeedbackSurvey"
-        >
-          Give feedback
-        </UButton>
-      </UPageCard>
+      <UPageCard title="About">
+        <div class="space-y-6">
+          <p class="text-sm text-muted">
+            Worth is made in the open by <ULink
+              to="https://www.callumwatkins.com"
+              external
+              @click.prevent="openUrl('https://www.callumwatkins.com')"
+            >
+              Callum Watkins
+            </ULink> in London as a cleaner home for long-term balance tracking. You can view the source code, report issues, give feedback, or say thanks from here.
+          </p>
 
-      <UPageCard
-        title="Support Worth"
-        description="Worth is free to use. If it has been useful to you and you would like to say thanks, donations are always appreciated."
-        :ui="{
-          container: 'lg:flex flex-row gap-25 items-center'
-        }"
-      >
-        <UButton
-          icon="i-lucide-heart"
-          @click="openSupportPage"
-        >
-          Donate on Ko-fi
-        </UButton>
+          <UFormField
+            label="Open source"
+            description="View the source code, report issues, and contribute on GitHub."
+            orientation="horizontal"
+            class="items-center gap-25"
+          >
+            <UButton
+              icon="i-lucide-github"
+              class="whitespace-nowrap"
+              variant="subtle"
+              @click="openUrl('https://github.com/CallumWatkins/worth')"
+            >
+              View on GitHub
+            </UButton>
+          </UFormField>
+
+          <UFormField
+            v-if="hasFeedbackSurvey"
+            label="Feedback"
+            description="Share a bug, suggestion, or piece of feedback."
+            orientation="horizontal"
+            class="items-center gap-25"
+          >
+            <UButton
+              icon="i-lucide-message-circle-heart"
+              class="whitespace-nowrap"
+              variant="subtle"
+              @click="openFeedbackSurvey"
+            >
+              Give feedback
+            </UButton>
+          </UFormField>
+
+          <UFormField
+            label="Support Worth"
+            description="Worth is free to use. If it has been useful to you and you would like to say thanks, a small donation means a lot."
+            orientation="horizontal"
+            class="items-center gap-25"
+          >
+            <UButton
+              icon="i-lucide-heart"
+              class="whitespace-nowrap"
+              variant="subtle"
+              @click="openUrl('https://ko-fi.com/callumwatkins')"
+            >
+              Donate on Ko-fi
+            </UButton>
+          </UFormField>
+        </div>
       </UPageCard>
     </UPageBody>
   </UContainer>
@@ -231,9 +263,5 @@ function onThemeUpdate(nextTheme: ThemePreference) {
   if (nextTheme === settings.value.theme) return;
   theme.value = nextTheme;
   void saveSetting("theme", { theme: nextTheme });
-}
-
-async function openSupportPage() {
-  await openUrl("https://ko-fi.com/callumwatkins");
 }
 </script>
