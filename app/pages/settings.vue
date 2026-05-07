@@ -124,12 +124,29 @@
           Give feedback
         </UButton>
       </UPageCard>
+
+      <UPageCard
+        title="Support Worth"
+        description="Worth is free to use. If it has been useful to you and you would like to say thanks, donations are always appreciated."
+        :ui="{
+          container: 'lg:flex flex-row gap-25 items-center'
+        }"
+      >
+        <UButton
+          icon="i-lucide-heart"
+          @click="openSupportPage"
+        >
+          Donate on Ko-fi
+        </UButton>
+      </UPageCard>
     </UPageBody>
   </UContainer>
 </template>
 
 <script setup lang="ts">
 import type { AppLocaleCode, AppSettingsDto, AppSettingsUpdateInput, CurrencyCode, ThemePreference } from "~/generated/bindings";
+
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 import { APP_LOCALES } from "~/utils/i18n";
 
@@ -214,5 +231,9 @@ function onThemeUpdate(nextTheme: ThemePreference) {
   if (nextTheme === settings.value.theme) return;
   theme.value = nextTheme;
   void saveSetting("theme", { theme: nextTheme });
+}
+
+async function openSupportPage() {
+  await openUrl("https://ko-fi.com/callumwatkins");
 }
 </script>

@@ -40,6 +40,7 @@
     "@posthog/nuxt": "^1.7.21",
     "@tanstack/vue-query": "^5.100.6",
     "@tauri-apps/api": "2.10.1",
+    "@tauri-apps/plugin-opener": "~2",
     "echarts": "^6.0.0",
     "nuxt": "4.4.2",
     "nuxt-echarts": "1.0.1",

@@ -4,5 +4,13 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://ko-fi.com/callumwatkins"
+        }
+      ]
+    }
   ]
 }
