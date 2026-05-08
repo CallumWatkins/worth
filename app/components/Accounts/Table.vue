@@ -272,7 +272,7 @@ function leafAccountsFromRow(row: TableRow<Account>) {
 
 function aggregateSeries(seriesList: Array<Array<number | null>>) {
   const length = seriesList[0]?.length ?? 0;
-  const out: Array<number | null> = Array.from({ length }, () => null);
+  const out = Array.from<number | null>({ length }).fill(null);
 
   for (let i = 0; i < length; i++) {
     let sum = 0;

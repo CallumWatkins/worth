@@ -95,8 +95,8 @@
 <script lang="ts" setup>
 import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
 import type { ComponentExposed } from "vue-component-type-helpers";
-import { UForm } from "#components";
 import { useQuery } from "@tanstack/vue-query";
+import { UForm } from "#components";
 
 const route = useRoute("institutions-id-settings");
 const api = useApi();

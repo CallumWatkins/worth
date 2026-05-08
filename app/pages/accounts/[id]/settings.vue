@@ -257,8 +257,8 @@ import type { BreadcrumbItem, FormSubmitEvent } from "@nuxt/ui";
 import type { ComponentExposed } from "vue-component-type-helpers";
 import type { AccountUpsertInput } from "~/generated/bindings";
 import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
-import { UForm } from "#components";
 import { useQuery } from "@tanstack/vue-query";
+import { UForm } from "#components";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 
 const openedDatePickerOpen = ref(false);

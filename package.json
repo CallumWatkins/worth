@@ -50,14 +50,14 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^6.0.0",
+    "@antfu/eslint-config": "^8.0.0",
     "@apidevtools/json-schema-ref-parser": "^15.0.0",
     "@nuxt/eslint": "^1.0.0",
     "@tauri-apps/cli": "~2.11.0",
     "@vueuse/core": "^14.0.0",
     "@vueuse/nuxt": "^14.0.0",
     "bumpp": "^11.0.0",
-    "eslint": "^9.0.0",
+    "eslint": "^10.0.0",
     "json-schema-to-zod": "^2.0.0",
     "typescript": "^6.0.0",
     "vue-tsc": "^3.0.0"

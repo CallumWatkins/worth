@@ -333,7 +333,7 @@ const allocationToggleNumberFlowTiming = {
 
 const targetChangePct = computed(() => {
   const changePct = dashboardQuery.data?.change_vs_last_month_pct;
-  return changePct == null ? null : changePct;
+  return changePct ?? null;
 });
 const targetMonthlyYield = computed(() => {
   const monthlyYieldMinor = dashboardQuery.data?.monthly_yield_minor;
