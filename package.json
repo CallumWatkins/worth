@@ -62,9 +62,6 @@
     "typescript": "^5.0.0",
     "vue-tsc": "^3.0.0"
   },
-  "resolutions": {
-    "typescript": "npm:tslite@latest"
-  },
   "trustedDependencies": [
     "@parcel/watcher",
     "@tailwindcss/oxide",
