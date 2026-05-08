@@ -62,6 +62,12 @@ Problems running `cargo` commands ("rustup could not choose a version of cargo t
 - Set `RUSTUP_HOME = %USERPROFILE%\.rustup`
 - Add `%USERPROFILE%\.cargo\bin` to PATH prefix
 
+### Dependency pinning
+
+- Default to pinning dependencies to the major version only.
+- Tauri and its frontend counterparts must be pinned to the same minor version.
+- Tauri plugins must be pinned to the same exact version across Rust and frontend packages.
+
 ### Database (SQLite)
 
 - **Engine**: SQLite via `sqlx`.
