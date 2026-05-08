@@ -29,6 +29,14 @@ export default defineNuxtConfig({
   ],
   i18n: APP_I18N_CONFIG,
   ssr: false,
+  typescript: {
+    tsConfig: {
+      compilerOptions: {
+        target: "ES2025",
+        lib: ["ES2025", "DOM", "WebWorker"]
+      }
+    }
+  },
   devtools: { enabled: true },
   echarts: {
     renderer: ["canvas", "svg"],
