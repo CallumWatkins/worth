@@ -273,7 +273,26 @@ export type SnapshotImportSourceInput = ({ kind: "csv" } & CsvSnapshotImportSour
 export type SnapshotImportSourceOptionsInput = ({ kind: "csv" } & CsvSnapshotImportOptionsInput)
 export type SnapshotImportUnchangedValuePolicy = "exclude" | "include"
 export type ThemePreference = "system" | "light" | "dark"
-export type ValidationIssue = { field: string; message: string; telemetry_message: string | null }
+export type ValidationIssue = { 
+/**
+ * Form field path associated with the validation issue.
+ * 
+ * Uses dot/index notation for nested fields, for example
+ * `institution.input.name` or `snapshots.0.date`.
+ */
+field: string; 
+/**
+ * User-facing validation message shown in the app UI.
+ */
+message: string; 
+/**
+ * Message that is safe to share as telemetry.
+ * 
+ * This should either match `message` when it contains no sensitive data, contain
+ * a redacted/generalized alternative, or be `None` to suppress the validation
+ * message from telemetry entirely.
+ */
+telemetry_message: string | null }
 
 /** tauri-specta globals **/
 
