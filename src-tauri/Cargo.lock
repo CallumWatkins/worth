@@ -6483,7 +6483,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-window-state",
  "tauri-specta",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tokio",
  "worth_macros",
 ]
