@@ -15,6 +15,7 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let specta_builder = api::specta_builder();
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
 
     #[cfg(desktop)]
@@ -42,7 +43,7 @@ pub fn run() {
             })?;
             Ok(())
         })
-        .invoke_handler(api::invoke_handler())
+        .invoke_handler(specta_builder.invoke_handler())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1739,40 +1739,48 @@ async fn total_balance_over_time(
     Ok(out)
 }
 
-fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
+pub(crate) fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     use tauri_specta::{collect_commands, Builder};
 
-    Builder::<tauri::Wry>::new().commands(collect_commands![
-        settings_get,
-        settings_update,
-        accounts_list,
-        accounts_create,
-        accounts_update,
-        accounts_delete_preview,
-        accounts_delete,
-        institutions_list,
-        institutions_create,
-        institutions_update,
-        institutions_delete_preview,
-        institutions_delete,
-        institutions_get,
-        accounts_get,
-        account_snapshots_list,
-        account_snapshots_create,
-        account_snapshot_update,
-        account_snapshots_delete,
-        account_snapshot_import_inspect,
-        account_snapshot_import_preview,
-        account_snapshot_import_commit,
-        account_balance_over_time,
-        dashboard_get,
-        dashboard_balance_over_time,
-        search,
-    ])
+    let mut semantic_types = specta_typescript::semantic::Configuration::default();
+    semantic_types
+        .rules_mut()
+        .retain(|rule| !(rule.module_path == "chrono" && rule.name == "NaiveDate"));
+
+    Builder::<tauri::Wry>::new()
+        .commands(collect_commands![
+            settings_get,
+            settings_update,
+            accounts_list,
+            accounts_create,
+            accounts_update,
+            accounts_delete_preview,
+            accounts_delete,
+            institutions_list,
+            institutions_create,
+            institutions_update,
+            institutions_delete_preview,
+            institutions_delete,
+            institutions_get,
+            accounts_get,
+            account_snapshots_list,
+            account_snapshots_create,
+            account_snapshot_update,
+            account_snapshots_delete,
+            account_snapshot_import_inspect,
+            account_snapshot_import_preview,
+            account_snapshot_import_commit,
+            account_balance_over_time,
+            dashboard_get,
+            dashboard_balance_over_time,
+            search,
+        ])
+        .dangerously_cast_bigints_to_number()
+        .semantic_types(semantic_types)
 }
 
 pub fn export_bindings_to_app_generated() -> anyhow::Result<()> {
-    use specta_typescript::{BigIntExportBehavior, Typescript};
+    use specta_typescript::Typescript;
     use std::path::PathBuf;
 
     let bindings_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -1783,16 +1791,12 @@ pub fn export_bindings_to_app_generated() -> anyhow::Result<()> {
 
     specta_builder()
         .export(
-            Typescript::default()
-                .header("// Generated file, update with `bun run contracts:gen`.")
-                .bigint(BigIntExportBehavior::Number),
+            Typescript::default().header(
+                "// Generated file, update with `bun run contracts:gen`.\nexport type Result<T, E> = { status: \"ok\"; data: T } | { status: \"error\"; error: E };",
+            ),
             bindings_path,
         )
         .map_err(|error| anyhow::anyhow!("Failed to export typescript bindings: {error}"))
-}
-
-pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
-    specta_builder().invoke_handler()
 }
 
 #[cfg(test)]

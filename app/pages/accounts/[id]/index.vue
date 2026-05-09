@@ -447,7 +447,7 @@ interface BalanceRowBase {
 interface SnapshotBalanceRow extends BalanceRowBase {
   kind: "snapshot"
   snapshot_id: number
-  created_at: string
+  created_at: Date
 }
 
 interface DailyBalanceRow extends BalanceRowBase {
@@ -559,13 +559,6 @@ const headerDescription = computed(() => {
   if (!account) return "";
   return `${account.institution.name} • ${ACCOUNT_TYPE_META[account.account_type.name].label}`;
 });
-
-function isCreatedAtAfter(a: string, b: string) {
-  const ams = Date.parse(a);
-  const bms = Date.parse(b);
-  if (Number.isFinite(ams) && Number.isFinite(bms)) return ams > bms;
-  return a > b;
-}
 
 const chartMeta = computed(() => {
   const kind = accountQuery.data?.account_type.name;
@@ -804,7 +797,7 @@ const derivedDailyPoints = computed<BalancePointDto[]>(() => {
   if (!snaps.length) return [];
 
   // Pick one balance per day; if multiple snapshots share a date, keep the latest created_at.
-  const byDate = new Map<string, { balance_minor: number, created_at: string }>();
+  const byDate = new Map<string, { balance_minor: number, created_at: Date }>();
   let minDate: string | null = null;
   let maxDate: string | null = null;
 
@@ -820,7 +813,7 @@ const derivedDailyPoints = computed<BalancePointDto[]>(() => {
       byDate.set(date, { balance_minor: s.balance_minor, created_at: s.created_at });
       continue;
     }
-    if (isCreatedAtAfter(String(s.created_at ?? ""), existing.created_at)) {
+    if (s.created_at.getTime() > existing.created_at.getTime()) {
       byDate.set(date, { balance_minor: s.balance_minor, created_at: s.created_at });
     }
   }

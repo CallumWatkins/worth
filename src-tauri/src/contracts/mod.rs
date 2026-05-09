@@ -225,29 +225,29 @@ pub struct InstitutionUpsertInput {
     #[schemars(
         length(min = 1, max = 120),
         pattern(r".*\S.*"),
-        extend("x-validation" = {
+        extend("x-validation" = ::serde_json::json!({
             "required": INSTITUTION_NAME_REQUIRED,
             "blank": INSTITUTION_NAME_REQUIRED,
             "maxLength": INSTITUTION_NAME_MAX_LENGTH,
             "type": INSTITUTION_NAME_REQUIRED
-        })
+        }))
     )]
     pub name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
-#[schemars(extend("discriminator" = {"propertyName": "kind"}))]
+#[schemars(extend("discriminator" = ::serde_json::json!({"propertyName": "kind"})))]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum InstitutionRef {
     Existing {
         #[garde(custom(validate_institution_id))]
         #[schemars(
             range(min = 1),
-            extend("x-validation" = {
+            extend("x-validation" = ::serde_json::json!({
                 "required": INSTITUTION_REQUIRED,
                 "minimum": INSTITUTION_REQUIRED,
                 "type": INSTITUTION_REQUIRED
-            })
+            }))
         )]
         id: i64,
     },
@@ -261,46 +261,46 @@ pub enum InstitutionRef {
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountUpsertInput {
     #[garde(dive)]
-    #[schemars(extend("x-validation" = {
+    #[schemars(extend("x-validation" = ::serde_json::json!({
         "required": INSTITUTION_REQUIRED,
         "invalid": INSTITUTION_REQUIRED,
         "type": INSTITUTION_REQUIRED
-    }))]
+    })))]
     pub institution: InstitutionRef,
     #[garde(custom(validate_account_name))]
     #[schemars(
         length(min = 1, max = 120),
         pattern(r".*\S.*"),
-        extend("x-validation" = {
+        extend("x-validation" = ::serde_json::json!({
             "required": ACCOUNT_NAME_REQUIRED,
             "blank": ACCOUNT_NAME_REQUIRED,
             "maxLength": ACCOUNT_NAME_MAX_LENGTH,
             "type": ACCOUNT_NAME_REQUIRED
-        })
+        }))
     )]
     pub name: String,
     #[garde(skip)]
-    #[schemars(extend("x-validation" = {
+    #[schemars(extend("x-validation" = ::serde_json::json!({
         "required": ACCOUNT_TYPE_REQUIRED,
         "invalid": ACCOUNT_TYPE_REQUIRED,
         "type": ACCOUNT_TYPE_REQUIRED
-    }))]
+    })))]
     pub account_type: AccountTypeName,
     #[garde(skip)]
-    #[schemars(extend("x-validation" = {
+    #[schemars(extend("x-validation" = ::serde_json::json!({
         "required": CURRENCY_REQUIRED,
         "invalid": CURRENCY_REQUIRED,
         "type": CURRENCY_REQUIRED
-    }))]
+    })))]
     pub currency_code: CurrencyCode,
     #[garde(custom(validate_normal_balance_sign))]
     #[schemars(extend(
         "enum" = [-1, 1],
-        "x-validation" = {
+        "x-validation" = ::serde_json::json!({
             "required": NORMAL_BALANCE_SIGN_REQUIRED,
             "invalid": NORMAL_BALANCE_SIGN_REQUIRED,
             "type": NORMAL_BALANCE_SIGN_REQUIRED
-        }
+        })
     ))]
     pub normal_balance_sign: i32,
     #[garde(skip)]
@@ -326,11 +326,11 @@ pub struct AccountSnapshotWriteInput {
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountSnapshotsCreateInput {
     #[garde(custom(validate_snapshots_non_empty), dive)]
-    #[schemars(length(min = 1), extend("x-validation" = {
+    #[schemars(length(min = 1), extend("x-validation" = ::serde_json::json!({
         "required": SNAPSHOT_REQUIRED,
         "minItems": SNAPSHOT_REQUIRED,
         "type": SNAPSHOT_REQUIRED
-    }))]
+    })))]
     pub snapshots: Vec<AccountSnapshotWriteInput>,
 }
 
@@ -349,11 +349,11 @@ pub struct AccountSnapshotUpdateInput {
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountSnapshotsDeleteInput {
     #[garde(custom(validate_snapshot_ids_non_empty))]
-    #[schemars(length(min = 1), extend("x-validation" = {
+    #[schemars(length(min = 1), extend("x-validation" = ::serde_json::json!({
         "required": SNAPSHOT_SELECTION_REQUIRED,
         "minItems": SNAPSHOT_SELECTION_REQUIRED,
         "type": SNAPSHOT_SELECTION_REQUIRED
-    }))]
+    })))]
     pub snapshot_ids: Vec<i64>,
 }
 
