@@ -64,6 +64,9 @@ export default defineNuxtConfig({
   vite: {
     clearScreen: false,
     envPrefix: ["VITE_", "TAURI_"],
+    build: {
+      chunkSizeWarningLimit: 1500
+    },
     optimizeDeps: {
       include: [
         "@internationalized/date",
