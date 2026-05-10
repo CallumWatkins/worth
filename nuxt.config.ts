@@ -122,6 +122,7 @@ export default defineNuxtConfig({
     host: "https://i.useworth.app",
     clientConfig: {
       defaults: "2026-01-30",
+      debug: process.env.NODE_ENV === "development",
       capture_exceptions: true,
       autocapture: false,
       capture_pageview: false,
