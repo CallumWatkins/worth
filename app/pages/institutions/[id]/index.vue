@@ -75,6 +75,7 @@
             :hide-empty="hideEmpty"
             :activity-period="activityPeriod"
             :hide-columns="hideColumns"
+            analytics-category="institution"
             @clear-filters="hideEmpty = false"
           />
         </UPageCard>
@@ -83,6 +84,7 @@
       <AccountsCreateDialog
         v-model:open="createAccountOpen"
         :default-institution-id="institutionId"
+        analytics-category="institution"
       />
     </UPageBody>
   </UContainer>

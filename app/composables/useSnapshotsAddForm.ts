@@ -41,6 +41,7 @@ interface UseSnapshotsAddFormParams {
 
 export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
   const { createSnapshots } = useAccountSnapshotMutations();
+  const { captureAnalyticsEvent } = useAnalytics();
 
   const submitError = ref<string | null>(null);
   const overwriteExistingConfirmed = ref(false);
@@ -177,6 +178,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
 
   async function onSubmit() {
     if (params.accountId.value == null) return;
+    const startedAt = performance.now();
 
     today.value = getTodayCalendarDateIsoString();
     for (const row of rows.value.slice(0, activeRowCount.value)) {
@@ -184,11 +186,23 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
     }
     overwriteConfirmationTouched.value = true;
 
-    if (
-      activeRowCount.value === 0
-      || rowStates.value.slice(0, activeRowCount.value).some((row) => row.dateError != null || row.amountMinor == null)
-      || overwriteConfirmationError.value != null
-    ) {
+    const activeRowStates = rowStates.value.slice(0, activeRowCount.value);
+    const analyticsProperties = {
+      snapshot_count: activeRowCount.value,
+      overwrite_count: activeRowStates.filter((row) => row.conflictExisting != null).length,
+      invalid_snapshot_count: activeRowStates.filter((row) => row.dateError != null || row.amountMinor == null).length,
+      has_overwrites: activeRowStates.some((row) => row.conflictExisting != null),
+      has_overwrite_confirmation: overwriteExistingConfirmed.value
+    };
+
+    if (activeRowCount.value === 0 || analyticsProperties.invalid_snapshot_count > 0 || overwriteConfirmationError.value != null) {
+      captureAnalyticsEvent("account:snapshot_create_fail", {
+        ...analyticsProperties,
+        has_overwrite_confirmation_error: overwriteConfirmationError.value != null,
+        snapshot_failure_kind: "client_validation"
+      }, {
+        operationStartedAt: startedAt
+      });
       return;
     }
 
@@ -204,8 +218,18 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
 
     try {
       await createSnapshots.mutateAsync({ accountId: params.accountId.value, input });
+      captureAnalyticsEvent("account:snapshot_create", analyticsProperties, {
+        operationStartedAt: startedAt
+      });
       params.open.value = false;
     } catch (error) {
+      captureAnalyticsEvent("account:snapshot_create_fail", {
+        ...analyticsProperties,
+        ...getAnalyticsErrorProperties(error)
+      }, {
+        operationStartedAt: startedAt
+      });
+
       submitError.value = error instanceof Error ? error.message : "Failed to create snapshots";
     }
   }

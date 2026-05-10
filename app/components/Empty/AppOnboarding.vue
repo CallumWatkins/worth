@@ -94,7 +94,10 @@
         </div>
       </UPageCard>
 
-      <AccountsCreateDialog v-model:open="createAccountOpen" />
+      <AccountsCreateDialog
+        v-model:open="createAccountOpen"
+        analytics-category="onboarding"
+      />
     </div>
   </div>
 </template>
@@ -132,6 +135,7 @@ const steps: OnboardingStep[] = [
 const createAccountOpen = ref(false);
 const activeStep = ref(0);
 const transitionDirection = ref<"forward" | "backward">("forward");
+const { captureAnalyticsEvent } = useAnalytics();
 
 const isLastStep = computed(() => activeStep.value === steps.length - 1);
 const contentTransitionName = computed(() => (
@@ -139,6 +143,14 @@ const contentTransitionName = computed(() => (
     ? "onboarding-forward"
     : "onboarding-backward"
 ));
+
+watch(activeStep, (step) => {
+  captureAnalyticsEvent("onboarding:onboarding_step_view", {
+    onboarding_step_number: step + 1,
+    onboarding_step_count: steps.length,
+    is_last_step: step === steps.length - 1
+  });
+}, { immediate: true });
 
 function goBack() {
   if (activeStep.value === 0) return;
@@ -153,6 +165,11 @@ function goNext() {
 }
 
 function skipToLastStep() {
+  captureAnalyticsEvent("onboarding:onboarding_skip_button_click", {
+    onboarding_step_number: activeStep.value + 1,
+    onboarding_step_count: steps.length
+  });
+
   transitionDirection.value = "forward";
   activeStep.value = steps.length - 1;
 }

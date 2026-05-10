@@ -109,11 +109,13 @@
 
 <script lang="ts" setup>
 import type { RouteLocationRaw } from "vue-router";
+import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
 import { useQuery } from "@tanstack/vue-query";
 
 const props = defineProps<{
   institutionId: number | null
   redirectTo?: RouteLocationRaw
+  analyticsCategory: AnalyticsEventCategory
 }>();
 
 const CONFIRM_PHRASE = "delete";
@@ -122,6 +124,7 @@ const open = defineModel<boolean>("open", { required: true });
 const api = useApi();
 const { deleteInstitution } = useInstitutionMutations();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 
 const confirmationState = reactive({ confirmationInput: "" });
 const submitError = ref<string | null>(null);
@@ -147,14 +150,30 @@ watch(open, (isOpen) => {
 async function onDelete() {
   if (props.institutionId === null || !canDelete.value) return;
   submitError.value = null;
+  const startedAt = performance.now();
+  const analyticsProperties = {
+    account_count: deletePreviewQuery.data?.accounts.length ?? 0,
+    snapshot_count: deletePreviewQuery.data?.total_snapshots ?? 0,
+    has_accounts: (deletePreviewQuery.data?.accounts.length ?? 0) > 0
+  };
 
   try {
     await deleteInstitution.mutateAsync(props.institutionId);
+    captureAnalyticsEvent(`${props.analyticsCategory}:institution_delete`, analyticsProperties, {
+      operationStartedAt: startedAt
+    });
     open.value = false;
     if (props.redirectTo !== undefined) {
       await navigateTo(props.redirectTo);
     }
   } catch (error) {
+    captureAnalyticsEvent(`${props.analyticsCategory}:institution_delete_fail`, {
+      ...analyticsProperties,
+      ...getAnalyticsErrorProperties(error)
+    }, {
+      operationStartedAt: startedAt
+    });
+
     submitError.value = error instanceof Error ? error.message : "Failed to delete institution";
   }
 }

@@ -64,6 +64,7 @@ const submitError = ref<string | null>(null);
 const form = useTemplateRef<ComponentExposed<typeof UForm<typeof institutionFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 const { state, reset } = useInstitutionUpsertForm();
 
 const { createInstitution } = useInstitutionMutations();
@@ -78,15 +79,23 @@ watch(open, (isOpen) => {
 
 async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
   submitError.value = null;
+  const startedAt = performance.now();
 
   try {
     const { id } = await createInstitution.mutateAsync({
       name: event.data.name
     });
+    captureAnalyticsEvent("institutions:institution_create", {}, {
+      operationStartedAt: startedAt
+    });
 
     open.value = false;
     await navigateTo({ name: "institutions-id", params: { id } });
   } catch (error) {
+    captureAnalyticsEvent("institutions:institution_create_fail", getAnalyticsErrorProperties(error), {
+      operationStartedAt: startedAt
+    });
+
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to create institution";
     }

@@ -246,6 +246,7 @@
           v-model:open="deleteOpen"
           :account-id="accountId"
           :redirect-to="{ name: 'accounts' }"
+          analytics-category="account_settings"
         />
       </template>
     </UPageBody>
@@ -270,6 +271,7 @@ const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("acco
 const { updateAccount } = useAccountMutations();
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 const form = useTemplateRef<ComponentExposed<typeof UForm<typeof accountFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
@@ -402,16 +404,35 @@ async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
   submitError.value = null;
   didSave.value = false;
   const payload: AccountUpsertInput = event.data;
+  const startedAt = performance.now();
+  const analyticsProperties = {
+    has_new_institution: payload.institution.kind === "new",
+    has_opened_date: payload.opened_date != null,
+    has_closed_date: payload.closed_date != null,
+    institution_count: institutionsQuery.data?.length ?? 0,
+    opened_date_snapshot_warning_count: openedDateSnapshotWarningCount.value,
+    closed_date_snapshot_warning_count: closedDateSnapshotWarningCount.value
+  };
 
   try {
     await updateAccount.mutateAsync({
       accountId: accountId.value,
       input: payload
     });
+    captureAnalyticsEvent("account_settings:account_update", analyticsProperties, {
+      operationStartedAt: startedAt
+    });
     initialOpenedDate.value = payload.opened_date ?? undefined;
     initialClosedDate.value = payload.closed_date ?? undefined;
     didSave.value = true;
   } catch (error) {
+    captureAnalyticsEvent("account_settings:account_update_fail", {
+      ...analyticsProperties,
+      ...getAnalyticsErrorProperties(error)
+    }, {
+      operationStartedAt: startedAt
+    });
+
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to update account";
     }

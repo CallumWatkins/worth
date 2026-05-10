@@ -147,12 +147,14 @@
 import type { FormSubmitEvent } from "@nuxt/ui";
 import type { ComponentExposed } from "vue-component-type-helpers";
 import type { UForm } from "#components";
+import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
 import type { AccountUpsertInput } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 
 const props = withDefaults(defineProps<{
   defaultInstitutionId?: number | null
+  analyticsCategory: AnalyticsEventCategory
 }>(), {
   defaultInstitutionId: null
 });
@@ -164,6 +166,7 @@ const api = useApi();
 const { createAccount } = useAccountMutations();
 const setBackendValidationErrors = useBackendValidationErrors(form);
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 
 const submitError = ref<string | null>(null);
 
@@ -198,12 +201,27 @@ watch(open, (isOpen) => {
 async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
   submitError.value = null;
   const payload: AccountUpsertInput = event.data;
+  const startedAt = performance.now();
+  const analyticsProperties = {
+    has_new_institution: payload.institution.kind === "new",
+    institution_count: institutionsQuery.data?.length ?? 0
+  };
 
   try {
     const { id } = await createAccount.mutateAsync(payload);
+    captureAnalyticsEvent(`${props.analyticsCategory}:account_create`, analyticsProperties, {
+      operationStartedAt: startedAt
+    });
     open.value = false;
     await navigateTo({ name: "accounts-id", params: { id } });
   } catch (error) {
+    captureAnalyticsEvent(`${props.analyticsCategory}:account_create_fail`, {
+      ...analyticsProperties,
+      ...getAnalyticsErrorProperties(error)
+    }, {
+      operationStartedAt: startedAt
+    });
+
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to create account";
     }

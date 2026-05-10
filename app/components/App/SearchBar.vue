@@ -61,12 +61,15 @@
 <script lang="ts" setup>
 import type { SearchResultDto } from "~/generated/bindings";
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
+import { watchDebounced } from "@vueuse/core";
 
 const api = useApi();
+const { captureAnalyticsEvent } = useAnalytics();
 
 const selectedItem = ref<SearchResultDto | null>(null);
 const rawMenuOpen = ref(false);
 const searchTerm = ref("");
+let hasCapturedCurrentSearchAnalytics = false;
 const trimmedSearchTerm = computed(() => searchTerm.value.trim());
 const hasSearchTerm = computed(() => trimmedSearchTerm.value.length > 0);
 const menuOpen = computed({
@@ -80,6 +83,12 @@ watch(hasSearchTerm, (hasValue) => {
   rawMenuOpen.value = hasValue;
 });
 
+watch(trimmedSearchTerm, () => {
+  hasCapturedCurrentSearchAnalytics = false;
+});
+
+watchDebounced(trimmedSearchTerm, captureSearchAnalytics, { debounce: 750 });
+
 const searchQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.search.get(trimmedSearchTerm.value)),
   enabled: hasSearchTerm,
@@ -90,6 +99,16 @@ const searchQuery = proxyRefs(useQuery({
 
 async function onSelect(item: SearchResultDto | undefined) {
   if (!item) return;
+  captureSearchAnalytics();
+
+  const resultIndex = searchQuery.data?.findIndex((result) => result.kind === item.kind && result.id === item.id) ?? -1;
+
+  captureAnalyticsEvent("search:result_click", {
+    search_term_length: trimmedSearchTerm.value.length,
+    result_count: searchQuery.data?.length ?? 0,
+    result_index: resultIndex,
+    result_kind: item.kind
+  });
 
   selectedItem.value = null;
   searchTerm.value = "";
@@ -102,5 +121,27 @@ async function onSelect(item: SearchResultDto | undefined) {
   } else {
     assertNever(item);
   }
+}
+
+function captureSearchAnalytics(searchTerm = trimmedSearchTerm.value) {
+  if (!searchTerm || hasCapturedCurrentSearchAnalytics) return;
+  hasCapturedCurrentSearchAnalytics = true;
+
+  const properties = {
+    search_term_length: searchTerm.length,
+    ...(searchTerm === trimmedSearchTerm.value && !searchQuery.isFetching && searchQuery.data != null
+      ? { result_count: searchQuery.data.length }
+      : {})
+  };
+
+  if (searchTerm === trimmedSearchTerm.value && searchQuery.isError) {
+    captureAnalyticsEvent("search:results_generate_fail", {
+      ...properties,
+      ...getAnalyticsErrorProperties(searchQuery.error)
+    });
+    return;
+  }
+
+  captureAnalyticsEvent("search:results_generate", properties);
 }
 </script>

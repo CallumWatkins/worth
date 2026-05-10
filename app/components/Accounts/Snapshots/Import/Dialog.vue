@@ -124,6 +124,7 @@ const props = defineProps<{
 const open = defineModel<boolean>("open", { required: true });
 
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 const stepIndex = ref(0);
 const selectedFlowId = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
@@ -181,6 +182,10 @@ function selectFlow(flowId: string) {
   flow.reset();
   selectedFlowId.value = flow.id;
   stepIndex.value = 1;
+
+  if (flow.id === "csv") {
+    captureAnalyticsEvent("snapshot_import:csv_import_start");
+  }
 }
 
 function goBack() {

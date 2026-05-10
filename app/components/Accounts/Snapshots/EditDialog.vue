@@ -178,6 +178,7 @@ const open = defineModel<boolean>("open", { required: true });
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 const { updateSnapshot } = useAccountSnapshotMutations();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 
 const submitError = ref<string | null>(null);
 const amountTouched = ref(false);
@@ -249,8 +250,18 @@ watch(() => props.snapshotId, () => {
 });
 
 async function onSubmit() {
+  const startedAt = performance.now();
   today.value = getTodayCalendarDateIsoString();
   amountTouched.value = true;
+
+  const analyticsProperties = {
+    has_overwrite: conflictingSnapshot.value != null,
+    has_overwrite_confirmation: state.overwriteExisting,
+    has_date_change: currentSnapshot.value != null && state.date !== currentSnapshot.value.date,
+    has_balance_change: currentSnapshot.value != null && amountMinor.value != null && amountMinor.value !== currentSnapshot.value.balance_minor,
+    has_previous_snapshot: previousSnapshot.value != null,
+    has_next_snapshot: nextSnapshot.value != null
+  };
 
   if (
     props.accountId == null
@@ -259,6 +270,13 @@ async function onSubmit() {
     || overwriteError.value != null
     || amountMinor.value == null
   ) {
+    captureAnalyticsEvent("account:snapshot_update_fail", {
+      ...analyticsProperties,
+      has_overwrite_confirmation_error: overwriteError.value != null,
+      snapshot_failure_kind: "client_validation"
+    }, {
+      operationStartedAt: startedAt
+    });
     return;
   }
 
@@ -276,8 +294,18 @@ async function onSubmit() {
       snapshotId: props.snapshotId,
       input
     });
+    captureAnalyticsEvent("account:snapshot_update", analyticsProperties, {
+      operationStartedAt: startedAt
+    });
     open.value = false;
   } catch (error) {
+    captureAnalyticsEvent("account:snapshot_update_fail", {
+      ...analyticsProperties,
+      ...getAnalyticsErrorProperties(error)
+    }, {
+      operationStartedAt: startedAt
+    });
+
     submitError.value = error instanceof Error ? error.message : "Failed to update snapshot";
   }
 }

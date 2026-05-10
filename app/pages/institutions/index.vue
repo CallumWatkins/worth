@@ -91,6 +91,7 @@
       <InstitutionsDeleteDialog
         v-model:open="deleteOpen"
         :institution-id="deleteInstitutionId"
+        analytics-category="institutions"
       />
     </UPageBody>
 

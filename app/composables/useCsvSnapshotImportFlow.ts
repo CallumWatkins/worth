@@ -27,6 +27,7 @@ interface UseCsvSnapshotImportFlowParams {
 export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams): SnapshotImportFlowDefinition {
   const api = useApi();
   const { importSnapshots } = useAccountSnapshotMutations();
+  const { captureAnalyticsEvent } = useAnalytics();
 
   const selectedFile = ref<File | null>(null);
   const sourceFileName = ref("");
@@ -176,6 +177,8 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
 
   async function loadPreview() {
     if (params.accountId.value == null || sourceInput.value == null) return false;
+    const startedAt = performance.now();
+
     previewPending.value = true;
     params.setErrorMessage(null);
     preview.value = null;
@@ -186,8 +189,18 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
 
     try {
       preview.value = await api.accountSnapshotImportPreview(params.accountId.value, sourceInput.value, options.value);
+      captureAnalyticsEvent("snapshot_import:csv_preview_generate", csvImportSummaryProperties(), {
+        operationStartedAt: startedAt
+      });
       return true;
     } catch (error) {
+      captureAnalyticsEvent("snapshot_import:csv_preview_fail", {
+        import_row_count: inspection.value?.total_rows ?? 0,
+        ...getAnalyticsErrorProperties(error)
+      }, {
+        operationStartedAt: startedAt
+      });
+
       if (!(error instanceof ApiCommandError)) {
         reportHandledError(error, { source: "csv_import_preview" });
       }
@@ -201,28 +214,57 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
 
   async function complete() {
     if (params.accountId.value == null || sourceInput.value == null || preview.value == null) return false;
+    const startedAt = performance.now();
+    const analyticsProperties = csvImportSummaryProperties();
+
     if (hasOnlySkippedRows.value) {
       params.setErrorMessage(null);
+      captureAnalyticsEvent("snapshot_import:csv_import_end", {
+        ...analyticsProperties
+      }, {
+        operationStartedAt: startedAt
+      });
       params.onComplete();
       return true;
     }
 
     if (hasPendingOverwrites.value && !options.value.overwrite_existing_confirmed) {
       params.setErrorMessage("Confirm overwrite to continue");
+      captureAnalyticsEvent("snapshot_import:csv_import_fail", {
+        ...analyticsProperties,
+        import_failure_kind: "overwrite_confirmation_required"
+      }, {
+        operationStartedAt: startedAt
+      });
       return false;
     }
 
     params.setErrorMessage(null);
 
     try {
-      await importSnapshots.mutateAsync({
+      const result = await importSnapshots.mutateAsync({
         accountId: params.accountId.value,
         input: sourceInput.value,
         options: options.value
       });
+      captureAnalyticsEvent("snapshot_import:csv_import_end", {
+        ...analyticsProperties,
+        snapshot_create_count: result.created_count,
+        snapshot_overwrite_count: result.overwritten_count,
+        snapshot_skip_count: result.skipped_count
+      }, {
+        operationStartedAt: startedAt
+      });
       params.onComplete();
       return true;
     } catch (error) {
+      captureAnalyticsEvent("snapshot_import:csv_import_fail", {
+        ...analyticsProperties,
+        ...getAnalyticsErrorProperties(error)
+      }, {
+        operationStartedAt: startedAt
+      });
+
       if (!(error instanceof ApiCommandError)) {
         reportHandledError(error, { source: "csv_import_commit" });
       }
@@ -270,6 +312,30 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
       unchanged_value_policy: "exclude",
       duplicate_date_policy: "keep_last",
       overwrite_existing_confirmed: false
+    };
+  }
+
+  function csvImportSummaryProperties() {
+    const summary = preview.value?.summary;
+
+    if (!summary) {
+      return {
+        import_row_count: inspection.value?.total_rows ?? 0,
+        has_overwrite_confirmation: options.value.overwrite_existing_confirmed
+      };
+    }
+
+    return {
+      import_row_count: summary.total_rows,
+      snapshot_create_count: summary.create_count,
+      snapshot_overwrite_count: summary.overwrite_count,
+      snapshot_skip_count: summary.skip_count,
+      snapshot_invalid_count: summary.invalid_count,
+      import_warning_count: preview.value?.rows.reduce((count, row) => count + row.warnings.length, 0) ?? 0,
+      has_overwrites: summary.overwrite_count > 0,
+      has_invalid_rows: summary.invalid_count > 0,
+      has_overwrite_confirmation: options.value.overwrite_existing_confirmed,
+      is_noop: summary.total_rows > 0 && summary.skip_count === summary.total_rows
     };
   }
 

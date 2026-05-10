@@ -159,12 +159,14 @@
   <AccountsDeleteDialog
     v-model:open="deleteOpen"
     :account-id="deleteAccountId"
+    :analytics-category="props.analyticsCategory"
   />
 </template>
 
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { Column, GroupingOptions } from "@tanstack/vue-table";
+import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
 import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
@@ -178,6 +180,7 @@ const props = withDefaults(defineProps<{
   groupBy: GroupBy
   hideEmpty: boolean
   activityPeriod: ActivityPeriod
+  analyticsCategory: AnalyticsEventCategory
   hideColumns?: HideColumn[]
 }>(), {
   hideColumns: () => []

@@ -176,6 +176,7 @@
 </template>
 
 <script setup lang="ts">
+import type { AnalyticsEventProperties } from "~/composables/useAnalytics";
 import type { AppLocaleCode, AppSettingsDto, AppSettingsUpdateInput, CurrencyCode, ThemePreference } from "~/generated/bindings";
 
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -200,6 +201,7 @@ const theme = ref<ThemePreference>();
 const isSettingsBusy = computed(() => settingsQuery.isPending || unref(updateSettings.isPending));
 const { hasFeedbackSurvey, openFeedbackSurvey } = useFeedbackSurvey();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 
 const currencyItems = supportedCurrencyCodes.map((currencyCode) => ({
   label: currencyCode,
@@ -227,17 +229,61 @@ watch(settings, syncEditableSettings, { immediate: true });
 
 async function saveSetting(field: SettingsField, patch: Partial<AppSettingsUpdateInput>) {
   const previous = settings.value;
+  const startedAt = performance.now();
+  const analyticsProperties = getSettingAnalyticsProperties(field, patch);
 
   saveError.value = null;
   pendingField.value = field;
 
   try {
     await updateSetting(patch);
+    if (analyticsProperties) {
+      captureAnalyticsEvent("settings:setting_update", analyticsProperties, {
+        operationStartedAt: startedAt
+      });
+    }
   } catch (error) {
+    if (analyticsProperties) {
+      captureAnalyticsEvent("settings:setting_update_fail", {
+        ...analyticsProperties,
+        ...getAnalyticsErrorProperties(error)
+      }, {
+        operationStartedAt: startedAt
+      });
+    }
+
     syncEditableSettings(previous);
     saveError.value = error instanceof Error ? error.message : "Failed to save settings";
   } finally {
     pendingField.value = null;
+  }
+}
+
+function getSettingAnalyticsProperties(field: SettingsField, patch: Partial<AppSettingsUpdateInput>): AnalyticsEventProperties | null {
+  switch (field) {
+  case "analytics":
+    return null;
+  case "currency":
+    if (patch.default_display_currency_code == null) return null;
+    return {
+      setting_name: "default_display_currency_code",
+      setting_value: patch.default_display_currency_code,
+      $set: { desktop_app_default_display_currency_code: patch.default_display_currency_code }
+    };
+  case "locale":
+    if (patch.display_locale == null) return null;
+    return {
+      setting_name: "display_locale",
+      setting_value: patch.display_locale,
+      $set: { desktop_app_display_locale: patch.display_locale }
+    };
+  case "theme":
+    if (patch.theme == null) return null;
+    return {
+      setting_name: "theme",
+      setting_value: patch.theme,
+      $set: { desktop_app_theme: patch.theme }
+    };
   }
 }
 

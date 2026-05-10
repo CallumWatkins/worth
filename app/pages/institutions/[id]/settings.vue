@@ -86,6 +86,7 @@
           v-model:open="deleteOpen"
           :institution-id="institutionId"
           :redirect-to="{ name: 'institutions' }"
+          analytics-category="institution_settings"
         />
       </template>
     </UPageBody>
@@ -102,6 +103,7 @@ const route = useRoute("institutions-id-settings");
 const api = useApi();
 const { updateInstitution } = useInstitutionMutations();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 const form = useTemplateRef<ComponentExposed<typeof UForm<typeof institutionFormSchema>>>("form");
 const setBackendValidationErrors = useBackendValidationErrors(form);
 
@@ -161,6 +163,7 @@ async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
 
   submitError.value = null;
   didSave.value = false;
+  const startedAt = performance.now();
 
   try {
     await updateInstitution.mutateAsync({
@@ -169,8 +172,15 @@ async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
         name: event.data.name
       }
     });
+    captureAnalyticsEvent("institution_settings:institution_update", {}, {
+      operationStartedAt: startedAt
+    });
     didSave.value = true;
   } catch (error) {
+    captureAnalyticsEvent("institution_settings:institution_update_fail", getAnalyticsErrorProperties(error), {
+      operationStartedAt: startedAt
+    });
+
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to update institution";
     }

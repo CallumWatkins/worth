@@ -53,10 +53,14 @@
         :hide-empty="hideEmpty"
         :activity-period="activityPeriod"
         :hide-columns="hideColumns"
+        analytics-category="accounts"
         @clear-filters="hideEmpty = false"
       />
 
-      <AccountsCreateDialog v-model:open="createDialogOpen" />
+      <AccountsCreateDialog
+        v-model:open="createDialogOpen"
+        analytics-category="accounts"
+      />
     </UPageBody>
   </UContainer>
 </template>

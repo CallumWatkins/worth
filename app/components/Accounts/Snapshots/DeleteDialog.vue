@@ -95,6 +95,7 @@ const open = defineModel<boolean>("open", { required: true });
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 const { deleteSnapshots } = useAccountSnapshotMutations();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
+const { captureAnalyticsEvent } = useAnalytics();
 
 const submitError = ref<string | null>(null);
 const dialogSnapshots = ref<AccountBalanceSnapshotDto[]>([]);
@@ -123,6 +124,10 @@ function onAfterLeave() {
 async function onDelete() {
   if (props.accountId == null || !dialogSnapshots.value.length) return;
   submitError.value = null;
+  const startedAt = performance.now();
+  const analyticsProperties = {
+    snapshot_count: dialogSnapshots.value.length
+  };
 
   try {
     await deleteSnapshots.mutateAsync({
@@ -131,8 +136,18 @@ async function onDelete() {
         snapshot_ids: dialogSnapshots.value.map((snapshot) => snapshot.id)
       }
     });
+    captureAnalyticsEvent("account:snapshot_delete", analyticsProperties, {
+      operationStartedAt: startedAt
+    });
     open.value = false;
   } catch (error) {
+    captureAnalyticsEvent("account:snapshot_delete_fail", {
+      ...analyticsProperties,
+      ...getAnalyticsErrorProperties(error)
+    }, {
+      operationStartedAt: startedAt
+    });
+
     submitError.value = error instanceof Error ? error.message : "Failed to delete snapshots";
   }
 }
