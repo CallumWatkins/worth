@@ -228,13 +228,15 @@
               </div>
             </div>
 
-            <VChart
-              v-else
-              :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data?.length ?? 0}`"
-              :option="balanceOverTimeOption"
-              autoresize
-              style="height: 300px; width: 100%"
-            />
+            <div v-else ref="balanceOverTimeChartFrame" class="h-[300px] w-full">
+              <VChart
+                v-if="balanceOverTimeChartFrameWidth > 0"
+                :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data.length}`"
+                :option="balanceOverTimeOption"
+                autoresize
+                style="height: 100%; width: 100%"
+              />
+            </div>
           </UPageCard>
 
           <UPageCard
@@ -435,6 +437,7 @@ import type { AccountBalanceSnapshotDto, BalanceOverTimePeriod, BalancePointDto 
 import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbContext.global";
 import { useQuery } from "@tanstack/vue-query";
 import { getGroupedRowModel } from "@tanstack/vue-table";
+import { useElementSize } from "@vueuse/core";
 import { h, resolveComponent } from "vue";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
@@ -514,6 +517,10 @@ const balanceOverTimeQuery = proxyRefs(useQuery({
   enabled: computed(() => accountQuery.isSuccess),
   queryFn: async () => api.accountBalanceOverTime(accountId.value!, balanceOverTimePeriod.value)
 }));
+
+// Only show chart once parent element has a width to ensure entrance animation works
+const balanceOverTimeChartFrame = ref<HTMLElement | null>(null);
+const { width: balanceOverTimeChartFrameWidth } = useElementSize(balanceOverTimeChartFrame);
 
 const balanceOverTimePeriodItems = computed<TabsItem[]>(() => {
   const disabled = balanceOverTimeQuery.isFetching;
