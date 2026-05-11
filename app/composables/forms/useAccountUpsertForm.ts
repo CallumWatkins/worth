@@ -181,10 +181,10 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     institutionSearchTerm.value = "";
   }
 
-  watch(() => state.account_type, (kind) => {
-    if (!kind) return;
-    state.account_classification = kind === "credit_card" || kind === "loan" ? "liability" : "asset";
-  });
+  watch(() => state.account_type, (type) => {
+    if (!type) return;
+    state.account_classification = type === "credit_card" || type === "loan" ? "liability" : "asset";
+  }, { flush: "sync" });
 
   watch(institutionItems, (items) => {
     if (state.institution?.kind === "new") {
