@@ -585,21 +585,6 @@ const balanceOverTimeOption = computed<ECOption>(() => {
   const points = balanceOverTimeQuery.data ?? [];
   const values = points.map((p) => [p.date, convertCurrencyMinorUnitsToMajorAmount(p.balance_minor)]);
 
-  const invertAreaGradient = (() => {
-    if (accountQuery.data?.account_classification !== "liability") return false;
-    if (!points.length) return false;
-
-    let min = Infinity;
-    let max = -Infinity;
-    for (const p of points) {
-      min = Math.min(min, p.balance_minor);
-      max = Math.max(max, p.balance_minor);
-    }
-
-    if (!Number.isFinite(min) || !Number.isFinite(max)) return false;
-    return max <= 0 && min < 0;
-  })();
-
   return {
     backgroundColor: "transparent",
     tooltip: {
@@ -672,10 +657,15 @@ const balanceOverTimeOption = computed<ECOption>(() => {
             y: 0,
             x2: 0,
             y2: 1,
-            colorStops: [
-              { offset: 0, color: invertAreaGradient ? chartMeta.value.glowTransparent : chartMeta.value.glowFill },
-              { offset: 1, color: invertAreaGradient ? chartMeta.value.glowFill : chartMeta.value.glowTransparent }
-            ]
+            colorStops: accountQuery.data?.account_classification === "liability"
+              ? [
+                { offset: 0, color: chartMeta.value.glowTransparent },
+                { offset: 1, color: chartMeta.value.glowFill }
+              ]
+              : [
+                { offset: 0, color: chartMeta.value.glowFill },
+                { offset: 1, color: chartMeta.value.glowTransparent }
+              ]
           }
         }
       }
