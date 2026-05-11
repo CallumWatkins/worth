@@ -16,7 +16,7 @@ INSERT INTO
     institution_id,
     type_id,
     currency_code,
-    normal_balance_sign,
+    account_classification,
     opened_date,
     closed_date
   )
@@ -34,7 +34,7 @@ VALUES
         name = 'current'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -51,7 +51,7 @@ VALUES
         name = 'current'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -68,7 +68,7 @@ VALUES
         name = 'savings'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -85,7 +85,7 @@ VALUES
         name = 'savings'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -102,7 +102,7 @@ VALUES
         name = 'isa'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -119,7 +119,7 @@ VALUES
         name = 'investment'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -136,7 +136,7 @@ VALUES
         name = 'pension'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -153,7 +153,7 @@ VALUES
         name = 'savings'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -170,7 +170,7 @@ VALUES
         name = 'isa'
     ),
     'GBP',
-    1,
+    'asset',
     NULL,
     NULL
   ),
@@ -187,7 +187,7 @@ VALUES
         name = 'credit_card'
     ),
     'GBP',
-    -1,
+    'liability',
     NULL,
     NULL
   );
@@ -202,19 +202,19 @@ WITH
   seed_params (
     account_id,
     latest_balance_minor,
-    normal_balance_sign
+    account_classification
   ) AS (
     VALUES
-      (1, 243512, 1),
-      (2, 0, 1),
-      (3, 1325000, 1),
-      (4, 800000, 1),
-      (5, 4589042, 1),
-      (6, 1211070, 1),
-      (7, 9802533, 1),
-      (8, 142000, 1),
-      (9, 0, 1),
-      (10, -54321, -1)
+      (1, 243512, 'asset'),
+      (2, 0, 'asset'),
+      (3, 1325000, 'asset'),
+      (4, 800000, 'asset'),
+      (5, 4589042, 'asset'),
+      (6, 1211070, 'asset'),
+      (7, 9802533, 'asset'),
+      (8, 142000, 'asset'),
+      (9, 0, 'asset'),
+      (10, -54321, 'liability')
   ),
   days (n) AS (
     SELECT
@@ -231,7 +231,7 @@ WITH
     SELECT
       p.account_id,
       p.latest_balance_minor,
-      p.normal_balance_sign,
+      p.account_classification,
       d.n,
       DATE('now', PRINTF('-%d days', 1825 - d.n)) AS balance_date,
       -- Per-account span so not all series start/end on the same dates.
@@ -244,7 +244,7 @@ WITH
         WHEN p.latest_balance_minor = 0 THEN 0
         ELSE (
           CASE
-            WHEN p.normal_balance_sign = 1 THEN p.latest_balance_minor * (0.85 + 0.15 * (d.n / 1825.0))
+            WHEN p.account_classification = 'asset' THEN p.latest_balance_minor * (0.85 + 0.15 * (d.n / 1825.0))
             ELSE p.latest_balance_minor * (1.2 - 0.2 * (d.n / 1825.0))
           END
         )

@@ -115,10 +115,11 @@
                 />
               </UFormField>
 
-              <UFormField label="Normal balance sign" name="normal_balance_sign">
+              <UFormField label="Balance type" name="account_classification">
                 <USelect
-                  v-model="state.normal_balance_sign"
-                  :items="normalBalanceSignItems"
+                  v-model="state.account_classification"
+                  :items="accountClassificationItems"
+                  :ui="{ itemDescription: 'whitespace-normal' }"
                   class="w-full"
                 />
               </UFormField>
@@ -317,7 +318,7 @@ const {
   onInstitutionSearchTermUpdate,
   onInstitutionCreate,
   accountTypeItems,
-  normalBalanceSignItems,
+  accountClassificationItems,
   hydrateFromAccount
 } = useAccountUpsertForm({
   institutions: computed(() => institutionsQuery.data)

@@ -35,7 +35,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
       currency_code: settings.value.default_display_currency_code,
       institution: undefined,
       name: undefined,
-      normal_balance_sign: 1,
+      account_classification: "asset",
       opened_date: undefined,
       closed_date: undefined
     };
@@ -151,9 +151,17 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     }));
   });
 
-  const normalBalanceSignItems = [
-    { label: "Positive (1)", value: 1 },
-    { label: "Negative (-1)", value: -1 }
+  const accountClassificationItems = [
+    {
+      label: "Asset",
+      value: "asset",
+      description: "Represents money you own."
+    },
+    {
+      label: "Liability",
+      value: "liability",
+      description: "Represents money you owe."
+    }
   ];
 
   function reset() {
@@ -167,7 +175,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.name = account.name;
     state.account_type = account.account_type.name;
     state.currency_code = account.currency_code;
-    state.normal_balance_sign = account.normal_balance_sign === -1 ? -1 : 1;
+    state.account_classification = account.account_classification;
     state.opened_date = account.opened_date == null ? undefined : parseDate(account.opened_date);
     state.closed_date = account.closed_date == null ? undefined : parseDate(account.closed_date);
     institutionSearchTerm.value = "";
@@ -175,7 +183,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
 
   watch(() => state.account_type, (kind) => {
     if (!kind) return;
-    state.normal_balance_sign = kind === "credit_card" || kind === "loan" ? -1 : 1;
+    state.account_classification = kind === "credit_card" || kind === "loan" ? "liability" : "asset";
   });
 
   watch(institutionItems, (items) => {
@@ -202,7 +210,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     onInstitutionSearchTermUpdate,
     onInstitutionCreate,
     accountTypeItems,
-    normalBalanceSignItems,
+    accountClassificationItems,
     reset,
     hydrateFromAccount
   };

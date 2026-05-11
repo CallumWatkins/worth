@@ -22,7 +22,7 @@ pub struct AccountRow {
     pub institution_id: i64,
     pub type_id: i64,
     pub currency_code: String,
-    pub normal_balance_sign: i32, // CHECK (normal_balance_sign IN (1, -1))
+    pub account_classification: String, // CHECK (account_classification IN ('asset', 'liability'))
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,

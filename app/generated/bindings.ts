@@ -41,6 +41,8 @@ export type AccountBalanceSnapshotDto = {
 	created_at: Date,
 };
 
+export type AccountClassification = "asset" | "liability";
+
 export type AccountDeletePreviewDto = {
 	id: number,
 	name: string,
@@ -54,7 +56,7 @@ export type AccountDto = {
 	institution: InstitutionDto,
 	account_type: AccountTypeDto,
 	currency_code: CurrencyCode,
-	normal_balance_sign: number,
+	account_classification: AccountClassification,
 	opened_date: string | null,
 	closed_date: string | null,
 	first_snapshot_date: string | null,
@@ -96,7 +98,7 @@ export type AccountUpsertInput = {
 	name: string,
 	account_type: AccountTypeName,
 	currency_code: CurrencyCode,
-	normal_balance_sign: number,
+	account_classification: AccountClassification,
 	opened_date?: string | null,
 	closed_date?: string | null,
 };

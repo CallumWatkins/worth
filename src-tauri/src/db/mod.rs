@@ -113,7 +113,7 @@ pub struct AccountListRow {
     pub id: i64,
     pub name: String,
     pub currency_code: String,
-    pub normal_balance_sign: i32,
+    pub account_classification: String,
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
 
@@ -340,7 +340,7 @@ pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>
             a.id,
             a.name,
             a.currency_code,
-            a.normal_balance_sign,
+            a.account_classification,
             a.opened_date,
             a.closed_date,
             i.id AS institution_id,
@@ -401,7 +401,7 @@ pub async fn accounts_list_full_for_institution(
             a.id,
             a.name,
             a.currency_code,
-            a.normal_balance_sign,
+            a.account_classification,
             a.opened_date,
             a.closed_date,
             i.id AS institution_id,
@@ -563,7 +563,7 @@ pub async fn account_get_full(
             a.id,
             a.name,
             a.currency_code,
-            a.normal_balance_sign,
+            a.account_classification,
             a.opened_date,
             a.closed_date,
             i.id AS institution_id,
@@ -1106,7 +1106,7 @@ pub struct AccountMutationInput {
     pub name: String,
     pub type_id: i64,
     pub currency_code: String,
-    pub normal_balance_sign: i32,
+    pub account_classification: String,
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
 }
@@ -1123,7 +1123,7 @@ pub async fn account_create(
                 institution_id,
                 type_id,
                 currency_code,
-                normal_balance_sign,
+                account_classification,
                 opened_date,
                 closed_date
             )
@@ -1135,7 +1135,7 @@ pub async fn account_create(
     .bind(input.institution_id)
     .bind(input.type_id)
     .bind(&input.currency_code)
-    .bind(input.normal_balance_sign)
+    .bind(&input.account_classification)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .execute(pool)
@@ -1150,7 +1150,7 @@ pub async fn account_create(
             institution_id,
             type_id,
             currency_code,
-            normal_balance_sign,
+            account_classification,
             opened_date,
             closed_date,
             created_at,
@@ -1180,7 +1180,7 @@ pub async fn account_create_tx(
                 institution_id,
                 type_id,
                 currency_code,
-                normal_balance_sign,
+                account_classification,
                 opened_date,
                 closed_date
             )
@@ -1192,7 +1192,7 @@ pub async fn account_create_tx(
     .bind(input.institution_id)
     .bind(input.type_id)
     .bind(&input.currency_code)
-    .bind(input.normal_balance_sign)
+    .bind(&input.account_classification)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .execute(&mut **tx)
@@ -1213,7 +1213,7 @@ pub async fn account_update(
             name = ?,
             type_id = ?,
             currency_code = ?,
-            normal_balance_sign = ?,
+            account_classification = ?,
             opened_date = ?,
             closed_date = ?,
             updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
@@ -1225,7 +1225,7 @@ pub async fn account_update(
     .bind(&input.name)
     .bind(input.type_id)
     .bind(&input.currency_code)
-    .bind(input.normal_balance_sign)
+    .bind(&input.account_classification)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .bind(account_id)
@@ -1244,7 +1244,7 @@ pub async fn account_update(
             institution_id,
             type_id,
             currency_code,
-            normal_balance_sign,
+            account_classification,
             opened_date,
             closed_date,
             created_at,
@@ -1275,7 +1275,7 @@ pub async fn account_update_tx(
             name = ?,
             type_id = ?,
             currency_code = ?,
-            normal_balance_sign = ?,
+            account_classification = ?,
             opened_date = ?,
             closed_date = ?,
             updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
@@ -1287,7 +1287,7 @@ pub async fn account_update_tx(
     .bind(&input.name)
     .bind(input.type_id)
     .bind(&input.currency_code)
-    .bind(input.normal_balance_sign)
+    .bind(&input.account_classification)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .bind(account_id)

@@ -586,7 +586,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
   const values = points.map((p) => [p.date, convertCurrencyMinorUnitsToMajorAmount(p.balance_minor)]);
 
   const invertAreaGradient = (() => {
-    if (accountQuery.data?.normal_balance_sign !== -1) return false;
+    if (accountQuery.data?.account_classification !== "liability") return false;
     if (!points.length) return false;
 
     let min = Infinity;

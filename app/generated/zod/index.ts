@@ -1,5 +1,7 @@
 // Generated file, update with `bun run contracts:gen`.
 
+export { accountClassificationGeneratedSchema } from "./AccountClassification";
+export type { AccountClassificationFromSchema } from "./AccountClassification";
 export { accountSnapshotUpdateInputGeneratedSchema } from "./AccountSnapshotUpdateInput";
 export type { AccountSnapshotUpdateInputFromSchema } from "./AccountSnapshotUpdateInput";
 export { accountSnapshotWriteInputGeneratedSchema } from "./AccountSnapshotWriteInput";

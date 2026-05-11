@@ -3,6 +3,14 @@
   "title": "AccountUpsertInput",
   "type": "object",
   "properties": {
+    "account_classification": {
+      "$ref": "#/$defs/AccountClassification",
+      "x-validation": {
+        "invalid": "Select a balance type",
+        "required": "Select a balance type",
+        "type": "Select a balance type"
+      }
+    },
     "account_type": {
       "$ref": "#/$defs/AccountTypeName",
       "x-validation": {
@@ -46,19 +54,6 @@
         "type": "Enter an account name"
       }
     },
-    "normal_balance_sign": {
-      "type": "integer",
-      "format": "int32",
-      "enum": [
-        -1,
-        1
-      ],
-      "x-validation": {
-        "invalid": "Select whether this account normally has a positive or negative balance",
-        "required": "Select whether this account normally has a positive or negative balance",
-        "type": "Select whether this account normally has a positive or negative balance"
-      }
-    },
     "opened_date": {
       "type": [
         "string",
@@ -72,9 +67,16 @@
     "name",
     "account_type",
     "currency_code",
-    "normal_balance_sign"
+    "account_classification"
   ],
   "$defs": {
+    "AccountClassification": {
+      "type": "string",
+      "enum": [
+        "asset",
+        "liability"
+      ]
+    },
     "AccountTypeName": {
       "type": "string",
       "enum": [

@@ -81,6 +81,47 @@ impl FromStr for AccountTypeName {
     Ord,
     Hash,
 )]
+#[serde(rename_all = "snake_case")]
+pub enum AccountClassification {
+    Asset,
+    Liability,
+}
+
+impl AccountClassification {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AccountClassification::Asset => "asset",
+            AccountClassification::Liability => "liability",
+        }
+    }
+}
+
+impl FromStr for AccountClassification {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "asset" => Ok(AccountClassification::Asset),
+            "liability" => Ok(AccountClassification::Liability),
+            _ => Err("Invalid account classification"),
+        }
+    }
+}
+
+#[crate::export_schema]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Type,
+    JsonSchema,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+)]
 pub enum CurrencyCode {
     GBP,
 }
@@ -213,8 +254,7 @@ const ACCOUNT_NAME_MAX_LENGTH: &str = "Account name must be 120 characters or fe
 const INSTITUTION_REQUIRED: &str = "Select or create an institution";
 const ACCOUNT_TYPE_REQUIRED: &str = "Select an account type";
 const CURRENCY_REQUIRED: &str = "Select a currency";
-const NORMAL_BALANCE_SIGN_REQUIRED: &str =
-    "Select whether this account normally has a positive or negative balance";
+const ACCOUNT_CLASSIFICATION_REQUIRED: &str = "Select a balance type";
 const SNAPSHOT_REQUIRED: &str = "Add at least one snapshot";
 const SNAPSHOT_SELECTION_REQUIRED: &str = "Select at least one snapshot";
 
@@ -293,16 +333,13 @@ pub struct AccountUpsertInput {
         "type": CURRENCY_REQUIRED
     })))]
     pub currency_code: CurrencyCode,
-    #[garde(custom(validate_normal_balance_sign))]
-    #[schemars(extend(
-        "enum" = [-1, 1],
-        "x-validation" = ::serde_json::json!({
-            "required": NORMAL_BALANCE_SIGN_REQUIRED,
-            "invalid": NORMAL_BALANCE_SIGN_REQUIRED,
-            "type": NORMAL_BALANCE_SIGN_REQUIRED
-        })
-    ))]
-    pub normal_balance_sign: i32,
+    #[garde(skip)]
+    #[schemars(extend("x-validation" = ::serde_json::json!({
+        "required": ACCOUNT_CLASSIFICATION_REQUIRED,
+        "invalid": ACCOUNT_CLASSIFICATION_REQUIRED,
+        "type": ACCOUNT_CLASSIFICATION_REQUIRED
+    })))]
+    pub account_classification: AccountClassification,
     #[garde(skip)]
     #[specta(optional)]
     pub opened_date: Option<NaiveDate>,
@@ -402,12 +439,5 @@ fn validate_snapshot_ids_non_empty(value: &[i64], _ctx: &()) -> garde::Result {
         return Err(garde::Error::new(SNAPSHOT_SELECTION_REQUIRED));
     }
 
-    Ok(())
-}
-
-fn validate_normal_balance_sign(value: &i32, _ctx: &()) -> garde::Result {
-    if !matches!(*value, -1 | 1) {
-        return Err(garde::Error::new(NORMAL_BALANCE_SIGN_REQUIRED));
-    }
     Ok(())
 }

@@ -11,7 +11,7 @@ CREATE TABLE accounts (
   institution_id INTEGER NOT NULL REFERENCES institutions (id) ON DELETE CASCADE,
   type_id INTEGER NOT NULL REFERENCES account_types (id) ON DELETE CASCADE,
   currency_code TEXT NOT NULL,
-  normal_balance_sign INTEGER NOT NULL CHECK (normal_balance_sign IN (1, -1)),
+  account_classification TEXT NOT NULL CHECK (account_classification IN ('asset', 'liability')),
   opened_date TEXT,
   closed_date TEXT,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),

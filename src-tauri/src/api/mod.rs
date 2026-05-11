@@ -9,9 +9,9 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use tauri::State;
 
 use crate::contracts::{
-    AccountSnapshotUpdateInput, AccountSnapshotsCreateInput, AccountSnapshotsDeleteInput,
-    AccountTypeName, AccountUpsertInput, AppLocaleCode, AppSettingsUpdateInput, CurrencyCode,
-    InstitutionRef, InstitutionUpsertInput, ThemePreference,
+    AccountClassification, AccountSnapshotUpdateInput, AccountSnapshotsCreateInput,
+    AccountSnapshotsDeleteInput, AccountTypeName, AccountUpsertInput, AppLocaleCode,
+    AppSettingsUpdateInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput, ThemePreference,
 };
 use crate::imports::snapshots::{
     SnapshotImportCommitDto, SnapshotImportInspectionDto, SnapshotImportOptionsInput,
@@ -124,7 +124,7 @@ pub struct AccountDto {
     pub institution: InstitutionDto,
     pub account_type: AccountTypeDto,
     pub currency_code: CurrencyCode,
-    pub normal_balance_sign: i32, // {-1, 1}
+    pub account_classification: AccountClassification,
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
     pub first_snapshot_date: Option<NaiveDate>,
@@ -444,7 +444,7 @@ pub async fn accounts_create(
                 name: validated.name.clone(),
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
-                normal_balance_sign: validated.normal_balance_sign,
+                account_classification: validated.account_classification.as_str().to_owned(),
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -466,7 +466,7 @@ pub async fn accounts_create(
                 name: validated.name.clone(),
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
-                normal_balance_sign: validated.normal_balance_sign,
+                account_classification: validated.account_classification.as_str().to_owned(),
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -510,7 +510,7 @@ pub async fn accounts_update(
                 name: validated.name.clone(),
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
-                normal_balance_sign: validated.normal_balance_sign,
+                account_classification: validated.account_classification.as_str().to_owned(),
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -532,7 +532,7 @@ pub async fn accounts_update(
                 name: validated.name.clone(),
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
-                normal_balance_sign: validated.normal_balance_sign,
+                account_classification: validated.account_classification.as_str().to_owned(),
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -1132,7 +1132,7 @@ struct ValidatedAccountUpsert {
     name: String,
     type_id: i64,
     currency_code: String,
-    normal_balance_sign: i32,
+    account_classification: AccountClassification,
     opened_date: Option<NaiveDate>,
     closed_date: Option<NaiveDate>,
 }
@@ -1299,7 +1299,7 @@ async fn validate_account_upsert(
         name: normalized.name,
         type_id: type_id.expect("validated above"),
         currency_code: normalized.currency_code.as_str().to_owned(),
-        normal_balance_sign: normalized.normal_balance_sign,
+        account_classification: normalized.account_classification,
         opened_date: normalized.opened_date,
         closed_date: normalized.closed_date,
     })
@@ -1508,7 +1508,7 @@ fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
         name: input.name.trim().to_string(),
         account_type: input.account_type,
         currency_code: input.currency_code,
-        normal_balance_sign: input.normal_balance_sign,
+        account_classification: input.account_classification,
         opened_date: input.opened_date,
         closed_date: input.closed_date,
     }
@@ -1647,7 +1647,7 @@ async fn build_account_dtos(
             institution,
             account_type,
             currency_code: a.currency_code.parse().map_err(|_| ApiError::Db)?,
-            normal_balance_sign: a.normal_balance_sign,
+            account_classification: a.account_classification.parse().map_err(|_| ApiError::Db)?,
             opened_date: a.opened_date,
             closed_date: a.closed_date,
             first_snapshot_date: a.first_snapshot_date,
@@ -2008,9 +2008,9 @@ mod tests {
                 institution_id,
                 type_id,
                 currency_code,
-                normal_balance_sign
+                account_classification
             )
-            VALUES ('Everyday', ?, ?, 'GBP', 1)
+            VALUES ('Everyday', ?, ?, 'GBP', 'asset')
             ",
         )
         .bind(institution_id)
@@ -2088,6 +2088,7 @@ mod tests {
                 "timestamp_missing_timezone_policy": "local",
                 "timestamp_missing_timezone": "Europe/London",
                 "balance_format": "thousands_comma_decimal_dot",
+                "blank_amount_policy": "error",
             },
             "existing_date_policy": existing_date_policy,
             "unchanged_value_policy": unchanged_value_policy,
