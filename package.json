@@ -41,6 +41,7 @@
     "@tanstack/vue-query": "^5.0.0",
     "@tauri-apps/api": "~2.11.0",
     "@tauri-apps/plugin-opener": "=2.5.4",
+    "default-passive-events": "^4.0.0",
     "echarts": "^6.0.0",
     "nuxt": "^4.0.0",
     "nuxt-echarts": "^1.0.0",
