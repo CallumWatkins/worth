@@ -888,7 +888,7 @@ mod tests {
         );
         assert_eq!(
             plan.preview.rows[1].issues,
-            vec!["Amount is not a valid currency value"]
+            vec!["Balance does not match the selected format"]
         );
         assert_eq!(plan.preview.summary.invalid_count, 2);
         assert_eq!(plan.writes.len(), 1);

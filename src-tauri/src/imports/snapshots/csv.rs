@@ -548,7 +548,7 @@ fn parse_candidate(
             CsvSnapshotImportBlankAmountPolicy::Error => issues.push("Missing amount".to_string()),
         }
     } else if balance_minor.is_none() {
-        issues.push("Amount is not a valid currency value".to_string());
+        issues.push("Balance does not match the selected format".to_string());
     }
 
     SnapshotImportCandidate {
@@ -1008,7 +1008,10 @@ mod tests {
             vec!["Date does not match the selected format"]
         );
         assert_eq!(rows[2].issues, vec!["Missing amount"]);
-        assert_eq!(rows[3].issues, vec!["Amount is not a valid currency value"]);
+        assert_eq!(
+            rows[3].issues,
+            vec!["Balance does not match the selected format"]
+        );
     }
 
     #[test]
