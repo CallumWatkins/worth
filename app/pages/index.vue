@@ -324,11 +324,11 @@ const dashboardNumberAnimationKey = ref(0);
 const numberFlowPlugins = [continuous];
 const numberFlowTiming = {
   duration: 1000,
-  easing: "cubic-bezier(0,0,0.35,1)"
+  easing: "linear(0,.148,.42,.667,.843,.948,.999,1.019,1.021,1.014,1.007,1)"
 } satisfies EffectTiming;
 const allocationToggleNumberFlowTiming = {
   duration: 500,
-  easing: "cubic-bezier(0.65,0,0.35,1)"
+  easing: "linear(0,.148,.42,.667,.843,.948,.999,1.019,1.021,1.014,1.007,1)"
 } satisfies EffectTiming;
 
 const targetChangePct = computed(() => {
