@@ -14,8 +14,8 @@ Worth is a balance tracking desktop app built with **Tauri 2 (Rust)** + **Nuxt 4
 - **Desktop**: Tauri 2 (`@tauri-apps/api`, `@tauri-apps/cli`)
 - **Backend**: Rust 2021, `tokio`, `sqlx` (SQLite)
 - **Type sharing**:
-  - `specta` / `tauri-specta` generates `app/generated/bindings.ts` via `src-tauri/src/bin/export_bindings.rs`
-  - `schemars` / `garde` generates `app/generated/schemas/*.schema.json` via `src-tauri/src/bin/export_schemas.rs`
+  - `specta` / `tauri-specta` generates `app/generated/bindings.ts` via `src-tauri/dev-bin/export_bindings.rs`
+  - `schemars` / `garde` generates `app/generated/schemas/*.schema.json` via `src-tauri/dev-bin/export_schemas.rs`
   - `json-schema-to-zod` generates `app/generated/zod/*.ts` via `app/scripts/generate-zod.mjs`
 
 ### Repo layout (high level)
@@ -26,8 +26,8 @@ Worth is a balance tracking desktop app built with **Tauri 2 (Rust)** + **Nuxt 4
   - **`src-tauri/src/api/`**: Tauri commands + DTOs (`#[tauri::command]`)
   - **`src-tauri/src/db/`**: Rust DB helpers/queries
   - **`src-tauri/db/`**: SQL migrations + seed scripts
-  - **`src-tauri/src/bin/db.rs`**: DB dev CLI (seed/backup/restore/clear)
-  - **`src-tauri/src/bin/export_bindings.rs`**: exports TS bindings
+  - **`src-tauri/dev-bin/db.rs`**: DB dev CLI (seed/backup/restore/clear)
+  - **`src-tauri/dev-bin/export_bindings.rs`**: exports TS bindings
 
 ### Common commands
 

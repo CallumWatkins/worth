@@ -7,6 +7,7 @@ authors = [ "Callum Watkins <callum@callumwatkins.com>" ]
 license = "AGPL-3.0-only"
 edition = "2021"
 default-run = "worth"
+autobins = false
 
 [lib]
 name = "worth_lib"
@@ -15,6 +16,28 @@ crate-type = [
   "cdylib",
   "rlib"
 ]
+
+[features]
+dev-tools = []
+
+[[bin]]
+name = "worth"
+path = "src/main.rs"
+
+[[bin]]
+name = "db"
+path = "dev-bin/db.rs"
+required-features = [ "dev-tools" ]
+
+[[bin]]
+name = "export_bindings"
+path = "dev-bin/export_bindings.rs"
+required-features = [ "dev-tools" ]
+
+[[bin]]
+name = "export_schemas"
+path = "dev-bin/export_schemas.rs"
+required-features = [ "dev-tools" ]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
