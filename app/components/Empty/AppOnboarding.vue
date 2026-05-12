@@ -133,7 +133,7 @@ const steps: OnboardingStep[] = [
 ];
 
 const createAccountOpen = ref(false);
-const activeStep = ref(0);
+const activeStep = useState("onboardingActiveStep", () => 0);
 const transitionDirection = ref<"forward" | "backward">("forward");
 const { captureAnalyticsEvent } = useAnalytics();
 
