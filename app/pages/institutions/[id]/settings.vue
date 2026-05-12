@@ -64,14 +64,6 @@
         >
           <div class="flex flex-wrap gap-2">
             <UButton
-              color="neutral"
-              variant="subtle"
-              icon="i-lucide-download"
-              disabled
-            >
-              Export (coming soon)
-            </UButton>
-            <UButton
               color="error"
               variant="subtle"
               icon="i-lucide-trash-2"
