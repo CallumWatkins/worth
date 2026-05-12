@@ -245,7 +245,7 @@ fn resolve_db_path() -> Result<PathBuf> {
 }
 
 fn read_bundle_identifier() -> Result<String> {
-    let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tauri.conf.json");
+    let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tauri.dev.conf.json");
     let raw = std::fs::read_to_string(&config_path)
         .with_context(|| format!("read {}", config_path.display()))?;
     let v: serde_json::Value =

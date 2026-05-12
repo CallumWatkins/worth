@@ -28,9 +28,9 @@
     "contracts:zod": "bun run app/scripts/generate-zod.mjs",
     "contracts:gen": "bun run contracts:bindings && bun run contracts:schemas && bun run contracts:zod",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
+    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "tauri:build": "tauri build",
-    "tauri:build:debug": "tauri build --debug"
+    "tauri:build:debug": "tauri build --debug --config src-tauri/tauri.dev.conf.json"
   },
   "dependencies": {
     "@internationalized/date": "=3.12.1",
