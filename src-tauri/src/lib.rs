@@ -16,7 +16,9 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let specta_builder = api::specta_builder();
-    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    let mut builder = tauri::Builder::default()
+        .plugin(prevent_default())
+        .plugin(tauri_plugin_opener::init());
 
     #[cfg(desktop)]
     {
@@ -46,4 +48,60 @@ pub fn run() {
         .invoke_handler(specta_builder.invoke_handler())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(debug_assertions)]
+fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    use tauri_plugin_prevent_default::Flags;
+
+    let mut builder = tauri_plugin_prevent_default::Builder::new();
+    #[cfg(target_os = "windows")]
+    {
+        use tauri_plugin_prevent_default::PlatformOptions;
+
+        builder = builder.platform(
+            PlatformOptions::new()
+                .default_script_dialogs(false)
+                .general_autofill(false)
+                .host_objects(false)
+                .password_autosave(false)
+                .pinch_zoom(false)
+                .swipe_navigation(false)
+                .zoom_control(false),
+        )
+    }
+    builder
+        .with_flags(
+            Flags::all().difference(
+                Flags::CONTEXT_MENU | Flags::DEV_TOOLS | Flags::RELOAD | Flags::FOCUS_MOVE,
+            ),
+        )
+        .build()
+}
+
+#[cfg(not(debug_assertions))]
+fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    use tauri_plugin_prevent_default::Flags;
+
+    let mut builder = tauri_plugin_prevent_default::Builder::new();
+    #[cfg(target_os = "windows")]
+    {
+        use tauri_plugin_prevent_default::PlatformOptions;
+
+        builder = builder.platform(
+            PlatformOptions::new()
+                .default_context_menus(false)
+                .default_script_dialogs(false)
+                .dev_tools(false)
+                .general_autofill(false)
+                .host_objects(false)
+                .password_autosave(false)
+                .pinch_zoom(false)
+                .swipe_navigation(false)
+                .zoom_control(false),
+        )
+    }
+    builder
+        .with_flags(Flags::all().difference(Flags::RELOAD | Flags::FOCUS_MOVE))
+        .build()
 }
