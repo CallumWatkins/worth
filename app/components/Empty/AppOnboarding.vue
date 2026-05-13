@@ -118,7 +118,7 @@ const steps: OnboardingStep[] = [
   {
     eyebrow: "How things stay organised",
     title: "Institutions group related accounts together.",
-    description: "Use institutions for banks, brokers, or providers like Barclays or Vanguard, then keep the accounts under each one in a clean structure."
+    description: "Institutions represent banks, brokers, or platforms like Barclays or Vanguard, making it easier to understand how your assets are spread across them."
   },
   {
     eyebrow: "How balances are recorded",
