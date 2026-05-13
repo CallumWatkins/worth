@@ -77,6 +77,7 @@
                 </UButton>
                 <UButton
                   v-else
+                  ref="ctaButton"
                   icon="i-lucide-plus"
                   @click="createAccountOpen = true"
                 >
@@ -133,6 +134,7 @@ const steps: OnboardingStep[] = [
 ];
 
 const createAccountOpen = ref(false);
+const ctaButton = useTemplateRef<{ $el: HTMLButtonElement }>("ctaButton");
 const activeStep = useState("onboardingActiveStep", () => 0);
 const transitionDirection = ref<"forward" | "backward">("forward");
 const { captureAnalyticsEvent } = useAnalytics();
@@ -152,16 +154,40 @@ watch(activeStep, (step) => {
   });
 }, { immediate: true });
 
+useContextualKeyboardShortcuts([
+  {
+    label: "Previous welcome step",
+    combos: [["arrowleft"]],
+    handler: () => {
+      if (createAccountOpen.value) return;
+      goBack();
+    }
+  },
+  {
+    label: "Next welcome step",
+    combos: [["arrowright"]],
+    handler: async () => {
+      if (createAccountOpen.value) return;
+      await goNext(true);
+    }
+  }
+]);
+
 function goBack() {
   if (activeStep.value === 0) return;
   transitionDirection.value = "backward";
   activeStep.value -= 1;
 }
 
-function goNext() {
+async function goNext(focusCta: boolean = false) {
   if (isLastStep.value) return;
   transitionDirection.value = "forward";
   activeStep.value += 1;
+
+  if (focusCta && activeStep.value === steps.length - 1) {
+    await nextTick();
+    ctaButton.value?.$el.focus();
+  }
 }
 
 function skipToLastStep() {
