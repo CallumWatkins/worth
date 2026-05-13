@@ -165,6 +165,14 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
     return "Confirm overwrite to continue";
   });
 
+  const isEmpty = computed(() => {
+    const row = rows.value[0];
+    return rows.value.length === 1
+      && row != null
+      && row.date === nextStartDate()
+      && effectiveAmount(row) == null;
+  });
+
   watch(params.open, (isOpen) => {
     if (!isOpen) return;
 
@@ -445,6 +453,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
     rows,
     getCalendarDateModelValueFromIsoString,
     rowStates,
+    isEmpty,
     hasOverwriteConflicts,
     overwriteConfirmationError,
     onSubmit,

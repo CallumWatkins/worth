@@ -2,8 +2,8 @@
   <UModal
     v-model:open="open"
     title="Add snapshots"
-    :dismissible="false"
-    :close="false"
+    :dismissible="!createSnapshots.isPending && isEmpty"
+    :close="!createSnapshots.isPending"
     :ui="{ content: 'max-w-5xl' }"
   >
     <template #body>
@@ -213,6 +213,7 @@ const {
   rows,
   getCalendarDateModelValueFromIsoString,
   rowStates,
+  isEmpty,
   hasOverwriteConflicts,
   overwriteConfirmationError,
   onSubmit,
