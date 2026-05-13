@@ -2,7 +2,7 @@ use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse::Parser;
-use syn::{spanned::Spanned, Expr, ExprLit, Item, Lit, Meta};
+use syn::{Expr, ExprLit, Item, Lit, Meta, spanned::Spanned};
 
 #[proc_macro_attribute]
 pub fn export_schema(attr: TokenStream, item: TokenStream) -> TokenStream {

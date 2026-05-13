@@ -1,8 +1,8 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Parser, Subcommand};
 use sqlx::{
-    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     SqlitePool,
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
 };
 use std::collections::HashSet;
 use std::ffi::OsString;
@@ -223,14 +223,14 @@ fn resolve_seed_path(seed_arg: &str) -> Result<PathBuf> {
         "seed file not found: {seed_arg}\nlooked for: {}",
         candidate.display()
     );
-    if let Ok(seeds) = list_seed_names() {
-        if !seeds.is_empty() {
-            msg.push_str("\n\nAvailable seeds:\n");
-            for s in seeds {
-                msg.push_str("  - ");
-                msg.push_str(&s);
-                msg.push('\n');
-            }
+    if let Ok(seeds) = list_seed_names()
+        && !seeds.is_empty()
+    {
+        msg.push_str("\n\nAvailable seeds:\n");
+        for s in seeds {
+            msg.push_str("  - ");
+            msg.push_str(&s);
+            msg.push('\n');
         }
     }
     Err(anyhow!(msg))
@@ -295,7 +295,9 @@ fn clear_db(args: ClearArgs) -> Result<()> {
 
     if !confirm.yes {
         println!("Database: {}", db_path.display());
-        println!("This will move any existing database files to named .bak backups (defaults to a timestamp).");
+        println!(
+            "This will move any existing database files to named .bak backups (defaults to a timestamp)."
+        );
         println!();
 
         if !confirm_default_yes("Clear the database?")? {
@@ -425,7 +427,9 @@ fn restore_db(args: RestoreArgs) -> Result<()> {
 
     if !confirm.yes {
         println!("Restore backup: {restore_name}");
-        println!("This will back up any existing database files to new named .bak backups (defaults to a timestamp), then restore the selected backup.");
+        println!(
+            "This will back up any existing database files to new named .bak backups (defaults to a timestamp), then restore the selected backup."
+        );
         println!();
 
         if !confirm_default_yes("Proceed with restore?")? {
@@ -588,10 +592,10 @@ fn choose_backup_name(db_path: &Path) -> Result<String> {
 
     // Allow "#3" to force index selection.
     let input_for_index = input.strip_prefix('#').unwrap_or(input);
-    if let Ok(idx) = input_for_index.parse::<usize>() {
-        if (1..=names.len()).contains(&idx) {
-            return Ok(names[idx - 1].clone());
-        }
+    if let Ok(idx) = input_for_index.parse::<usize>()
+        && (1..=names.len()).contains(&idx)
+    {
+        return Ok(names[idx - 1].clone());
     }
 
     Err(anyhow!(

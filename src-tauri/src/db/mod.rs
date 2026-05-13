@@ -3,13 +3,13 @@ pub mod rows;
 use chrono::NaiveDate;
 use itertools::Itertools;
 use sqlx::{
-    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     QueryBuilder, Sqlite, SqlitePool,
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
 };
 use std::path::PathBuf;
 use std::time::Duration;
-use tauri::path::BaseDirectory;
 use tauri::Manager;
+use tauri::path::BaseDirectory;
 
 pub async fn init_pool(app: &tauri::AppHandle) -> tauri::Result<SqlitePool> {
     let db_path: PathBuf = app

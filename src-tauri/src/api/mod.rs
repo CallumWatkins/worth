@@ -1261,33 +1261,28 @@ async fn validate_account_upsert(
         }
     };
 
-    if issues.is_empty() {
-        if let ValidatedInstitutionRef::Existing { id } = &institution {
-            let duplicate = db::account_name_exists_in_institution(
-                pool,
-                *id,
-                &normalized.name,
-                exclude_account_id,
-            )
-            .await
-            .map_err(|_| ApiError::Db)?;
-            if duplicate {
-                issues.push(validation_issue(
-                    "name",
-                    "An account with this name already exists for this institution",
-                ));
-            }
+    if issues.is_empty()
+        && let ValidatedInstitutionRef::Existing { id } = &institution
+    {
+        let duplicate =
+            db::account_name_exists_in_institution(pool, *id, &normalized.name, exclude_account_id)
+                .await
+                .map_err(|_| ApiError::Db)?;
+        if duplicate {
+            issues.push(validation_issue(
+                "name",
+                "An account with this name already exists for this institution",
+            ));
         }
     }
 
     if let (Some(opened_date), Some(closed_date)) = (normalized.opened_date, normalized.closed_date)
+        && closed_date < opened_date
     {
-        if closed_date < opened_date {
-            issues.push(validation_issue(
-                "closed_date",
-                "Closed date cannot be before opened date",
-            ));
-        }
+        issues.push(validation_issue(
+            "closed_date",
+            "Closed date cannot be before opened date",
+        ));
     }
 
     if !issues.is_empty() {
@@ -1316,13 +1311,13 @@ async fn validate_account_snapshots_create(
     let mut previous_date = None;
 
     for (index, snapshot) in input.snapshots.iter().enumerate() {
-        if let Some(last_date) = previous_date {
-            if snapshot.date <= last_date {
-                issues.push(validation_issue(
-                    &format!("snapshots.{index}.date"),
-                    "Snapshots must be in ascending date order",
-                ));
-            }
+        if let Some(last_date) = previous_date
+            && snapshot.date <= last_date
+        {
+            issues.push(validation_issue(
+                &format!("snapshots.{index}.date"),
+                "Snapshots must be in ascending date order",
+            ));
         }
         previous_date = Some(snapshot.date);
 
@@ -1740,7 +1735,7 @@ async fn total_balance_over_time(
 }
 
 pub(crate) fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
-    use tauri_specta::{collect_commands, Builder};
+    use tauri_specta::{Builder, collect_commands};
 
     let mut semantic_types = specta_typescript::semantic::Configuration::default();
     semantic_types
@@ -1804,14 +1799,14 @@ mod tests {
     use chrono::{Duration, Local, NaiveDate};
     use serde_json::json;
     use sqlx::{
-        sqlite::{SqliteConnectOptions, SqlitePoolOptions},
         SqlitePool,
+        sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     };
     use std::str::FromStr;
 
     use super::{
-        account_snapshot_import_commit_with_today, build_account_dtos, ApiError,
-        SnapshotImportOptionsInput, SnapshotImportSourceInput,
+        ApiError, SnapshotImportOptionsInput, SnapshotImportSourceInput,
+        account_snapshot_import_commit_with_today, build_account_dtos,
     };
     use crate::db;
 

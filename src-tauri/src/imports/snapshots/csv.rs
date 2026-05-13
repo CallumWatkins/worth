@@ -5,8 +5,8 @@ use specta::Type;
 use std::collections::HashMap;
 
 use super::{
-    issue, SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy,
-    SnapshotImportValidationIssue,
+    SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy, SnapshotImportValidationIssue,
+    issue,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -591,7 +591,7 @@ fn parse_date(
                 timestamp_date_policy,
                 timestamp_missing_timezone_policy,
                 timestamp_missing_timezone,
-            )
+            );
         }
     };
     NaiveDate::parse_from_str(raw.trim(), pattern).ok()
@@ -881,10 +881,10 @@ mod tests {
     use chrono::NaiveDate;
 
     use super::{
-        candidates, inspect, parse_amount_minor, parse_date, CsvSnapshotImportBalanceFormat,
-        CsvSnapshotImportBlankAmountPolicy, CsvSnapshotImportDateFormat,
-        CsvSnapshotImportMissingTimezonePolicy, CsvSnapshotImportOptionsInput,
-        CsvSnapshotImportSourceInput, CsvSnapshotImportTimestampDatePolicy,
+        CsvSnapshotImportBalanceFormat, CsvSnapshotImportBlankAmountPolicy,
+        CsvSnapshotImportDateFormat, CsvSnapshotImportMissingTimezonePolicy,
+        CsvSnapshotImportOptionsInput, CsvSnapshotImportSourceInput,
+        CsvSnapshotImportTimestampDatePolicy, candidates, inspect, parse_amount_minor, parse_date,
     };
     use crate::imports::snapshots::SnapshotImportDuplicateDatePolicy;
 

@@ -5,7 +5,7 @@ publish = false
 description = "A balance tracking desktop app"
 authors = [ "Callum Watkins <callum@callumwatkins.com>" ]
 license = "AGPL-3.0-only"
-edition = "2021"
+edition = "2024"
 default-run = "worth"
 autobins = false
 

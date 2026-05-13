@@ -539,11 +539,11 @@ mod tests {
         CsvSnapshotImportTimestampDatePolicy,
     };
     use super::{
-        plan_import, resolve_duplicate_dates, CsvSnapshotImportOptionsInput,
-        CsvSnapshotImportSourceInput, SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy,
-        SnapshotImportExistingDatePolicy, SnapshotImportOptionsInput,
-        SnapshotImportPlanningContext, SnapshotImportPreviewAction, SnapshotImportSourceInput,
-        SnapshotImportSourceOptionsInput, SnapshotImportUnchangedValuePolicy,
+        CsvSnapshotImportOptionsInput, CsvSnapshotImportSourceInput, SnapshotImportCandidate,
+        SnapshotImportDuplicateDatePolicy, SnapshotImportExistingDatePolicy,
+        SnapshotImportOptionsInput, SnapshotImportPlanningContext, SnapshotImportPreviewAction,
+        SnapshotImportSourceInput, SnapshotImportSourceOptionsInput,
+        SnapshotImportUnchangedValuePolicy, plan_import, resolve_duplicate_dates,
     };
     use crate::db::rows::AccountBalanceSnapshotRow;
 
@@ -577,12 +577,16 @@ mod tests {
 
         resolve_duplicate_dates(&mut rows, SnapshotImportDuplicateDatePolicy::Error);
 
-        assert!(rows[0]
-            .issues
-            .contains(&"Duplicate date in selected import file".to_string()));
-        assert!(rows[1]
-            .issues
-            .contains(&"Duplicate date in selected import file".to_string()));
+        assert!(
+            rows[0]
+                .issues
+                .contains(&"Duplicate date in selected import file".to_string())
+        );
+        assert!(
+            rows[1]
+                .issues
+                .contains(&"Duplicate date in selected import file".to_string())
+        );
         assert!(rows[2].issues.is_empty());
         assert!(rows.iter().all(|row| !row.skip_duplicate));
     }
@@ -850,12 +854,16 @@ mod tests {
                 SnapshotImportPreviewAction::Create,
             ]
         );
-        assert!(plan.preview.rows[0]
-            .issues
-            .contains(&"Duplicate date in selected import file".to_string()));
-        assert!(plan.preview.rows[1]
-            .issues
-            .contains(&"Duplicate date in selected import file".to_string()));
+        assert!(
+            plan.preview.rows[0]
+                .issues
+                .contains(&"Duplicate date in selected import file".to_string())
+        );
+        assert!(
+            plan.preview.rows[1]
+                .issues
+                .contains(&"Duplicate date in selected import file".to_string())
+        );
         assert_eq!(plan.preview.summary.invalid_count, 2);
         assert_eq!(plan.writes.len(), 1);
     }
