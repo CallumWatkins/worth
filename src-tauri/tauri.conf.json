@@ -20,7 +20,8 @@
         "center": true,
         "visible": false,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "backgroundColor": "#09090B"
       }
     ],
     "security": {
