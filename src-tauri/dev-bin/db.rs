@@ -258,28 +258,28 @@ fn read_bundle_identifier() -> Result<String> {
 }
 
 fn user_local_data_dir() -> Result<PathBuf> {
-    #[cfg(target_os = "windows")]
-    {
-        let base =
-            std::env::var_os("LOCALAPPDATA").ok_or_else(|| anyhow!("LOCALAPPDATA is not set"))?;
-        Ok(PathBuf::from(base))
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
-        Ok(PathBuf::from(home)
-            .join("Library")
-            .join("Application Support"))
-    }
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        if let Some(base) = std::env::var_os("XDG_DATA_HOME") {
+    std::cfg_select! {
+        target_os = "windows" => {
+            let base = std::env::var_os("LOCALAPPDATA")
+                .ok_or_else(|| anyhow!("LOCALAPPDATA is not set"))?;
             Ok(PathBuf::from(base))
-        } else {
+        }
+        target_os = "macos" => {
             let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
-            Ok(PathBuf::from(home).join(".local").join("share"))
+            Ok(PathBuf::from(home)
+                .join("Library")
+                .join("Application Support"))
+        }
+        all(unix, not(target_os = "macos")) => {
+            if let Some(base) = std::env::var_os("XDG_DATA_HOME") {
+                Ok(PathBuf::from(base))
+            } else {
+                let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME is not set"))?;
+                Ok(PathBuf::from(home).join(".local").join("share"))
+            }
+        }
+        _ => {
+            bail!("unsupported platform")
         }
     }
 }
