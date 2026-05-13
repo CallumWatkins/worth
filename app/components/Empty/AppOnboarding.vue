@@ -71,7 +71,7 @@
                 <UButton
                   v-if="!isLastStep"
                   trailing-icon="i-lucide-arrow-right"
-                  @click="goNext"
+                  @click="goNext(false)"
                 >
                   Next
                 </UButton>
