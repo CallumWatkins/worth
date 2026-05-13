@@ -116,6 +116,18 @@ const institutionQuery = proxyRefs(useQuery({
   queryFn: async () => api.institutionsGet(institutionId.value!)
 }));
 
+useContextualKeyboardShortcuts([
+  {
+    label: "Add new account",
+    combos: [["meta", "N"]],
+    handler: () => {
+      if (institutionQuery.isSuccess) {
+        createAccountOpen.value = true;
+      }
+    }
+  }
+]);
+
 useResourcePageError({
   resourceName: "Institution",
   resourceId: institutionId,

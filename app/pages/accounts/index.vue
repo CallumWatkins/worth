@@ -87,4 +87,14 @@ const accountsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.accounts.list(),
   queryFn: api.accountsList
 }));
+
+useContextualKeyboardShortcuts([
+  {
+    label: "Add new account",
+    combos: [["meta", "N"]],
+    handler: () => {
+      createDialogOpen.value = true;
+    }
+  }
+]);
 </script>

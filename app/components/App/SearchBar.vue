@@ -1,5 +1,6 @@
 <template>
   <UInputMenu
+    ref="searchInputMenu"
     v-model:search-term="searchTerm"
     v-model:open="menuOpen"
     :model-value="
@@ -59,6 +60,8 @@
 </template>
 
 <script lang="ts" setup>
+import type { ComponentExposed } from "vue-component-type-helpers";
+import type { UInputMenu } from "#components";
 import type { SearchResultDto } from "~/generated/bindings";
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { watchDebounced } from "@vueuse/core";
@@ -67,6 +70,7 @@ const api = useApi();
 const { captureAnalyticsEvent } = useAnalytics();
 
 const selectedItem = ref<SearchResultDto | null>(null);
+const searchInputMenu = useTemplateRef<ComponentExposed<typeof UInputMenu>>("searchInputMenu");
 const rawMenuOpen = ref(false);
 const searchTerm = ref("");
 let hasCapturedCurrentSearchAnalytics = false;
@@ -96,6 +100,17 @@ const searchQuery = proxyRefs(useQuery({
   // Prevent "no results" flash while typing by keeping previous data until the new query completes
   placeholderData: keepPreviousData
 }));
+
+useContextualKeyboardShortcuts([
+  {
+    label: "Search",
+    combos: [["/"]],
+    order: 20,
+    handler: () => {
+      searchInputMenu.value?.inputRef?.focus();
+    }
+  }
+]);
 
 async function onSelect(item: SearchResultDto | undefined) {
   if (!item) return;

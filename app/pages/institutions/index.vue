@@ -122,6 +122,16 @@ const institutionsQuery = proxyRefs(useQuery({
   queryFn: api.institutionsList
 }));
 
+useContextualKeyboardShortcuts([
+  {
+    label: "Add new institution",
+    combos: [["meta", "N"]],
+    handler: () => {
+      createDialogOpen.value = true;
+    }
+  }
+]);
+
 const institutionsData = computed<Institution[]>(() => institutionsQuery.data ?? []);
 const { formatCurrencyMinor } = useLocaleFormatters();
 const settings = useSettings();

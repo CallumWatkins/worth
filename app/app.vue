@@ -5,6 +5,7 @@
         :locale="uiLocale"
         :scroll-body="{ padding: false, margin: false }"
       >
+        <AppKeyboardShortcutsDialog />
         <AppNavbar />
         <UMain>
           <NuxtPage />

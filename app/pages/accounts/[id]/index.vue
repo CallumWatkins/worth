@@ -518,6 +518,18 @@ const balanceOverTimeQuery = proxyRefs(useQuery({
   queryFn: async () => api.accountBalanceOverTime(accountId.value!, balanceOverTimePeriod.value)
 }));
 
+useContextualKeyboardShortcuts([
+  {
+    label: "Add new snapshot",
+    combos: [["meta", "N"]],
+    handler: () => {
+      if (accountQuery.isSuccess) {
+        addSnapshotsOpen.value = true;
+      }
+    }
+  }
+]);
+
 // Only show chart once parent element has a width to ensure entrance animation works
 const balanceOverTimeChartFrame = ref<HTMLElement | null>(null);
 const { width: balanceOverTimeChartFrameWidth } = useElementSize(balanceOverTimeChartFrame);
