@@ -73,6 +73,7 @@ export default defineNuxtConfig({
         "@number-flow/vue",
         "@tanstack/vue-query",
         "@tanstack/vue-table",
+        "@tauri-apps/api/app",
         "@tauri-apps/api/core",
         "@tauri-apps/api/event",
         "@tauri-apps/api/webviewWindow",

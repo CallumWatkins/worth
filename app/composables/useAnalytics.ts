@@ -29,7 +29,8 @@ import { ApiCommandError } from "~/composables/useApi";
 import { getApiErrorKind } from "~/utils/error-reporting";
 
 export type AnalyticsEventCategory
-  = | "account"
+  = | "app"
+    | "account"
     | "account_settings"
     | "accounts"
     | "institution"
@@ -41,7 +42,8 @@ export type AnalyticsEventCategory
     | "snapshot_import";
 
 export type AnalyticsEventObject
-  = | "account"
+  = | "app"
+    | "account"
     | "account_create"
     | "account_delete"
     | "account_update"
@@ -78,7 +80,11 @@ export type AnalyticsEventVerb
     | "cancel"
     | "fail"
     | "generate"
-    | "send";
+    | "send"
+    | "install"
+    | "upgrade"
+    | "downgrade"
+    | "open";
 
 export type AnalyticsEventName = `${AnalyticsEventCategory}:${AnalyticsEventObject}_${AnalyticsEventVerb}`;
 
