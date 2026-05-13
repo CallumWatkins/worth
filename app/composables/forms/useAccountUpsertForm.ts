@@ -109,10 +109,6 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     return findExistingInstitution(trimmedSearchTerm) ? false : "always";
   });
 
-  function onInstitutionSearchTermUpdate(searchTerm: string) {
-    institutionSearchTerm.value = searchTerm;
-  }
-
   const institutionMenuValue = computed<number | string | undefined>({
     get: () => {
       if (state.institution?.kind === "existing") return state.institution.id;
@@ -206,8 +202,8 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state,
     institutionItems,
     institutionMenuValue,
+    institutionSearchTerm,
     institutionCreateItem,
-    onInstitutionSearchTermUpdate,
     onInstitutionCreate,
     accountTypeItems,
     accountClassificationItems,

@@ -40,6 +40,8 @@
         >
           <USelectMenu
             v-model="institutionMenuValue"
+            v-model:open="institutionMenuOpen"
+            v-model:search-term="institutionSearchTerm"
             :items="institutionItems"
             value-key="value"
             :create-item="institutionCreateItem"
@@ -51,8 +53,7 @@
               base: typeof institutionMenuValue === 'string' ? 'ps-13' : 'ps-2.5',
               leading: typeof institutionMenuValue === 'string' ? undefined : 'hidden'
             }"
-            @update:search-term="onInstitutionSearchTermUpdate"
-            @create="onInstitutionCreate"
+            @create="onInstitutionMenuCreate"
           >
             <template #leading>
               <UBadge
@@ -170,6 +171,7 @@ const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSu
 const { captureAnalyticsEvent } = useAnalytics();
 
 const submitError = ref<string | null>(null);
+const institutionMenuOpen = ref(false);
 
 const institutionsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.institutions.list(),
@@ -180,8 +182,8 @@ const {
   state,
   institutionItems,
   institutionMenuValue,
+  institutionSearchTerm,
   institutionCreateItem,
-  onInstitutionSearchTermUpdate,
   onInstitutionCreate,
   accountTypeItems,
   accountClassificationItems,
@@ -198,6 +200,14 @@ watch(open, (isOpen) => {
   reset();
   form.value?.clear();
 });
+
+function onInstitutionMenuCreate(name: string) {
+  onInstitutionCreate(name);
+  institutionMenuOpen.value = false;
+  setTimeout(() => {
+    institutionSearchTerm.value = "";
+  }, 100);
+}
 
 async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
   submitError.value = null;

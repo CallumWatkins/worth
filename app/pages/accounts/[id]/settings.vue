@@ -51,6 +51,8 @@
             >
               <USelectMenu
                 v-model="institutionMenuValue"
+                v-model:open="institutionMenuOpen"
+                v-model:search-term="institutionSearchTerm"
                 :items="institutionItems"
                 value-key="value"
                 :create-item="institutionCreateItem"
@@ -62,8 +64,7 @@
                   base: typeof institutionMenuValue === 'string' ? 'ps-13' : 'ps-2.5',
                   leading: typeof institutionMenuValue === 'string' ? undefined : 'hidden'
                 }"
-                @update:search-term="onInstitutionSearchTermUpdate"
-                @create="onInstitutionCreate"
+                @create="onInstitutionMenuCreate"
               >
                 <template #leading>
                   <UBadge
@@ -298,6 +299,7 @@ const institutionsQuery = proxyRefs(useQuery({
 
 const submitError = ref<string | null>(null);
 const didSave = ref(false);
+const institutionMenuOpen = ref(false);
 const hasHydrated = ref(false);
 const initialOpenedDate = ref<string | undefined>(undefined);
 const initialClosedDate = ref<string | undefined>(undefined);
@@ -306,8 +308,8 @@ const {
   state,
   institutionItems,
   institutionMenuValue,
+  institutionSearchTerm,
   institutionCreateItem,
-  onInstitutionSearchTermUpdate,
   onInstitutionCreate,
   accountTypeItems,
   accountClassificationItems,
@@ -362,6 +364,14 @@ const closedDateSnapshotWarningCount = computed(() => {
 
   return (snapshotsQuery.data ?? []).filter((snapshot) => snapshot.date > closedDate).length;
 });
+
+function onInstitutionMenuCreate(name: string) {
+  onInstitutionCreate(name);
+  institutionMenuOpen.value = false;
+  setTimeout(() => {
+    institutionSearchTerm.value = "";
+  }, 100);
+}
 
 usePreventRouteNavigation({
   isSubmitting: computed(() => form.value?.loading ?? false),
