@@ -10,6 +10,8 @@
       :description="headerDescription"
       :ui="{
         root: 'pb-0 border-none',
+        title: 'text-balance',
+        links: 'flex-nowrap',
         description: 'mt-1'
       }"
     >
@@ -53,10 +55,10 @@
           <template #body>
             <div class="flex flex-row items-center justify-between">
               <div>
-                <div class="text-base text-pretty font-semibold text-highlighted">
+                <div class="text-base font-semibold text-highlighted">
                   Accounts
                 </div>
-                <div class="text-[15px] text-pretty text-muted mt-1">
+                <div class="text-[15px] text-muted mt-1">
                   Accounts at this institution
                 </div>
               </div>

@@ -214,10 +214,10 @@
             <template #body>
               <div class="flex flex-row items-center justify-between">
                 <div>
-                  <div class="text-base text-pretty font-semibold text-highlighted">
+                  <div class="text-base font-semibold text-highlighted">
                     Total Balance Over Time
                   </div>
-                  <div class="text-[15px] text-pretty text-muted mt-1">
+                  <div class="text-[15px] text-muted mt-1">
                     Growth trajectory over
                     <template v-if="balanceOverTimePeriod === '1M'">
                       the last month

@@ -14,7 +14,7 @@
     >
       <template #title>
         <div class="flex items-center gap-2 min-w-0">
-          <span class="truncate">{{ accountQuery.data.name }}</span>
+          <span class="text-balance">{{ accountQuery.data.name }}</span>
           <UBadge
             v-if="accountQuery.data.closed_date != null"
             variant="subtle"
@@ -62,7 +62,7 @@
             variant="subtle"
             :ui="{
               title: 'text-muted text-sm whitespace-nowrap',
-              description: 'text-xl font-bold text-default text-pretty'
+              description: 'text-xl font-bold text-default text-balance'
             }"
           />
 
@@ -119,7 +119,7 @@
             <template #description>
               <div
                 v-if="accountQuery.data.monthly_change_minor !== 0"
-                class="text-xl font-bold"
+                class="text-xl font-bold whitespace-nowrap"
                 :class="accountQuery.data.monthly_change_minor > 0 ? 'text-success' : 'text-error'"
               >
                 {{ formatCurrencyMinor(accountQuery.data.monthly_change_minor, accountQuery.data.currency_code, { signDisplay: "always" }) }}
@@ -173,10 +173,10 @@
             <template #body>
               <div class="flex flex-row items-center justify-between">
                 <div>
-                  <div class="text-base text-pretty font-semibold text-highlighted">
+                  <div class="text-base font-semibold text-highlighted">
                     Balance Over Time
                   </div>
-                  <div class="text-[15px] text-pretty text-muted mt-1">
+                  <div class="text-[15px] text-muted mt-1">
                     Growth trajectory over
                     <template v-if="balanceOverTimePeriod === '1M'">
                       the last month
@@ -246,10 +246,10 @@
             <template #body>
               <div class="flex flex-row items-center justify-between">
                 <div>
-                  <div class="text-base text-pretty font-semibold text-highlighted">
+                  <div class="text-base font-semibold text-highlighted">
                     Balances
                   </div>
-                  <div class="text-[15px] text-pretty text-muted mt-1">
+                  <div class="text-[15px] text-muted mt-1">
                     {{ balancesDescription }}
                   </div>
                 </div>
