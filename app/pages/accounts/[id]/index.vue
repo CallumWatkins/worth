@@ -165,6 +165,7 @@
         <template v-else>
           <UPageCard
             :ui="{
+              container: 'min-w-0',
               body: 'w-full',
               spotlight: 'bg-default/95'
             }"
@@ -228,7 +229,7 @@
               </div>
             </div>
 
-            <div v-else ref="balanceOverTimeChartFrame" class="h-[300px] w-full">
+            <div v-else ref="balanceOverTimeChartFrame" class="h-[300px] w-full min-w-0">
               <VChart
                 v-if="balanceOverTimeChartFrameWidth > 0"
                 :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data.length}`"

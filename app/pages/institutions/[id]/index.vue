@@ -46,7 +46,8 @@
         <UPageCard
           v-else
           :ui="{
-            body: 'w-full'
+            body: 'w-full',
+            container: 'grid'
           }"
         >
           <template #body>

@@ -207,6 +207,7 @@
             spotlight
             :ui="{
               body: 'w-full',
+              container: 'grid',
               spotlight: 'bg-default/95'
             }"
           >
