@@ -8,6 +8,13 @@ use super::{
     SnapshotImportCandidate, SnapshotImportDuplicateDatePolicy, SnapshotImportValidationIssue,
     issue,
 };
+use crate::contracts::BALANCE_MINOR_ABS_MAX;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParseAmountMinorError {
+    Invalid,
+    TooLarge,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CsvSnapshotImportSourceInput {
@@ -532,7 +539,8 @@ fn parse_candidate(
         options.timestamp_missing_timezone_policy,
         &options.timestamp_missing_timezone,
     );
-    let balance_minor = parse_amount_minor(&raw_amount, options.balance_format);
+    let balance_minor_result = parse_amount_minor_result(&raw_amount, options.balance_format);
+    let balance_minor = balance_minor_result.ok();
     let blank_amount = raw_amount.trim().is_empty();
     let mut issues = Vec::new();
 
@@ -547,6 +555,8 @@ fn parse_candidate(
             CsvSnapshotImportBlankAmountPolicy::Zero => {}
             CsvSnapshotImportBlankAmountPolicy::Error => issues.push("Missing amount".to_string()),
         }
+    } else if matches!(balance_minor_result, Err(ParseAmountMinorError::TooLarge)) {
+        issues.push("Balance is too large".to_string());
     } else if balance_minor.is_none() {
         issues.push("Balance does not match the selected format".to_string());
     }
@@ -717,20 +727,27 @@ fn date_formats() -> Vec<CsvSnapshotImportDateFormat> {
 }
 
 fn parse_amount_minor(raw: &str, format: CsvSnapshotImportBalanceFormat) -> Option<i64> {
+    parse_amount_minor_result(raw, format).ok()
+}
+
+fn parse_amount_minor_result(
+    raw: &str,
+    format: CsvSnapshotImportBalanceFormat,
+) -> Result<i64, ParseAmountMinorError> {
     let (amount, negative) = normalize_amount_text(raw)?;
     let (thousands_separator, decimal_separator) = match format {
         CsvSnapshotImportBalanceFormat::ThousandsCommaDecimalDot => (',', '.'),
         CsvSnapshotImportBalanceFormat::ThousandsDotDecimalComma => ('.', ','),
     };
     let mut parts = amount.split(decimal_separator);
-    let integer_part = parts.next()?;
+    let integer_part = parts.next().ok_or(ParseAmountMinorError::Invalid)?;
     let decimal_part = parts.next();
     if parts.next().is_some() || integer_part.is_empty() {
-        return None;
+        return Err(ParseAmountMinorError::Invalid);
     }
 
     if !valid_integer_part(integer_part, thousands_separator) {
-        return None;
+        return Err(ParseAmountMinorError::Invalid);
     }
 
     let cents = match decimal_part {
@@ -739,9 +756,11 @@ fn parse_amount_minor(raw: &str, format: CsvSnapshotImportBalanceFormat) -> Opti
                 && !part.is_empty()
                 && part.chars().all(|ch| ch.is_ascii_digit()) =>
         {
-            part.parse::<i64>().ok()? * if part.len() == 1 { 10 } else { 1 }
+            part.parse::<i64>()
+                .map_err(|_| ParseAmountMinorError::Invalid)?
+                * if part.len() == 1 { 10 } else { 1 }
         }
-        Some(_) => return None,
+        Some(_) => return Err(ParseAmountMinorError::Invalid),
         None => 0,
     };
     let units = integer_part
@@ -749,33 +768,39 @@ fn parse_amount_minor(raw: &str, format: CsvSnapshotImportBalanceFormat) -> Opti
         .filter(|ch| *ch != thousands_separator)
         .collect::<String>()
         .parse::<i64>()
-        .ok()?;
-    let amount_minor = units.checked_mul(100)?.checked_add(cents)?;
+        .map_err(|_| ParseAmountMinorError::TooLarge)?;
+    let amount_minor = units
+        .checked_mul(100)
+        .and_then(|units_minor| units_minor.checked_add(cents))
+        .ok_or(ParseAmountMinorError::TooLarge)?;
+    if amount_minor > BALANCE_MINOR_ABS_MAX {
+        return Err(ParseAmountMinorError::TooLarge);
+    }
 
-    Some(if negative {
+    Ok(if negative {
         -amount_minor
     } else {
         amount_minor
     })
 }
 
-fn normalize_amount_text(raw: &str) -> Option<(&str, bool)> {
+fn normalize_amount_text(raw: &str) -> Result<(&str, bool), ParseAmountMinorError> {
     let mut value = raw.trim();
     if value.is_empty() {
-        return None;
+        return Err(ParseAmountMinorError::Invalid);
     }
 
     let negative_parentheses = value.starts_with('(') || value.ends_with(')');
     if negative_parentheses {
         if !value.starts_with('(') || !value.ends_with(')') {
-            return None;
+            return Err(ParseAmountMinorError::Invalid);
         }
         value = value[1..value.len() - 1].trim();
         if value.contains('(') || value.contains(')') {
-            return None;
+            return Err(ParseAmountMinorError::Invalid);
         }
     } else if value.contains('(') || value.contains(')') {
-        return None;
+        return Err(ParseAmountMinorError::Invalid);
     }
 
     let mut negative_sign = false;
@@ -822,10 +847,10 @@ fn normalize_amount_text(raw: &str) -> Option<(&str, bool)> {
             .any(|ch| !ch.is_ascii_digit() && !matches!(ch, '.' | ','))
         || (negative_parentheses && negative_sign)
     {
-        return None;
+        return Err(ParseAmountMinorError::Invalid);
     }
 
-    Some((value, negative_parentheses || negative_sign))
+    Ok((value, negative_parentheses || negative_sign))
 }
 
 fn strip_currency_prefix(value: &str) -> Option<&str> {
@@ -1012,6 +1037,18 @@ mod tests {
             rows[3].issues,
             vec!["Balance does not match the selected format"]
         );
+    }
+
+    #[test]
+    fn candidates_reports_too_large_amount_values() {
+        let rows = candidates(
+            &source("date,balance\n2026-01-09,\"90,071,992,547,409.92\"\n", true),
+            &options(),
+        )
+        .unwrap();
+
+        assert_eq!(rows[0].balance_minor, None);
+        assert_eq!(rows[0].issues, vec!["Balance is too large"]);
     }
 
     #[test]

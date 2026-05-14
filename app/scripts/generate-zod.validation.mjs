@@ -18,6 +18,32 @@ function zodErrorObject(message) {
   return `{ error: ${JSON.stringify(message)} }`;
 }
 
+function codePointMinLengthRefinement(length, message) {
+  return `
+    .refine((value) => {
+      let length = 0;
+      for (const _character of value) {
+        length += 1;
+        if (length >= ${length}) return true;
+      }
+      return false;
+    }, ${zodErrorObject(message)})
+  `.replace(/\s+/g, " ").trim();
+}
+
+function codePointMaxLengthRefinement(length, message) {
+  return `
+    .refine((value) => {
+      let length = 0;
+      for (const _character of value) {
+        length += 1;
+        if (length > ${length}) return false;
+      }
+      return true;
+    }, ${zodErrorObject(message)})
+  `.replace(/\s+/g, " ").trim();
+}
+
 function zodTypeErrorParam(messages) {
   const required = messages.required;
   const invalid = messages.type ?? messages.invalid ?? required;
@@ -106,11 +132,11 @@ function applyValidationMessages(expression, schemaNode) {
   }
 
   if (isStringSchema && (messages.minLength || messages.blank || messages.required)) {
-    out = out.replace(/\.min\((\d+)\)/g, `.min($1, ${zodErrorObject(messages.minLength ?? messages.blank ?? messages.required)})`);
+    out = out.replace(/\.min\((\d+)\)/g, (_match, length) => codePointMinLengthRefinement(length, messages.minLength ?? messages.blank ?? messages.required));
   }
 
   if (isStringSchema && messages.maxLength) {
-    out = out.replace(/\.max\((\d+)\)/g, `.max($1, ${zodErrorObject(messages.maxLength)})`);
+    out = out.replace(/\.max\((\d+)\)/g, (_match, length) => codePointMaxLengthRefinement(length, messages.maxLength));
   }
 
   if (isArraySchema && (messages.minItems || messages.required)) {
@@ -119,6 +145,10 @@ function applyValidationMessages(expression, schemaNode) {
 
   if (messages.minimum) {
     out = out.replace(/\.gte\((-?\d+)\)/g, `.gte($1, ${zodErrorObject(messages.minimum)})`);
+  }
+
+  if (messages.maximum) {
+    out = out.replace(/\.lte\((-?\d+)\)/g, `.lte($1, ${zodErrorObject(messages.maximum)})`);
   }
 
   return out;

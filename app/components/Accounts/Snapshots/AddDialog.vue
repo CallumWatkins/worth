@@ -55,7 +55,7 @@
                 </td>
 
                 <td class="p-3">
-                  <UFormField :error="rowStates[index]!.showAmountErrorState ? true : undefined">
+                  <UFormField :error="rowStates[index]!.amountError || undefined">
                     <div :ref="setNumericFieldRef(row.key, 'amount')">
                       <UInputNumber
                         :model-value="amountModelValue(row)"
@@ -63,8 +63,8 @@
                         :increment="false"
                         :decrement="false"
                         :disabled="createSnapshots.isPending"
-                        :color="rowStates[index]!.showAmountErrorState ? 'error' : 'neutral'"
-                        :highlight="rowStates[index]!.showAmountErrorState"
+                        :color="rowStates[index]!.amountError != null ? 'error' : 'neutral'"
+                        :highlight="rowStates[index]!.amountError != null"
                         :format-options="{ style: 'currency', currency: props.currencyCode, currencySign: 'standard' }"
                         class="w-full"
                         @input="onRowAmountInput(index, $event)"
@@ -91,7 +91,7 @@
                 </td>
 
                 <td class="p-3">
-                  <UFormField :error="rowStates[index]!.showChangeErrorState ? true : undefined">
+                  <UFormField :error="rowStates[index]!.changeError || undefined">
                     <div :ref="setNumericFieldRef(row.key, 'change')">
                       <UInputNumber
                         :model-value="changeModelValue(row, index)"
@@ -99,8 +99,8 @@
                         :increment="false"
                         :decrement="false"
                         :disabled="createSnapshots.isPending || rowStates[index]!.previous == null"
-                        :color="rowStates[index]!.showChangeErrorState ? 'error' : 'neutral'"
-                        :highlight="rowStates[index]!.showChangeErrorState"
+                        :color="rowStates[index]!.changeError != null ? 'error' : 'neutral'"
+                        :highlight="rowStates[index]!.changeError != null"
                         :format-options="{ style: 'currency', currency: props.currencyCode, currencySign: 'standard', signDisplay: 'exceptZero' }"
                         class="w-full"
                         @input="onRowChangeInput(index, $event)"

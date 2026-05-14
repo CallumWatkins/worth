@@ -101,15 +101,15 @@
             :description="`This snapshot is after the account closed date of ${formatShortDate(props.closedDate)}.`"
           />
 
-          <UFormField label="Balance" :error="showAmountErrorState ? true : undefined">
+          <UFormField label="Balance" :error="amountError || undefined">
             <UInputNumber
               v-model="state.amount"
               :step="0.01"
               :increment="false"
               :decrement="false"
               :disabled="updateSnapshot.isPending"
-              :color="showAmountErrorState ? 'error' : 'neutral'"
-              :highlight="showAmountErrorState"
+              :color="amountError != null ? 'error' : 'neutral'"
+              :highlight="amountError != null"
               :format-options="{ style: 'currency', currency: props.currencyCode, currencySign: 'standard' }"
               class="w-full"
               @blur="amountTouched = true"
@@ -224,7 +224,11 @@ const dateError = computed(() => {
   return null;
 });
 
-const showAmountErrorState = computed(() => amountTouched.value && state.amount == null);
+const amountError = computed(() => {
+  if (amountTouched.value && state.amount == null) return "Enter a balance";
+  if (state.amount != null && amountMinor.value == null) return "Balance is too large";
+  return null;
+});
 
 const overwriteError = computed(() => {
   if (conflictingSnapshot.value == null || state.overwriteExisting) return null;
@@ -268,6 +272,7 @@ async function onSubmit() {
     || props.snapshotId == null
     || dateError.value != null
     || overwriteError.value != null
+    || amountError.value != null
     || amountMinor.value == null
   ) {
     captureAnalyticsEvent("account:snapshot_update_fail", {

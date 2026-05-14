@@ -1,13 +1,13 @@
 CREATE TABLE institutions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE
+  name TEXT NOT NULL UNIQUE CHECK (LENGTH(name) <= 80)
 );
 
 CREATE TABLE account_types (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
 
 CREATE TABLE accounts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
+  name TEXT NOT NULL CHECK (LENGTH(name) <= 80),
   institution_id INTEGER NOT NULL REFERENCES institutions (id) ON DELETE CASCADE,
   type_id INTEGER NOT NULL REFERENCES account_types (id) ON DELETE CASCADE,
   currency_code TEXT NOT NULL,
@@ -23,7 +23,9 @@ CREATE TABLE account_balance_snapshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   account_id INTEGER NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
   balance_date TEXT NOT NULL,
-  balance_minor INTEGER NOT NULL,
+  balance_minor INTEGER NOT NULL CHECK (
+    balance_minor BETWEEN -99999999999999 AND 99999999999999
+  ),
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (account_id, balance_date)
 );

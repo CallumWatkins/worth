@@ -5,7 +5,15 @@
   "properties": {
     "balance_minor": {
       "type": "integer",
-      "format": "int64"
+      "format": "int64",
+      "maximum": 99999999999999,
+      "minimum": -99999999999999,
+      "x-validation": {
+        "maximum": "Balance is too large",
+        "minimum": "Balance is too large",
+        "required": "Enter a balance",
+        "type": "Enter a balance"
+      }
     },
     "date": {
       "type": "string",

@@ -247,23 +247,27 @@ pub struct AppSettingsUpdateInput {
     pub theme: Option<ThemePreference>,
 }
 
+pub(crate) const BALANCE_MINOR_ABS_MAX: i64 = 99_999_999_999_999;
+
 const INSTITUTION_NAME_REQUIRED: &str = "Enter an institution name";
-const INSTITUTION_NAME_MAX_LENGTH: &str = "Institution name must be 120 characters or fewer";
+const INSTITUTION_NAME_MAX_LENGTH: &str = "Institution name must be 80 characters or fewer";
 const ACCOUNT_NAME_REQUIRED: &str = "Enter an account name";
-const ACCOUNT_NAME_MAX_LENGTH: &str = "Account name must be 120 characters or fewer";
+const ACCOUNT_NAME_MAX_LENGTH: &str = "Account name must be 80 characters or fewer";
 const INSTITUTION_REQUIRED: &str = "Select or create an institution";
 const ACCOUNT_TYPE_REQUIRED: &str = "Select an account type";
 const CURRENCY_REQUIRED: &str = "Select a currency";
 const ACCOUNT_CLASSIFICATION_REQUIRED: &str = "Select a balance type";
 const SNAPSHOT_REQUIRED: &str = "Add at least one snapshot";
 const SNAPSHOT_SELECTION_REQUIRED: &str = "Select at least one snapshot";
+const BALANCE_REQUIRED: &str = "Enter a balance";
+const BALANCE_TOO_LARGE: &str = "Balance is too large";
 
 #[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct InstitutionUpsertInput {
     #[garde(custom(validate_institution_name))]
     #[schemars(
-        length(min = 1, max = 120),
+        length(min = 1, max = 80),
         pattern(r".*\S.*"),
         extend("x-validation" = ::serde_json::json!({
             "required": INSTITUTION_NAME_REQUIRED,
@@ -309,7 +313,7 @@ pub struct AccountUpsertInput {
     pub institution: InstitutionRef,
     #[garde(custom(validate_account_name))]
     #[schemars(
-        length(min = 1, max = 120),
+        length(min = 1, max = 80),
         pattern(r".*\S.*"),
         extend("x-validation" = ::serde_json::json!({
             "required": ACCOUNT_NAME_REQUIRED,
@@ -353,7 +357,16 @@ pub struct AccountUpsertInput {
 pub struct AccountSnapshotWriteInput {
     #[garde(skip)]
     pub date: NaiveDate,
-    #[garde(skip)]
+    #[garde(custom(validate_balance_minor))]
+    #[schemars(
+        range(min = -99999999999999i64, max = 99999999999999i64),
+        extend("x-validation" = ::serde_json::json!({
+            "required": BALANCE_REQUIRED,
+            "minimum": BALANCE_TOO_LARGE,
+            "maximum": BALANCE_TOO_LARGE,
+            "type": BALANCE_REQUIRED
+        }))
+    )]
     pub balance_minor: i64,
     #[garde(skip)]
     pub overwrite_existing: bool,
@@ -376,7 +389,16 @@ pub struct AccountSnapshotsCreateInput {
 pub struct AccountSnapshotUpdateInput {
     #[garde(skip)]
     pub date: NaiveDate,
-    #[garde(skip)]
+    #[garde(custom(validate_balance_minor))]
+    #[schemars(
+        range(min = -99999999999999i64, max = 99999999999999i64),
+        extend("x-validation" = ::serde_json::json!({
+            "required": BALANCE_REQUIRED,
+            "minimum": BALANCE_TOO_LARGE,
+            "maximum": BALANCE_TOO_LARGE,
+            "type": BALANCE_REQUIRED
+        }))
+    )]
     pub balance_minor: i64,
     #[garde(skip)]
     pub overwrite_existing: bool,
@@ -411,8 +433,16 @@ fn validate_name(value: &str, empty_message: &str, max_length_message: &str) -> 
         return Err(garde::Error::new(empty_message));
     }
 
-    if value.len() > 120 {
+    if value.chars().count() > 80 {
         return Err(garde::Error::new(max_length_message));
+    }
+
+    Ok(())
+}
+
+fn validate_balance_minor(value: &i64, _ctx: &()) -> garde::Result {
+    if !(-BALANCE_MINOR_ABS_MAX..=BALANCE_MINOR_ABS_MAX).contains(value) {
+        return Err(garde::Error::new(BALANCE_TOO_LARGE));
     }
 
     Ok(())
@@ -440,4 +470,71 @@ fn validate_snapshot_ids_non_empty(value: &[i64], _ctx: &()) -> garde::Result {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+    use garde::Validate;
+
+    use super::{
+        AccountSnapshotUpdateInput, AccountSnapshotWriteInput, BALANCE_MINOR_ABS_MAX,
+        BALANCE_TOO_LARGE, InstitutionUpsertInput,
+    };
+
+    #[test]
+    fn snapshot_write_inputs_reject_balances_above_javascript_safe_integer_range() {
+        let input = AccountSnapshotWriteInput {
+            date: date(),
+            balance_minor: BALANCE_MINOR_ABS_MAX + 1,
+            overwrite_existing: false,
+        };
+
+        assert_validation_message(input.validate(), BALANCE_TOO_LARGE);
+    }
+
+    #[test]
+    fn snapshot_update_inputs_reject_balances_below_javascript_safe_integer_range() {
+        let input = AccountSnapshotUpdateInput {
+            date: date(),
+            balance_minor: -BALANCE_MINOR_ABS_MAX - 1,
+            overwrite_existing: false,
+        };
+
+        assert_validation_message(input.validate(), BALANCE_TOO_LARGE);
+    }
+
+    #[test]
+    fn name_lengths_are_counted_as_unicode_scalar_values() {
+        let input = InstitutionUpsertInput {
+            name: "💷".repeat(80),
+        };
+
+        assert!(input.validate().is_ok());
+
+        let input = InstitutionUpsertInput {
+            name: "💷".repeat(81),
+        };
+
+        assert_validation_message(
+            input.validate(),
+            "Institution name must be 80 characters or fewer",
+        );
+    }
+
+    fn assert_validation_message(result: Result<(), garde::error::Report>, message: &str) {
+        let Err(report) = result else {
+            panic!("expected validation error");
+        };
+
+        assert!(
+            report
+                .iter()
+                .any(|(_path, error)| error.to_string() == message)
+        );
+    }
+
+    fn date() -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 1, 9).unwrap()
+    }
 }

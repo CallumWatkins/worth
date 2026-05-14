@@ -27,8 +27,8 @@ interface SnapshotRowState {
   changeMinor: number | null
   changeValue: number | undefined
   sameBalanceWarning: boolean
-  showAmountErrorState: boolean
-  showChangeErrorState: boolean
+  amountError: string | null
+  changeError: string | null
 }
 
 interface UseSnapshotsAddFormParams {
@@ -110,7 +110,8 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
         }
       }
 
-      const amountMinor = convertCurrencyMajorAmountToMinorUnits(effectiveAmount(row));
+      const amountValue = effectiveAmount(row);
+      const amountMinor = convertCurrencyMajorAmountToMinorUnits(amountValue);
       const conflictExisting = row.date === "" ? null : (existingByDate.value.get(row.date) || null);
 
       while (
@@ -130,7 +131,11 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
       const changeMinor = previous == null || amountMinor == null
         ? null
         : amountMinor - previous.balance_minor;
-      const showAmountErrorState = row.amountTouched && row.amount == null;
+      const amountError = row.amountTouched && amountValue == null
+        ? "Enter a balance"
+        : amountValue != null && amountMinor == null
+          ? "Balance is too large"
+          : null;
 
       if (row.date !== "" && amountMinor != null) {
         previousSnapshot = {
@@ -150,8 +155,8 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
         changeMinor,
         changeValue: changeMinor == null ? undefined : convertCurrencyMinorUnitsToMajorAmount(changeMinor),
         sameBalanceWarning: previous != null && amountMinor != null && amountMinor === previous.balance_minor,
-        showAmountErrorState,
-        showChangeErrorState: previous != null && showAmountErrorState
+        amountError,
+        changeError: previous != null ? amountError : null
       };
     });
   });
@@ -198,7 +203,7 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
     const analyticsProperties = {
       snapshot_count: activeRowCount.value,
       overwrite_count: activeRowStates.filter((row) => row.conflictExisting != null).length,
-      invalid_snapshot_count: activeRowStates.filter((row) => row.dateError != null || row.amountMinor == null).length,
+      invalid_snapshot_count: activeRowStates.filter((row) => row.dateError != null || row.amountError != null).length,
       has_overwrites: activeRowStates.some((row) => row.conflictExisting != null),
       has_overwrite_confirmation: overwriteExistingConfirmed.value
     };

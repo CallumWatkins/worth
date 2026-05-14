@@ -44,12 +44,12 @@
     },
     "name": {
       "type": "string",
-      "maxLength": 120,
+      "maxLength": 80,
       "minLength": 1,
       "pattern": ".*\\S.*",
       "x-validation": {
         "blank": "Enter an account name",
-        "maxLength": "Account name must be 120 characters or fewer",
+        "maxLength": "Account name must be 80 characters or fewer",
         "required": "Enter an account name",
         "type": "Enter an account name"
       }
@@ -147,12 +147,12 @@
       "properties": {
         "name": {
           "type": "string",
-          "maxLength": 120,
+          "maxLength": 80,
           "minLength": 1,
           "pattern": ".*\\S.*",
           "x-validation": {
             "blank": "Enter an institution name",
-            "maxLength": "Institution name must be 120 characters or fewer",
+            "maxLength": "Institution name must be 80 characters or fewer",
             "required": "Enter an institution name",
             "type": "Enter an institution name"
           }

@@ -14,10 +14,15 @@ function supportedCurrencyValuesFromSchema(): CurrencyCode[] {
 }
 
 export const supportedCurrencyCodes = supportedCurrencyValuesFromSchema();
+export const CURRENCY_MINOR_ABS_MAX = 99_999_999_999_999;
 
 export function convertCurrencyMajorAmountToMinorUnits(amount: number | undefined) {
   if (amount == null || !Number.isFinite(amount)) return null;
-  return Math.round(amount * 100);
+
+  const minor = Math.round(amount * 100);
+  if (Math.abs(minor) > CURRENCY_MINOR_ABS_MAX) return null;
+
+  return minor;
 }
 
 export function convertCurrencyMinorUnitsToMajorAmount(minor: number) {
