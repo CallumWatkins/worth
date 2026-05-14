@@ -8,6 +8,9 @@ export default defineAppConfig({
       slots: {
         base: "cursor-pointer"
       }
+    },
+    pageBody: {
+      base: "pb-12"
     }
   }
 });
