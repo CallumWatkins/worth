@@ -17,3 +17,15 @@ Stable download platform IDs are `windows`, `macos-aarch64`, `macos-x86_64`, and
 ```sh
 bunx wrangler dev --cwd workers/releases
 ```
+
+## Deployment
+
+Deployment is handled by the `deploy-releases-worker` GitHub Actions workflow when changes are merged into the master branch.
+
+Required Cloudflare API token (`CLOUDFLARE_API_TOKEN`) permissions:
+- Account / Workers Scripts Write
+- Account / Account Settings Read
+- Zone / Workers Routes Write
+
+Required GitHub token (`RELEASES_WORKER_GITHUB_TOKEN`) permissions:
+- Repository / Contents Read
