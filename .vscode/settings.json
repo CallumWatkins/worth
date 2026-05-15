@@ -52,5 +52,9 @@
   "SQL-Formatter-VSCode.keywordCase": "upper",
   "SQL-Formatter-VSCode.indentStyle": "standard",
   "SQL-Formatter-VSCode.dialect": "sqlite",
-  "rust-analyzer.check.command": "clippy"
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.linkedProjects": [
+    "src-tauri/Cargo.toml",
+    "workers/releases/Cargo.toml"
+  ]
 }

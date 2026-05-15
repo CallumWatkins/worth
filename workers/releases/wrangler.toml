@@ -1,0 +1,11 @@
+name = "worth-releases"
+main = "build/index.js"
+compatibility_date = "2026-05-14"
+workers_dev = false
+
+[[routes]]
+pattern = "releases.useworth.app"
+custom_domain = true
+
+[build]
+command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
