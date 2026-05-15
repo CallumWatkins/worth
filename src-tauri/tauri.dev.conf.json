@@ -1,5 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Worth Dev",
-  "identifier": "app.useworth.dev"
+  "identifier": "app.useworth.dev",
+  "bundle": {
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "updater": null
+  }
 }
