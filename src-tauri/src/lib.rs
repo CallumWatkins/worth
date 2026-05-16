@@ -7,6 +7,7 @@ pub mod contracts;
 mod db;
 mod imports;
 mod state;
+mod updates;
 
 pub use worth_macros::export_schema;
 
@@ -18,6 +19,7 @@ pub fn run() {
     let specta_builder = api::specta_builder();
     let mut builder = tauri::Builder::default()
         .plugin(prevent_default())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init());
 
     #[cfg(desktop)]
@@ -29,20 +31,29 @@ pub fn run() {
                     let _ = window.set_focus();
                 }
             }))
-            .plugin(tauri_plugin_window_state::Builder::default().build())
-            .plugin(tauri_plugin_updater::Builder::new().build());
+            .plugin(tauri_plugin_window_state::Builder::default().build());
+
+        #[cfg(not(debug_assertions))]
+        {
+            builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        }
     }
 
     builder
         .setup(|app| {
             let handle = app.handle().clone();
+            let updates = updates::AppUpdateManager::new(app.package_info().version.to_string());
             tauri::async_runtime::block_on(async move {
                 let pool = db::init_pool(&handle).await?;
                 sqlx::migrate!("./db/migrations")
                     .run(&pool)
                     .await
                     .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!(e)))?;
-                handle.manage(AppState { pool });
+                handle.manage(AppState {
+                    pool,
+                    updates: updates.clone(),
+                });
+                updates.check_on_startup(handle.clone());
                 Ok::<(), tauri::Error>(())
             })?;
             Ok(())

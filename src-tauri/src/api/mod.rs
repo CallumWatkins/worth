@@ -6,7 +6,7 @@ use chrono::{Duration, Local, NaiveDate, Utc};
 use garde::Validate;
 use sqlx::SqlitePool;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::contracts::{
     AccountClassification, AccountSnapshotUpdateInput, AccountSnapshotsCreateInput,
@@ -19,6 +19,7 @@ use crate::imports::snapshots::{
     SnapshotImportSourceInput, SnapshotImportValidationIssue,
 };
 use crate::state::AppState;
+use crate::updates::AppUpdateStateDto;
 use crate::{db, db::AccountListRow};
 
 #[derive(Debug, Error, Serialize, Deserialize, Type)]
@@ -243,6 +244,32 @@ pub async fn settings_update(
         .await
         .map_err(|_| ApiError::Db)?;
     app_settings_dto_from_row(row)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn app_updates_state_get(
+    state: State<'_, AppState>,
+) -> Result<AppUpdateStateDto, ApiError> {
+    Ok(state.updates.state())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn app_updates_check(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<AppUpdateStateDto, ApiError> {
+    Ok(state.updates.check_for_updates(app).await)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn app_updates_install_pending_and_restart(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<AppUpdateStateDto, ApiError> {
+    Ok(state.updates.install_pending_and_restart(app).await)
 }
 
 #[tauri::command]
@@ -1746,6 +1773,9 @@ pub(crate) fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         .commands(collect_commands![
             settings_get,
             settings_update,
+            app_updates_state_get,
+            app_updates_check,
+            app_updates_install_pending_and_restart,
             accounts_list,
             accounts_create,
             accounts_update,

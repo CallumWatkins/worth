@@ -8,6 +8,9 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 export const commands = {
 	settingsGet: () => typedError<AppSettingsDto, ApiError>(__TAURI_INVOKE("settings_get")),
 	settingsUpdate: (input: AppSettingsUpdateInput) => typedError<AppSettingsDto, ApiError>(__TAURI_INVOKE("settings_update", { input })),
+	appUpdatesStateGet: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_state_get")),
+	appUpdatesCheck: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_check")),
+	appUpdatesInstallPendingAndRestart: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_install_pending_and_restart")),
 	accountsList: () => typedError<AccountDto[], ApiError>(__TAURI_INVOKE("accounts_list")),
 	accountsCreate: (input: AccountUpsertInput) => typedError<CreatedIdDto, ApiError>(__TAURI_INVOKE("accounts_create", { input })),
 	accountsUpdate: (accountId: number, input: AccountUpsertInput) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_update", { accountId, input })),
@@ -127,6 +130,76 @@ export type AppSettingsUpdateInput = {
 	display_locale?: AppLocaleCode | null,
 	theme?: ThemePreference | null,
 };
+
+/**  Stable error categories used by the frontend for friendly update messages. */
+export type AppUpdateErrorCodeDto = 
+/**  Updater configuration is missing or invalid. */
+"configuration" | 
+/**  The update manifest could not be parsed or did not match the expected format. */
+"manifest" | 
+/**  The update service could not be reached or the release was not found. */
+"network" | 
+/**  The downloaded update could not be authenticated. */
+"signature" | 
+/**  The platform installer or file replacement step failed. */
+"install" | 
+/**  The current platform or target is not supported for updater operations. */
+"unsupported" | 
+/**  Install was requested without a downloaded pending update. */
+"no_pending_update" | 
+/**  Fallback for updater errors that do not fit a known bucket. */
+"unknown";
+
+export type AppUpdateMetadataDto = {
+	version: string,
+	current_version: string,
+	target: string,
+	body: string | null,
+	date: string | null,
+};
+
+/**  Update operation phase that produced an error. */
+export type AppUpdatePhaseDto = "checking" | "downloading" | "installing";
+
+/**
+ *  Complete snapshot of Worth's update system.
+ * 
+ *  This is returned from update IPC commands and emitted over
+ *  `worth://updates/state` whenever the update state changes.
+ */
+export type AppUpdateStateDto = {
+	/**  Version of the currently running app. */
+	current_version: string,
+	/**  Current state-machine variant for checking, downloading, installing, or errors. */
+	status: AppUpdateStatusDto,
+	/**  Timestamp of the most recent attempted/completed check, when known. */
+	checked_at: string | null,
+	/**  Timestamp of the most recent state change. */
+	updated_at: string,
+	/**  Monotonic counter incremented on every state change. */
+	revision: number,
+	/**  Whether this installation should expose update actions. */
+	supports_updates: boolean,
+};
+
+/**  Update state machine exposed to the frontend. */
+export type AppUpdateStatusDto = 
+/**  No check has happened in this app session. */
+{ kind: "idle" } | 
+/**  Worth is checking whether a newer version is available. */
+{ kind: "checking" } | 
+/**  A check completed and no newer version was available. */
+{ kind: "up_to_date" } | 
+/**  An update is being downloaded. */
+{ kind: "downloading"; update: AppUpdateMetadataDto; downloaded_bytes: number; total_bytes: number | null } | 
+/**  A downloaded update is being installed. */
+{ kind: "installing"; update: AppUpdateMetadataDto } | 
+/**  An update was downloaded and is pending installation. */
+{ kind: "downloaded"; update: AppUpdateMetadataDto } | 
+/**  An update was installed and a restart is needed or in progress. */
+{ kind: "installed"; update: AppUpdateMetadataDto } | 
+/**  A check, download, or install step failed. */
+{ kind: "error"; phase: AppUpdatePhaseDto; code: AppUpdateErrorCodeDto; message: string; update: AppUpdateMetadataDto | null };
 
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX";
 

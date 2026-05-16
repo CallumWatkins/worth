@@ -20,6 +20,9 @@ export const getRedactedQueryKey = (queryKey: readonly unknown[]): unknown[] => 
 };
 
 export const queryKeys = {
+  appUpdates: {
+    state: () => ["appUpdates", "state"] as const
+  },
   settings: {
     get: () => ["settings", "get"] as const
   },

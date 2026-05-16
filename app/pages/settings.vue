@@ -169,6 +169,42 @@
               Donate on Ko-fi
             </UButton>
           </UFormField>
+
+          <div class="space-y-2">
+            <UFormField
+              :label="updateRow.title"
+              :description="updateRow.description"
+              orientation="horizontal"
+              class="items-center gap-25"
+            >
+              <div class="flex min-w-40 justify-end">
+                <template v-if="updateRow.control.kind === 'progress'">
+                  <UProgress
+                    v-if="updateRow.control.value != null"
+                    :model-value="updateRow.control.value"
+                    class="w-40"
+                  />
+                  <UProgress
+                    v-else
+                    class="w-40"
+                  />
+                </template>
+
+                <UButton
+                  v-else-if="updateRow.control.kind === 'button'"
+                  v-bind="updateRow.control.props"
+                  class="whitespace-nowrap"
+                />
+              </div>
+            </UFormField>
+
+            <p
+              v-if="updateRow.error"
+              class="text-sm text-error"
+            >
+              {{ updateRow.error }}
+            </p>
+          </div>
         </div>
       </UPageCard>
     </UPageBody>
@@ -191,6 +227,7 @@ const {
   updateSettings,
   updateSetting
 } = useSettingsManager();
+const { updateRow } = useAppUpdateRow();
 
 const saveError = ref<string | null>(null);
 const pendingField = ref<SettingsField | null>(null);
