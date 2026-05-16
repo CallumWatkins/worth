@@ -14,8 +14,7 @@ export function useAppUpdatesManager() {
 
   const stateQuery = proxyRefs(useQuery({
     queryKey: queryKeys.appUpdates.state(),
-    queryFn: api.appUpdatesStateGet,
-    staleTime: Infinity
+    queryFn: api.appUpdatesStateGet
   }));
 
   function setState(state: AppUpdateStateDto) {

@@ -30,7 +30,7 @@ export default defineNuxtPlugin({
       }),
       defaultOptions: {
         queries: {
-          staleTime: 30_000,
+          staleTime: Infinity,
           gcTime: 5 * 60_000,
           retry: false
         }

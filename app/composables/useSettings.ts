@@ -35,8 +35,7 @@ export function useSettingsManager() {
 
   const settingsQuery = proxyRefs(useQuery({
     queryKey: queryKeys.settings.get(),
-    queryFn: api.settingsGet,
-    staleTime: Infinity
+    queryFn: api.settingsGet
   }));
 
   watch(() => settingsQuery.data, (data) => {
