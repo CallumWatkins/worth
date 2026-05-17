@@ -117,6 +117,9 @@ Use the `bumpp` interactive CLI to bump version numbers
 $ bun run bump
 ```
 
+### Release
+See `docs/releases.md` for the signed tag release process.
+
 ## Terminology
 - **Institution**: A provider that groups related accounts together, e.g. a bank, broker, credit card company, or pension provider.
 - **Account**: A financial account held at an institution, e.g. a current account, savings account, ISA, pension, credit card, or loan.
