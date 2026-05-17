@@ -11,8 +11,9 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 
 pub const APP_UPDATE_STATE_EVENT: &str = "worth://updates/state";
 
-#[derive(Clone, Copy)]
-enum AppUpdateCheckMode {
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum AppUpdateCheckModeDto {
     Startup,
     User,
 }
@@ -44,23 +45,34 @@ pub enum AppUpdateStatusDto {
     /// No check has happened in this app session.
     Idle,
     /// Worth is checking whether a newer version is available.
-    Checking,
+    Checking { check_mode: AppUpdateCheckModeDto },
     /// A check completed and no newer version was available.
-    UpToDate,
+    UpToDate { check_mode: AppUpdateCheckModeDto },
     /// An update is being downloaded.
     Downloading {
+        check_mode: AppUpdateCheckModeDto,
         update: AppUpdateMetadataDto,
         downloaded_bytes: u64,
         total_bytes: Option<u64>,
     },
     /// A downloaded update is being installed.
-    Installing { update: AppUpdateMetadataDto },
+    Installing {
+        check_mode: AppUpdateCheckModeDto,
+        update: AppUpdateMetadataDto,
+    },
     /// An update was downloaded and is pending installation.
-    Downloaded { update: AppUpdateMetadataDto },
+    Downloaded {
+        check_mode: AppUpdateCheckModeDto,
+        update: AppUpdateMetadataDto,
+    },
     /// An update was installed and a restart is needed or in progress.
-    Installed { update: AppUpdateMetadataDto },
+    Installed {
+        check_mode: AppUpdateCheckModeDto,
+        update: AppUpdateMetadataDto,
+    },
     /// A check, download, or install step failed.
     Error {
+        check_mode: Option<AppUpdateCheckModeDto>,
         phase: AppUpdatePhaseDto,
         code: AppUpdateErrorCodeDto,
         message: String,
@@ -123,6 +135,7 @@ struct PendingAppUpdate {
     update: Box<Update>,
     bytes: Vec<u8>,
     metadata: AppUpdateMetadataDto,
+    check_mode: AppUpdateCheckModeDto,
 }
 
 struct BusyGuard {
@@ -170,20 +183,20 @@ impl AppUpdateManager {
         let updates = self.clone();
         tauri::async_runtime::spawn(async move {
             let _ = updates
-                .check_for_updates_inner(app, AppUpdateCheckMode::Startup)
+                .check_for_updates_inner(app, AppUpdateCheckModeDto::Startup)
                 .await;
         });
     }
 
     pub async fn check_for_updates(&self, app: AppHandle) -> AppUpdateStateDto {
-        self.check_for_updates_inner(app, AppUpdateCheckMode::User)
+        self.check_for_updates_inner(app, AppUpdateCheckModeDto::User)
             .await
     }
 
     async fn check_for_updates_inner(
         &self,
         app: AppHandle,
-        mode: AppUpdateCheckMode,
+        mode: AppUpdateCheckModeDto,
     ) -> AppUpdateStateDto {
         let Some(_guard) = self.begin_operation() else {
             return self.state();
@@ -193,16 +206,23 @@ impl AppUpdateManager {
             .lock()
             .expect("update state lock poisoned")
             .pending_update = None;
-        self.set_status(&app, AppUpdateStatusDto::Checking, None);
+        self.set_status(
+            &app,
+            AppUpdateStatusDto::Checking { check_mode: mode },
+            None,
+        );
         let checked_at = timestamp();
 
         if !self.state().supports_updates {
-            return self.set_error(
+            return self.set_status(
                 &app,
-                AppUpdatePhaseDto::Checking,
-                AppUpdateErrorCodeDto::Unsupported,
-                "Automatic updates are not supported on this platform.",
-                None,
+                AppUpdateStatusDto::Error {
+                    check_mode: Some(mode),
+                    phase: AppUpdatePhaseDto::Checking,
+                    code: AppUpdateErrorCodeDto::Unsupported,
+                    message: "Automatic updates are not supported on this platform.".to_owned(),
+                    update: None,
+                },
                 Some(checked_at),
             );
         }
@@ -214,6 +234,7 @@ impl AppUpdateManager {
                     &app,
                     AppUpdatePhaseDto::Checking,
                     &error,
+                    Some(mode),
                     None,
                     Some(checked_at),
                 );
@@ -222,11 +243,16 @@ impl AppUpdateManager {
 
         match updater.check().await {
             Ok(Some(update)) => self.download_update(&app, update, checked_at, mode).await,
-            Ok(None) => self.set_status(&app, AppUpdateStatusDto::UpToDate, Some(checked_at)),
+            Ok(None) => self.set_status(
+                &app,
+                AppUpdateStatusDto::UpToDate { check_mode: mode },
+                Some(checked_at),
+            ),
             Err(error) => self.set_updater_error(
                 &app,
                 AppUpdatePhaseDto::Checking,
                 &error,
+                Some(mode),
                 None,
                 Some(checked_at),
             ),
@@ -246,12 +272,15 @@ impl AppUpdateManager {
             .take()
         {
             Some(pending_update) => self.install_pending_update(&app, pending_update, true),
-            None => self.set_error(
+            None => self.set_status(
                 &app,
-                AppUpdatePhaseDto::Installing,
-                AppUpdateErrorCodeDto::NoPendingUpdate,
-                "There is no downloaded update ready to install.",
-                None,
+                AppUpdateStatusDto::Error {
+                    check_mode: None,
+                    phase: AppUpdatePhaseDto::Installing,
+                    code: AppUpdateErrorCodeDto::NoPendingUpdate,
+                    message: "There is no downloaded update ready to install.".to_owned(),
+                    update: None,
+                },
                 None,
             ),
         }
@@ -271,7 +300,7 @@ impl AppUpdateManager {
         app: &AppHandle,
         update: Update,
         checked_at: String,
-        mode: AppUpdateCheckMode,
+        mode: AppUpdateCheckModeDto,
     ) -> AppUpdateStateDto {
         let metadata = AppUpdateMetadataDto {
             version: update.version.clone(),
@@ -283,6 +312,7 @@ impl AppUpdateManager {
         self.set_status(
             app,
             AppUpdateStatusDto::Downloading {
+                check_mode: mode,
                 update: metadata.clone(),
                 downloaded_bytes: 0,
                 total_bytes: None,
@@ -302,6 +332,7 @@ impl AppUpdateManager {
                     progress_updates.set_status(
                         &progress_app,
                         AppUpdateStatusDto::Downloading {
+                            check_mode: mode,
                             update: progress_metadata.clone(),
                             downloaded_bytes,
                             total_bytes: content_length,
@@ -319,6 +350,7 @@ impl AppUpdateManager {
                     app,
                     AppUpdatePhaseDto::Downloading,
                     &error,
+                    Some(mode),
                     Some(metadata),
                     None,
                 );
@@ -329,15 +361,19 @@ impl AppUpdateManager {
             update: Box::new(update),
             bytes,
             metadata: metadata.clone(),
+            check_mode: mode,
         };
 
-        if matches!(mode, AppUpdateCheckMode::Startup) && !cfg!(target_os = "windows") {
+        if matches!(mode, AppUpdateCheckModeDto::Startup) && !cfg!(target_os = "windows") {
             self.install_pending_update(app, pending_update, false)
         } else {
             self.store_pending_update(pending_update);
             self.set_status(
                 app,
-                AppUpdateStatusDto::Downloaded { update: metadata },
+                AppUpdateStatusDto::Downloaded {
+                    check_mode: mode,
+                    update: metadata,
+                },
                 None,
             )
         }
@@ -353,11 +389,13 @@ impl AppUpdateManager {
             update,
             bytes,
             metadata,
+            check_mode,
         } = pending_update;
 
         self.set_status(
             app,
             AppUpdateStatusDto::Installing {
+                check_mode,
                 update: metadata.clone(),
             },
             None,
@@ -367,7 +405,10 @@ impl AppUpdateManager {
             Ok(()) => {
                 let state = self.set_status(
                     app,
-                    AppUpdateStatusDto::Installed { update: metadata },
+                    AppUpdateStatusDto::Installed {
+                        check_mode,
+                        update: metadata,
+                    },
                     None,
                 );
                 if restart_after_install && !cfg!(target_os = "windows") {
@@ -380,6 +421,7 @@ impl AppUpdateManager {
                     app,
                     AppUpdatePhaseDto::Installing,
                     &error,
+                    Some(check_mode),
                     Some(metadata.clone()),
                     None,
                 );
@@ -387,6 +429,7 @@ impl AppUpdateManager {
                     update,
                     bytes,
                     metadata,
+                    check_mode,
                 });
                 state
             }
@@ -414,41 +457,24 @@ impl AppUpdateManager {
         state
     }
 
-    fn set_error(
+    fn set_updater_error(
         &self,
         app: &AppHandle,
         phase: AppUpdatePhaseDto,
-        code: AppUpdateErrorCodeDto,
-        message: impl Into<String>,
+        error: &tauri_plugin_updater::Error,
+        check_mode: Option<AppUpdateCheckModeDto>,
         update: Option<AppUpdateMetadataDto>,
         checked_at: Option<String>,
     ) -> AppUpdateStateDto {
         self.set_status(
             app,
             AppUpdateStatusDto::Error {
+                check_mode,
                 phase,
-                code,
-                message: message.into(),
+                code: updater_error_code(error, phase),
+                message: error.to_string(),
                 update,
             },
-            checked_at,
-        )
-    }
-
-    fn set_updater_error(
-        &self,
-        app: &AppHandle,
-        phase: AppUpdatePhaseDto,
-        error: &tauri_plugin_updater::Error,
-        update: Option<AppUpdateMetadataDto>,
-        checked_at: Option<String>,
-    ) -> AppUpdateStateDto {
-        self.set_error(
-            app,
-            phase,
-            updater_error_code(error, phase),
-            error.to_string(),
-            update,
             checked_at,
         )
     }

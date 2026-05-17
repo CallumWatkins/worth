@@ -18,6 +18,8 @@ export function useAppUpdatesManager() {
   }));
 
   function setState(state: AppUpdateStateDto) {
+    if (appUpdateState.value != null && state.revision < appUpdateState.value.revision) return;
+
     appUpdateState.value = state;
     queryClient.setQueryData(queryKeys.appUpdates.state(), state);
   }

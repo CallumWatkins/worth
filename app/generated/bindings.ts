@@ -131,6 +131,8 @@ export type AppSettingsUpdateInput = {
 	theme?: ThemePreference | null,
 };
 
+export type AppUpdateCheckModeDto = "startup" | "user";
+
 /**  Stable error categories used by the frontend for friendly update messages. */
 export type AppUpdateErrorCodeDto = 
 /**  Updater configuration is missing or invalid. */
@@ -187,19 +189,19 @@ export type AppUpdateStatusDto =
 /**  No check has happened in this app session. */
 { kind: "idle" } | 
 /**  Worth is checking whether a newer version is available. */
-{ kind: "checking" } | 
+{ kind: "checking"; check_mode: AppUpdateCheckModeDto } | 
 /**  A check completed and no newer version was available. */
-{ kind: "up_to_date" } | 
+{ kind: "up_to_date"; check_mode: AppUpdateCheckModeDto } | 
 /**  An update is being downloaded. */
-{ kind: "downloading"; update: AppUpdateMetadataDto; downloaded_bytes: number; total_bytes: number | null } | 
+{ kind: "downloading"; check_mode: AppUpdateCheckModeDto; update: AppUpdateMetadataDto; downloaded_bytes: number; total_bytes: number | null } | 
 /**  A downloaded update is being installed. */
-{ kind: "installing"; update: AppUpdateMetadataDto } | 
+{ kind: "installing"; check_mode: AppUpdateCheckModeDto; update: AppUpdateMetadataDto } | 
 /**  An update was downloaded and is pending installation. */
-{ kind: "downloaded"; update: AppUpdateMetadataDto } | 
+{ kind: "downloaded"; check_mode: AppUpdateCheckModeDto; update: AppUpdateMetadataDto } | 
 /**  An update was installed and a restart is needed or in progress. */
-{ kind: "installed"; update: AppUpdateMetadataDto } | 
+{ kind: "installed"; check_mode: AppUpdateCheckModeDto; update: AppUpdateMetadataDto } | 
 /**  A check, download, or install step failed. */
-{ kind: "error"; phase: AppUpdatePhaseDto; code: AppUpdateErrorCodeDto; message: string; update: AppUpdateMetadataDto | null };
+{ kind: "error"; check_mode: AppUpdateCheckModeDto | null; phase: AppUpdatePhaseDto; code: AppUpdateErrorCodeDto; message: string; update: AppUpdateMetadataDto | null };
 
 export type BalanceOverTimePeriod = "1M" | "6M" | "1Y" | "MAX";
 
