@@ -4,6 +4,9 @@ import nuxtConfig from "./.nuxt/eslint.config.mjs";
 export default eslintConfig(
   // General
   {
+    gitignore: {
+      recursive: true
+    },
     ignores: [
       "**/src-tauri/**",
       "app/generated/**",
