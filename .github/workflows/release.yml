@@ -153,7 +153,11 @@ jobs:
       matrix:
         include:
           - platform: windows-2025
+            args: -- --locked
           - platform: ubuntu-22.04
+            args: -- --locked
+          - platform: macos-26
+            args: --target universal-apple-darwin -- --locked
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -164,6 +168,10 @@ jobs:
 
       - name: Setup Rust
         run: rustup toolchain install
+
+      - name: Add macOS Rust targets
+        if: matrix.platform == 'macos-26'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -197,4 +205,4 @@ jobs:
           prerelease: false
           generateReleaseNotes: true
           updaterJsonPreferNsis: true
-          args: -- --locked
+          args: ${{ matrix.args }}
