@@ -154,6 +154,8 @@ jobs:
         include:
           - platform: windows-2025
             args: -- --locked
+          - platform: windows-11-arm
+            args: --target aarch64-pc-windows-msvc -- --locked
           - platform: ubuntu-22.04
             args: -- --locked
           - platform: ubuntu-22.04-arm
