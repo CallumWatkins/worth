@@ -25,8 +25,13 @@ export default defineNuxtConfig({
     }
   },
   css: [
+    "@fontsource-variable/inter/wght.css",
+    "@fontsource-variable/inter/wght-italic.css",
     "@/assets/css/main.css"
   ],
+  ui: {
+    fonts: false
+  },
   i18n: APP_I18N_CONFIG,
   ssr: false,
   typescript: {
