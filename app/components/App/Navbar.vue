@@ -9,17 +9,13 @@
     <template #left>
       <NuxtLink
         :to="{ name: 'index' }"
-        class="flex items-center gap-x-2"
         aria-label="Go to dashboard"
       >
-        <div class="bg-primary rounded-md w-8 h-8">
-          <img
-            src="/logo.png"
-            alt="Worth"
-            class="size-8 grayscale brightness-175"
-          >
-        </div>
-        Worth
+        <img
+          :src="colorMode.value === 'dark' ? logoDarkTheme : logoLightTheme"
+          alt="Worth"
+          class="h-10"
+        >
       </NuxtLink>
     </template>
     <UNavigationMenu
@@ -53,6 +49,10 @@
 
 <script lang="ts" setup>
 import type { NavigationMenuItem } from "@nuxt/ui";
+import logoDarkTheme from "~/assets/worth_combo_mark_gradient_green.svg";
+import logoLightTheme from "~/assets/worth_combo_mark_gradient_green_dark.svg";
+
+const colorMode = useColorMode();
 
 const items: NavigationMenuItem[] = [
   {

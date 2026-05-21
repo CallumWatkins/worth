@@ -1,17 +1,17 @@
 <p align="center">
-    <img width="150" src="./public/logo.png" alt="Worth logo">
-</p>
-<h1 align="center">Worth</h1>
-<p align="center">
-A balance tracking desktop app, made with <a href="https://v2.tauri.app">Tauri 2</a>, <a href="https://nuxt.com">Nuxt 4</a>, and <a href="https://ui.nuxt.com/">Nuxt UI 4</a>.
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="./brand/worth_combo_mark_gradient_green.svg">
+        <source media="(prefers-color-scheme: light)" srcset="./brand/worth_combo_mark_gradient_green_dark.svg">
+        <img alt="Worth logo" src="./brand/worth_combo_mark_gradient_green.svg" width="320">
+    </picture>
 </p>
 
 > [!IMPORTANT]
 > Worth is currently in active development. There are no packaged releases to download yet, but it is in a working state if you are willing to build it from source. I am not guaranteeing backwards compatibility until Worth has a proper release.
 
-## What is Worth?
+## Worth
 
-Worth is a small desktop app for tracking account balances over time.
+Worth is a small desktop app for tracking account balances over time, made with <a href="https://v2.tauri.app">Tauri 2</a>, <a href="https://nuxt.com">Nuxt 4</a>, and <a href="https://ui.nuxt.com/">Nuxt UI 4</a>.
 
 I built Worth because, for a long time, I have kept track of my own balances in a spreadsheet. That worked well enough, but only in the particular way that a spreadsheet can: extremely capable, occasionally uncooperative, and all too willing to turn a simple allocation chart into most of an evening.
 
@@ -119,6 +119,11 @@ $ bun run bump
 
 ### Release
 See `docs/releases.md` for the signed tag release process.
+
+## License
+The source code for Worth is [licensed](./LICENSE) under `AGPL-3.0-only`.
+
+The Worth™ name, logo, app icons, wordmarks, source artwork, exported images, and copies of those assets elsewhere in this repo are separate brand assets. They are not licensed under the AGPL. Forks are welcome, but public packaged builds, separate apps, or derivative projects using Worth branding need permission from Callum Watkins. Modified or unofficial versions should use their own name and branding, though factual references such as "based on Worth" are fine. See [the brand asset notice](./brand/README.md).
 
 ## Terminology
 - **Institution**: A provider that groups related accounts together, e.g. a bank, broker, credit card company, or pension provider.
