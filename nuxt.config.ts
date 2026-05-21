@@ -144,14 +144,6 @@ export default defineNuxtConfig({
       advanced_disable_feature_flags: true,
       advanced_disable_feature_flags_on_first_load: true,
       internal_or_test_user_hostname: process.env.NODE_ENV === "development" ? "localhost" : null
-    },
-    sourcemaps: {
-      enabled: process.env.POSTHOG_SOURCEMAPS === "true",
-      projectId: process.env.POSTHOG_PROJECT_ID!,
-      personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY!,
-      releaseName: "worth-desktop",
-      releaseVersion: process.env.APP_VERSION,
-      deleteAfterUpload: true
     }
   }
 });

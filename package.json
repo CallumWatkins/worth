@@ -27,6 +27,7 @@
     "contracts:schemas": "cargo run --manifest-path src-tauri/Cargo.toml --features dev-tools --bin export_schemas",
     "contracts:zod": "bun run app/scripts/generate-zod.mjs",
     "contracts:gen": "bun run --sequential contracts:bindings contracts:schemas contracts:zod",
+    "tauri:before-build": "bun run app/scripts/tauri-before-build.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "tauri:build": "tauri build",
@@ -57,6 +58,7 @@
     "@antfu/eslint-config": "^8.0.0",
     "@apidevtools/json-schema-ref-parser": "^15.0.0",
     "@nuxt/eslint": "^1.0.0",
+    "@posthog/cli": "^0.7.0",
     "@tauri-apps/cli": "~2.11.0",
     "@types/semver": "^7.0.0",
     "@vueuse/core": "^14.0.0",
@@ -70,6 +72,7 @@
   },
   "trustedDependencies": [
     "@parcel/watcher",
+    "@posthog/cli",
     "@tailwindcss/oxide",
     "unrs-resolver"
   ]

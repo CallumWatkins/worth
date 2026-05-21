@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "app.useworth",
   "build": {
-    "beforeBuildCommand": "bun run generate",
+    "beforeBuildCommand": "bun run tauri:before-build",
     "frontendDist": "../dist",
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:3000",
