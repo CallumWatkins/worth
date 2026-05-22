@@ -39,6 +39,11 @@ name = "export_schemas"
 path = "dev-bin/export_schemas.rs"
 required-features = [ "dev-tools" ]
 
+[lints.clippy]
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+significant_drop_in_scrutinee = "deny"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

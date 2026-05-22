@@ -264,13 +264,15 @@ impl AppUpdateManager {
             return self.state();
         };
 
-        match self
-            .inner
-            .lock()
-            .expect("update state lock poisoned")
-            .pending_update
-            .take()
-        {
+        let pending_update = {
+            self.inner
+                .lock()
+                .expect("update state lock poisoned")
+                .pending_update
+                .take()
+        };
+
+        match pending_update {
             Some(pending_update) => self.install_pending_update(&app, pending_update, true),
             None => self.set_status(
                 &app,
