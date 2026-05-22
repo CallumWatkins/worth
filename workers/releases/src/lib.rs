@@ -5,44 +5,113 @@ const GITHUB_OWNER: &str = "CallumWatkins";
 const GITHUB_REPO: &str = "worth";
 const RELEASE_METADATA_CACHE_URL: &str =
     "https://releases.useworth.app/__cache/github-release-latest";
+const STABLE_JSON_CACHE_PATH: &str = "/__cache/stable-json";
 const LATEST_JSON_CACHE_PATH: &str = "/__cache/latest-json";
 const LATEST_JSON_TTL_SECONDS: u32 = 60;
+const STABLE_JSON_TTL_SECONDS: u32 = 60;
 const RELEASE_METADATA_TTL_SECONDS: u32 = 300;
-const STABLE_DOWNLOAD_REDIRECT_TTL_SECONDS: u32 = 300;
 const SPECIFIC_DOWNLOAD_REDIRECT_TTL_SECONDS: u32 = 3600;
+
+const STABLE_SYSTEMS: &[StableSystemDescriptor] = &[
+    StableSystemDescriptor {
+        id: "windows",
+        label: "Windows",
+    },
+    StableSystemDescriptor {
+        id: "macos",
+        label: "macOS",
+    },
+    StableSystemDescriptor {
+        id: "linux",
+        label: "Linux",
+    },
+];
 
 const WEBSITE_DOWNLOADS: &[StableDownloadDescriptor] = &[
     StableDownloadDescriptor {
-        id: "windows",
-        label: "Windows",
-        kind: "exe",
+        id: "windows-x86_64-setup",
+        system_id: "windows",
+        label: "Windows x64 Setup",
+        os: "windows",
+        arch: "x86_64",
+        supports: &["x86_64"],
+        format: "exe",
+        kind: StableDownloadKind::WindowsX64Setup,
     },
     StableDownloadDescriptor {
-        id: "macos-aarch64",
-        label: "macOS Apple Silicon",
-        kind: "dmg",
+        id: "windows-aarch64-setup",
+        system_id: "windows",
+        label: "Windows Arm64 Setup",
+        os: "windows",
+        arch: "aarch64",
+        supports: &["aarch64"],
+        format: "exe",
+        kind: StableDownloadKind::WindowsAarch64Setup,
     },
     StableDownloadDescriptor {
-        id: "macos-x86_64",
-        label: "macOS Intel",
-        kind: "dmg",
+        id: "macos-universal-dmg",
+        system_id: "macos",
+        label: "macOS Universal DMG",
+        os: "macos",
+        arch: "universal",
+        supports: &["x86_64", "aarch64"],
+        format: "dmg",
+        kind: StableDownloadKind::MacosUniversalDmg,
     },
     StableDownloadDescriptor {
-        id: "linux",
-        label: "Linux",
-        kind: "AppImage",
+        id: "linux-x86_64-appimage",
+        system_id: "linux",
+        label: "Linux x64 AppImage",
+        os: "linux",
+        arch: "x86_64",
+        supports: &["x86_64"],
+        format: "AppImage",
+        kind: StableDownloadKind::LinuxX64AppImage,
+    },
+    StableDownloadDescriptor {
+        id: "linux-x86_64-deb",
+        system_id: "linux",
+        label: "Linux x64 DEB",
+        os: "linux",
+        arch: "x86_64",
+        supports: &["x86_64"],
+        format: "deb",
+        kind: StableDownloadKind::LinuxX64Deb,
+    },
+    StableDownloadDescriptor {
+        id: "linux-aarch64-appimage",
+        system_id: "linux",
+        label: "Linux Arm64 AppImage",
+        os: "linux",
+        arch: "aarch64",
+        supports: &["aarch64"],
+        format: "AppImage",
+        kind: StableDownloadKind::LinuxAarch64AppImage,
+    },
+    StableDownloadDescriptor {
+        id: "linux-aarch64-deb",
+        system_id: "linux",
+        label: "Linux Arm64 DEB",
+        os: "linux",
+        arch: "aarch64",
+        supports: &["aarch64"],
+        format: "deb",
+        kind: StableDownloadKind::LinuxAarch64Deb,
     },
 ];
 
 #[derive(Deserialize)]
 struct GitHubRelease {
     tag_name: String,
+    published_at: String,
     assets: Vec<GitHubAsset>,
 }
 
 #[derive(Deserialize)]
 struct GitHubAsset {
     name: String,
+    size: u64,
+    digest: String,
 }
 
 #[derive(Serialize)]
@@ -53,6 +122,16 @@ struct HealthResponse {
 #[derive(Serialize)]
 struct StableManifest {
     version: String,
+    tag: String,
+    #[serde(rename = "publishedAt")]
+    published_at: String,
+    systems: Vec<StableManifestSystem>,
+}
+
+#[derive(Serialize)]
+struct StableManifestSystem {
+    id: &'static str,
+    label: &'static str,
     downloads: Vec<StableManifestDownload>,
 }
 
@@ -60,14 +139,43 @@ struct StableManifest {
 struct StableManifestDownload {
     id: &'static str,
     label: &'static str,
-    href: String,
-    kind: &'static str,
+    os: &'static str,
+    arch: &'static str,
+    supports: &'static [&'static str],
+    format: &'static str,
+    #[serde(rename = "fileName")]
+    file_name: String,
+    url: String,
+    #[serde(rename = "sizeBytes")]
+    size_bytes: u64,
+    sha256: String,
+}
+
+struct StableSystemDescriptor {
+    id: &'static str,
+    label: &'static str,
 }
 
 struct StableDownloadDescriptor {
     id: &'static str,
+    system_id: &'static str,
     label: &'static str,
-    kind: &'static str,
+    os: &'static str,
+    arch: &'static str,
+    supports: &'static [&'static str],
+    format: &'static str,
+    kind: StableDownloadKind,
+}
+
+#[derive(Clone, Copy)]
+enum StableDownloadKind {
+    WindowsX64Setup,
+    WindowsAarch64Setup,
+    MacosUniversalDmg,
+    LinuxX64AppImage,
+    LinuxX64Deb,
+    LinuxAarch64AppImage,
+    LinuxAarch64Deb,
 }
 
 #[event(fetch)]
@@ -80,12 +188,6 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         )
         .get_async("/v1/stable.json", |req, ctx| async move {
             stable_manifest(req, ctx).await
-        })
-        .get_async("/v1/download/stable/:platform", |req, ctx| async move {
-            stable_download(req, ctx).await
-        })
-        .head_async("/v1/download/stable/:platform", |req, ctx| async move {
-            stable_download(req, ctx).await
         })
         .get_async("/v1/download/:version/:filename", |_req, ctx| async move {
             specific_download(ctx)
@@ -110,53 +212,30 @@ async fn stable_update(req: Request, _ctx: RouteContext<()>) -> Result<Response>
 async fn stable_manifest(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let base_url = releases_base_url(&req)?;
 
-    match latest_release(&ctx).await {
-        Ok(release) => {
-            let downloads = WEBSITE_DOWNLOADS
-                .iter()
-                .filter(|download| find_stable_asset(&release, download.id).is_some())
-                .map(|download| {
-                    stable_platform_download_url(&base_url, download.id).map(|href| {
-                        StableManifestDownload {
-                            id: download.id,
-                            label: download.label,
-                            href,
-                            kind: download.kind,
-                        }
-                    })
-                })
-                .collect::<Result<Vec<_>>>()?;
-
-            let manifest = StableManifest {
-                version: display_version(&release.tag_name).to_string(),
-                downloads,
-            };
-
-            json_response(&manifest, Some(RELEASE_METADATA_TTL_SECONDS))
-        }
-        Err(error) => upstream_unavailable(&error),
-    }
+    cached_stable_manifest_response(&ctx, base_url)
+        .await
+        .or_else(|error| upstream_unavailable(&error))
 }
 
-async fn stable_download(req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    let platform = match decoded_route_param(&ctx, "platform") {
-        Ok(value) => value,
-        Err(_) => return text_error("Invalid stable platform", 400),
-    };
+async fn cached_stable_manifest_response(
+    ctx: &RouteContext<()>,
+    base_url: Url,
+) -> Result<Response> {
+    let cache = Cache::default();
+    let cache_key_url = cache_url(&base_url, STABLE_JSON_CACHE_PATH)?;
+    let cache_key = Request::new(&cache_key_url, Method::Get)?;
 
-    match latest_release(&ctx).await {
-        Ok(release) => match find_stable_asset(&release, &platform) {
-            Some(asset) => redirect_response(
-                versioned_download_url(releases_base_url(&req)?, &release.tag_name, &asset.name)?,
-                STABLE_DOWNLOAD_REDIRECT_TTL_SECONDS,
-            ),
-            None => text_error(
-                format!("No stable release asset found for platform `{platform}`"),
-                404,
-            ),
-        },
-        Err(error) => upstream_unavailable(&error),
+    if let Some(response) = cache.get(&cache_key, false).await? {
+        return Ok(response);
     }
+
+    let release = latest_release(ctx).await?;
+    let manifest = build_stable_manifest(&release, &base_url)?;
+    let mut response = json_response(&manifest, Some(STABLE_JSON_TTL_SECONDS))?;
+
+    cache.put(&cache_key, response.cloned()?).await?;
+
+    Ok(response)
 }
 
 fn specific_download(ctx: RouteContext<()>) -> Result<Response> {
@@ -193,6 +272,72 @@ async fn latest_release(ctx: &RouteContext<()>) -> Result<GitHubRelease> {
     .await?;
 
     serde_json::from_str(&text).map_err(Error::from)
+}
+
+fn build_stable_manifest(release: &GitHubRelease, base_url: &Url) -> Result<StableManifest> {
+    let systems = STABLE_SYSTEMS
+        .iter()
+        .map(|system| {
+            let downloads = WEBSITE_DOWNLOADS
+                .iter()
+                .filter(|download| download.system_id == system.id)
+                .filter_map(|download| {
+                    find_stable_download_asset(release, download).map(|asset| {
+                        let sha256 = asset
+                            .digest
+                            .strip_prefix("sha256:")
+                            .ok_or_else(|| {
+                                Error::RustError(format!(
+                                    "Release asset `{}` does not have a sha256 digest",
+                                    asset.name
+                                ))
+                            })?
+                            .to_string();
+
+                        Ok(StableManifestDownload {
+                            id: download.id,
+                            label: download.label,
+                            os: download.os,
+                            arch: download.arch,
+                            supports: download.supports,
+                            format: download.format,
+                            file_name: asset.name.clone(),
+                            url: String::from(versioned_download_url(
+                                base_url.clone(),
+                                &release.tag_name,
+                                &asset.name,
+                            )?),
+                            size_bytes: asset.size,
+                            sha256,
+                        })
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            Ok(StableManifestSystem {
+                id: system.id,
+                label: system.label,
+                downloads,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .filter(|system| !system.downloads.is_empty())
+        .collect::<Vec<_>>();
+
+    if systems.is_empty() {
+        return Err(Error::RustError(format!(
+            "No installable release assets found for {}",
+            release.tag_name
+        )));
+    }
+
+    Ok(StableManifest {
+        version: display_version(&release.tag_name).to_string(),
+        tag: release.tag_name.clone(),
+        published_at: release.published_at.clone(),
+        systems,
+    })
 }
 
 async fn cached_updater_manifest_response(base_url: Url) -> Result<Response> {
@@ -288,15 +433,15 @@ fn json_text_response(text: String, max_age_seconds: u32) -> Result<Response> {
 }
 
 fn redirect_response(url: Url, max_age_seconds: u32) -> Result<Response> {
-    let mut response = Response::redirect(url)?;
-    response.headers_mut().set(
-        "Cache-Control",
-        &format!("public, max-age={max_age_seconds}"),
-    )?;
-    response
-        .headers_mut()
-        .set("Access-Control-Allow-Origin", "*")?;
-    Ok(response)
+    Ok(Response::builder()
+        .with_status(302)
+        .with_header("Location", url.as_str())?
+        .with_header(
+            "Cache-Control",
+            &format!("public, max-age={max_age_seconds}"),
+        )?
+        .with_header("Access-Control-Allow-Origin", "*")?
+        .empty())
 }
 
 fn text_error(message: impl Into<String>, status: u16) -> Result<Response> {
@@ -355,31 +500,17 @@ fn cache_url(base_url: &Url, path: &str) -> Result<String> {
     Ok(String::from(url))
 }
 
-fn stable_platform_download_url(base_url: &Url, platform: &str) -> Result<String> {
-    let mut url = base_url.clone();
-    url.path_segments_mut()
-        .map_err(|()| Error::RustError("Unable to build stable download URL".to_string()))?
-        .clear()
-        .extend(["v1", "download", "stable", platform]);
-    Ok(String::from(url))
-}
-
 fn display_version(tag_name: &str) -> &str {
     tag_name.strip_prefix('v').unwrap_or(tag_name)
 }
 
-fn find_stable_asset<'a>(release: &'a GitHubRelease, platform: &str) -> Option<&'a GitHubAsset> {
-    match platform {
-        "windows" => find_asset(release, |name| name.ends_with(".exe")),
-        "macos-aarch64" => find_asset(release, |name| {
-            name.ends_with(".dmg") && contains_any(name, &["aarch64", "arm64", "apple", "silicon"])
-        }),
-        "macos-x86_64" => find_asset(release, |name| {
-            name.ends_with(".dmg") && contains_any(name, &["x86_64", "x64", "amd64", "intel"])
-        }),
-        "linux" => find_asset(release, |name| name.ends_with(".appimage")),
-        _ => None,
-    }
+fn find_stable_download_asset<'a>(
+    release: &'a GitHubRelease,
+    download: &StableDownloadDescriptor,
+) -> Option<&'a GitHubAsset> {
+    find_asset(release, |name| {
+        stable_download_kind_matches(download.kind, name)
+    })
 }
 
 fn find_asset<F>(release: &GitHubRelease, mut matches: F) -> Option<&GitHubAsset>
@@ -394,6 +525,32 @@ where
 
 fn contains_any(value: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| value.contains(needle))
+}
+
+fn stable_download_kind_matches(kind: StableDownloadKind, name: &str) -> bool {
+    match kind {
+        StableDownloadKind::WindowsX64Setup => {
+            name.ends_with("-setup.exe") && contains_any(name, &["_x64-", "_x86_64-", "_amd64-"])
+        }
+        StableDownloadKind::WindowsAarch64Setup => {
+            name.ends_with("-setup.exe") && contains_any(name, &["_arm64-", "_aarch64-"])
+        }
+        StableDownloadKind::MacosUniversalDmg => {
+            name.ends_with(".dmg") && name.contains("universal")
+        }
+        StableDownloadKind::LinuxX64AppImage => {
+            name.ends_with(".appimage") && contains_any(name, &["_amd64.", "_x64.", "_x86_64."])
+        }
+        StableDownloadKind::LinuxX64Deb => {
+            name.ends_with(".deb") && contains_any(name, &["_amd64.", "_x64.", "_x86_64."])
+        }
+        StableDownloadKind::LinuxAarch64AppImage => {
+            name.ends_with(".appimage") && contains_any(name, &["_aarch64.", "_arm64."])
+        }
+        StableDownloadKind::LinuxAarch64Deb => {
+            name.ends_with(".deb") && contains_any(name, &["_aarch64.", "_arm64."])
+        }
+    }
 }
 
 fn rewrite_update_manifest(text: &str, base_url: &Url) -> Result<String> {

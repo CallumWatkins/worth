@@ -9,3 +9,22 @@ custom_domain = true
 
 [build]
 command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
+
+[dev]
+ip = "127.0.0.1"
+port = 8787
+local_protocol = "http"
+upstream_protocol = "http"
+host = "127.0.0.1:8787"
+
+[observability]
+enabled = false
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
