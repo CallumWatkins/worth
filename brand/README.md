@@ -39,10 +39,10 @@ The PNG layers for the Windows icon are exported to `brand/tauri/ico-src/` as:
 - `16.png`, `24.png`, `32.png`, `48.png`, and `64.png` from the medium app tile artboard
 - `256.png` from the large app tile artboard
 
-`icon-gen` is used to combine the PNG layers into a single ICO file:
+`png-to-ico` is used to combine the PNG layers into a single ICO file, placing the 32x32px icon first, since Tauri always uses the first icon for the taskbar instead of choosing intelligently ([tauri-apps/tauri#14596](https://github.com/tauri-apps/tauri/issues/14596)):
 
 ```bash
-bunx icon-gen -i ./brand/tauri/ico-src -o ./brand/tauri/ --ico --ico-name icon --ico-sizes 32,16,24,48,64,256 -r
+bun run brand:generate-ico
 ```
 
 ### macOS ICNS

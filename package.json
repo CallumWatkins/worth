@@ -27,6 +27,7 @@
     "contracts:schemas": "cargo run --manifest-path src-tauri/Cargo.toml --features dev-tools --bin export_schemas",
     "contracts:zod": "bun run app/scripts/generate-zod.mjs",
     "contracts:gen": "bun run --sequential contracts:bindings contracts:schemas contracts:zod",
+    "brand:generate-ico": "bun run app/scripts/generate-ico.mjs",
     "tauri:before-build": "bun run app/scripts/tauri-before-build.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
@@ -66,6 +67,7 @@
     "bumpp": "^11.0.0",
     "eslint": "^10.0.0",
     "json-schema-to-zod": "^2.0.0",
+    "png-to-ico": "^3.0.0",
     "typescript": "^6.0.0",
     "vue-tsc": "^3.0.0",
     "wrangler": "^4.0.0"
