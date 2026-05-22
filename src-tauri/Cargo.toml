@@ -40,6 +40,10 @@ path = "dev-bin/export_schemas.rs"
 required-features = [ "dev-tools" ]
 
 [lints.clippy]
+await_holding_lock = "deny"
+await_holding_refcell_ref = "deny"
+if_let_mutex = "deny"
+let_underscore_lock = "deny"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 significant_drop_in_scrutinee = "deny"
