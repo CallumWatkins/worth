@@ -95,6 +95,7 @@ fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     use tauri_plugin_prevent_default::Flags;
 
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
     let mut builder = tauri_plugin_prevent_default::Builder::new();
     #[cfg(target_os = "windows")]
     {
