@@ -13,6 +13,8 @@
     "preinstall": "npx only-allow bun",
     "postinstall": "nuxt prepare",
     "check:ts": "nuxt typecheck",
+    "check:licenses": "bun run generate && bun run app/scripts/generate-licenses.mjs --preview",
+    "check:licenses:all": "bun run check:licenses --cargo-targets x86_64-pc-windows-msvc,aarch64-pc-windows-msvc,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-apple-darwin,aarch64-apple-darwin",
     "lint:ts": "eslint .",
     "lint:ts:fix": "eslint . --fix",
     "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml --all-targets --features dev-tools",
@@ -68,6 +70,8 @@
     "eslint": "^10.0.0",
     "json-schema-to-zod": "^2.0.0",
     "png-to-ico": "^3.0.0",
+    "spdx-expression-parse": "^4.0.0",
+    "spdx-license-list": "^6.0.0",
     "typescript": "^6.0.0",
     "vue-tsc": "^3.0.0",
     "wrangler": "^4.0.0"

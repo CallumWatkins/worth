@@ -173,14 +173,19 @@ jobs:
         include:
           - platform: windows-2025
             args: --target x86_64-pc-windows-msvc -- --locked
+            license_targets: x86_64-pc-windows-msvc
           - platform: windows-11-arm
             args: --target aarch64-pc-windows-msvc -- --locked
+            license_targets: aarch64-pc-windows-msvc
           - platform: ubuntu-22.04
             args: --target x86_64-unknown-linux-gnu -- --locked
+            license_targets: x86_64-unknown-linux-gnu
           - platform: ubuntu-22.04-arm
             args: --target aarch64-unknown-linux-gnu -- --locked
+            license_targets: aarch64-unknown-linux-gnu
           - platform: macos-26
             args: --target universal-apple-darwin -- --locked
+            license_targets: x86_64-apple-darwin,aarch64-apple-darwin
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -220,6 +225,7 @@ jobs:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_SOURCEMAPS: "true"
           APP_VERSION: ${{ needs.validate.outputs.app_version }}
+          WORTH_LICENSE_CARGO_TARGETS: ${{ matrix.license_targets }}
         with:
           tauriScript: bun tauri
           tagName: ${{ github.ref_name }}

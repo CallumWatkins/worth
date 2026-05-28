@@ -19,6 +19,8 @@ dist-ssr
 .nitro
 .cache
 
+public/licenses/*.json.gz
+
 .idea
 .DS_Store
 *.suo

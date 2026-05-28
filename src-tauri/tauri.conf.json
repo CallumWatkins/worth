@@ -5,7 +5,7 @@
   "identifier": "app.useworth",
   "build": {
     "beforeBuildCommand": "bun run tauri:before-build",
-    "frontendDist": "../dist",
+    "frontendDist": "../.output/public",
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:3000",
     "removeUnusedCommands": true

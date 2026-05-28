@@ -170,6 +170,23 @@
             </UButton>
           </UFormField>
 
+          <UFormField
+            label="Licenses"
+            description="View license notices for Worth and included third-party software."
+            orientation="horizontal"
+            class="items-center gap-25"
+          >
+            <UButton
+              icon="i-lucide-scroll-text"
+              color="neutral"
+              class="whitespace-nowrap"
+              variant="subtle"
+              @click="licensesOpen = true"
+            >
+              View licenses
+            </UButton>
+          </UFormField>
+
           <div class="space-y-2">
             <UFormField
               :label="updateRow.title"
@@ -208,6 +225,8 @@
         </div>
       </UPageCard>
     </UPageBody>
+
+    <AppLicensesDialog v-model:open="licensesOpen" />
   </UContainer>
 </template>
 
@@ -235,6 +254,7 @@ const analyticsEnabled = ref(true);
 const defaultDisplayCurrencyCode = ref<CurrencyCode>();
 const displayLocale = ref<AppLocaleCode>();
 const theme = ref<ThemePreference>();
+const licensesOpen = ref(false);
 const isSettingsBusy = computed(() => settingsQuery.isPending || unref(updateSettings.isPending));
 const { hasFeedbackSurvey, openFeedbackSurvey } = useFeedbackSurvey();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
