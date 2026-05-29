@@ -169,6 +169,7 @@ export function useAppUpdateRow() {
       props: {
         label: "Check for updates",
         icon: "i-lucide-refresh-cw",
+        color: "neutral",
         variant: "subtle",
         loading,
         disabled: loading,
