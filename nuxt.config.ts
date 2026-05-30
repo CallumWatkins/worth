@@ -121,7 +121,10 @@ export default defineNuxtConfig({
       }
     },
     resolve: {
-      alias: { "echarts/lib/util/number": "echarts/lib/util/number.js" }
+      alias: {
+        "echarts/lib/util/number": "echarts/lib/util/number.js",
+        "posthog-js": "posthog-js/dist/module.full.no-external"
+      }
     }
   },
   ignore: ["**/src-tauri/**"],
@@ -159,8 +162,11 @@ export default defineNuxtConfig({
       capture_dead_clicks: false,
       rageclick: false,
       disable_session_recording: true,
+      disable_conversations: true,
+      disable_product_tours: true,
       enable_recording_console_log: false,
       enable_heatmaps: false,
+      disable_external_dependency_loading: true,
       person_profiles: "identified_only",
       mask_all_text: true,
       mask_all_element_attributes: true,
