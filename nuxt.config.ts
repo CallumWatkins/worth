@@ -136,6 +136,30 @@ export default defineNuxtConfig({
       scrollBehaviorType: "smooth"
     }
   },
+  routeRules: process.env.NODE_ENV === "development"
+    ? {
+      "/**": {
+        headers: {
+          "Content-Security-Policy": [
+            // CSP for dev server. For builds, CSP is configured in tauri.conf.json.
+            // Dev-only allowances: localhost:3000 for Nuxt assets, localhost:3001/ws for Vite HMR,
+            // and unsafe-inline/unsafe-eval for Nuxt/Vite dev scripts.
+            "default-src 'self' http://localhost:3000",
+            "connect-src 'self' ipc: http://ipc.localhost https://i.useworth.app http://localhost:3000 http://localhost:3001 ws:",
+            "script-src 'self' http://localhost:3000 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline' http://localhost:3000",
+            "img-src 'self' data: blob: http://localhost:3000",
+            "font-src 'self' data: http://localhost:3000",
+            "object-src 'none'",
+            "base-uri 'none'",
+            "frame-src 'none'",
+            "frame-ancestors 'none'",
+            "form-action 'none'"
+          ].join("; ")
+        }
+      }
+    }
+    : {},
   eslint: {
     config: {
       standalone: false

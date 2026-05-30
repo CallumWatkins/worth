@@ -26,7 +26,33 @@
       }
     ],
     "security": {
-      "csp": null
+      // CSP for builds. For dev server, CSP is configured in nuxt.config.ts.
+      "csp": {
+        "default-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost https://i.useworth.app",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data: blob:",
+        "font-src": "'self' data:",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "frame-src": "'none'",
+        "frame-ancestors": "'none'",
+        "form-action": "'none'"
+      },
+      "devCsp": {
+        "default-src": "'self' http://localhost:3000",
+        "connect-src": "'self' ipc: http://ipc.localhost http://localhost:3000 http://localhost:3001 ws: https://i.useworth.app",
+        "script-src": "'self' http://localhost:3000",
+        "style-src": "'self' 'unsafe-inline' http://localhost:3000",
+        "img-src": "'self' data: blob: http://localhost:3000",
+        "font-src": "'self' data: http://localhost:3000",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "frame-src": "'none'",
+        "frame-ancestors": "'none'",
+        "form-action": "'none'"
+      }
     }
   },
   "bundle": {

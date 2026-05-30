@@ -49,7 +49,7 @@ missing_panics_doc = "allow"
 significant_drop_in_scrutinee = "deny"
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2", features = [ "config-json5" ] }
 
 [dependencies]
 serde = { version = "1", features = [ "derive" ] }
