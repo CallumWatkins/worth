@@ -1,9 +1,21 @@
+import type { Nuxt } from "@nuxt/schema";
 import { APP_I18N_CONFIG } from "./app/utils/i18n";
+
+const addUiIconsToIconClientBundle = (_options: unknown, nuxt: Nuxt) => {
+  nuxt.hook("icon:clientBundleIcons", (icons) => {
+    const uiIcons = nuxt.options.appConfig.ui?.icons as Record<string, unknown> | undefined;
+
+    for (const icon of Object.values(uiIcons ?? {})) {
+      if (typeof icon === "string") icons.add(icon.replace(/^i-([a-z0-9]+)-/, "$1:"));
+    }
+  });
+};
 
 export default defineNuxtConfig({
   modules: [
     "@vueuse/nuxt",
     "@nuxt/ui",
+    addUiIconsToIconClientBundle,
     "reka-ui/nuxt",
     "@nuxt/eslint",
     "nuxt-echarts",
@@ -31,6 +43,17 @@ export default defineNuxtConfig({
   ],
   ui: {
     fonts: false
+  },
+  icon: {
+    provider: "none",
+    fallbackToApi: false,
+    clientBundle: {
+      scan: {
+        globInclude: [
+          "app/**/*.{vue,ts}"
+        ]
+      }
+    }
   },
   i18n: APP_I18N_CONFIG,
   ssr: false,

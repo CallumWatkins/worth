@@ -28,6 +28,7 @@
       "devDependencies": {
         "@antfu/eslint-config": "^8.0.0",
         "@apidevtools/json-schema-ref-parser": "^15.0.0",
+        "@iconify-json/lucide": "^1.0.0",
         "@nuxt/eslint": "^1.0.0",
         "@posthog/cli": "^0.7.0",
         "@tauri-apps/cli": "~2.11.0",
@@ -250,6 +251,8 @@
     "@humanwhocodes/module-importer": ["@humanwhocodes/module-importer@1.0.1", "", {}, "sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA=="],
 
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
+
+    "@iconify-json/lucide": ["@iconify-json/lucide@1.2.110", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-rLeHqnZZBxZbprbVwf6uY7HB5GkGVgvT9VujhjvaUEqFDLKZON6zR8K1f8uD1brBwf5TJ0TIvvW8mz5u2XJU+w=="],
 
     "@iconify/collections": ["@iconify/collections@1.0.677", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-Uwbl1p26Md6m2xTMjalJsmQ43YxW+j6RsyrL5RnxRCHEhwympJlaBBCGTKrqI3sA93g9UVJ/Pxi7zDqM3E1oPw=="],
 

@@ -60,6 +60,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^8.0.0",
     "@apidevtools/json-schema-ref-parser": "^15.0.0",
+    "@iconify-json/lucide": "^1.0.0",
     "@nuxt/eslint": "^1.0.0",
     "@posthog/cli": "^0.7.0",
     "@tauri-apps/cli": "~2.11.0",
