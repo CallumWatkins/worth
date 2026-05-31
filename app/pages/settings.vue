@@ -20,11 +20,11 @@
       />
 
       <UAlert
-        v-if="saveError"
+        v-if="settingsError"
         color="error"
         variant="subtle"
         orientation="horizontal"
-        :title="saveError"
+        :title="settingsError"
         :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
       />
 
@@ -45,6 +45,25 @@
               aria-label="Share anonymous usage and crash data"
               @update:model-value="onAnalyticsEnabledUpdate"
             />
+          </UFormField>
+
+          <UFormField
+            label="Data folder"
+            description="Worth stores all data locally on this device. Open this folder to view and back up your data."
+            orientation="horizontal"
+            class="items-center gap-25"
+          >
+            <UButton
+              icon="i-lucide-folder-open"
+              class="whitespace-nowrap"
+              variant="subtle"
+              color="neutral"
+              :loading="openDataFolder.isPending"
+              :disabled="isSettingsBusy || openDataFolder.isPending"
+              @click="onOpenDataFolder"
+            >
+              Open folder
+            </UButton>
           </UFormField>
         </div>
       </UPageCard>
@@ -234,6 +253,7 @@
 import type { AnalyticsEventProperties } from "~/composables/useAnalytics";
 import type { AppLocaleCode, AppSettingsDto, AppSettingsUpdateInput, CurrencyCode, ThemePreference } from "~/generated/bindings";
 
+import { useMutation } from "@tanstack/vue-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 import { APP_LOCALES } from "~/utils/i18n";
@@ -247,8 +267,9 @@ const {
   updateSetting
 } = useSettingsManager();
 const { updateRow } = useAppUpdateRow();
+const api = useApi();
 
-const saveError = ref<string | null>(null);
+const settingsError = ref<string | null>(null);
 const pendingField = ref<SettingsField | null>(null);
 const analyticsEnabled = ref(true);
 const defaultDisplayCurrencyCode = ref<CurrencyCode>();
@@ -259,6 +280,9 @@ const isSettingsBusy = computed(() => settingsQuery.isPending || unref(updateSet
 const { hasFeedbackSurvey, openFeedbackSurvey } = useFeedbackSurvey();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const { captureAnalyticsEvent } = useAnalytics();
+const openDataFolder = proxyRefs(useMutation({
+  mutationFn: api.dataFolderOpen
+}));
 
 const currencyItems = supportedCurrencyCodes.map((currencyCode) => ({
   label: currencyCode,
@@ -289,7 +313,7 @@ async function saveSetting(field: SettingsField, patch: Partial<AppSettingsUpdat
   const startedAt = performance.now();
   const analyticsProperties = getSettingAnalyticsProperties(field, patch);
 
-  saveError.value = null;
+  settingsError.value = null;
   pendingField.value = field;
 
   try {
@@ -310,9 +334,19 @@ async function saveSetting(field: SettingsField, patch: Partial<AppSettingsUpdat
     }
 
     syncEditableSettings(previous);
-    saveError.value = error instanceof Error ? error.message : "Failed to save settings";
+    settingsError.value = error instanceof Error ? error.message : "Failed to save settings";
   } finally {
     pendingField.value = null;
+  }
+}
+
+async function onOpenDataFolder() {
+  settingsError.value = null;
+
+  try {
+    await openDataFolder.mutateAsync();
+  } catch {
+    settingsError.value = "Could not open data folder";
   }
 }
 
