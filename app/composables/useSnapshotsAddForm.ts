@@ -2,6 +2,8 @@ import type { AccountBalanceSnapshotDto, AccountSnapshotsCreateInput } from "~/g
 
 type NumericField = "amount" | "change";
 
+// Amount and change edit the same balance; liveAmount tracks in-progress input
+// while either numeric field has focus.
 interface SnapshotDraftRow {
   key: number
   date: string
@@ -77,6 +79,8 @@ export function useSnapshotsAddForm(params: UseSnapshotsAddFormParams) {
   });
 
   const rowStates = computed<SnapshotRowState[]>(() => {
+    // Compute validation and deltas as if valid staged rows were merged into
+    // existing snapshots in date order.
     const duplicateCounts = new Map<string, number>();
     const activeRows = rows.value.slice(0, activeRowCount.value);
     const stagedDates = new Set(

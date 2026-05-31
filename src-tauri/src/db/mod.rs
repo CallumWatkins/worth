@@ -173,6 +173,8 @@ pub enum GlobalSearchRow {
     },
 }
 
+/// Builds the two search forms used by global search: a plain phrase for name
+/// boosts and sanitized prefix terms for SQLite FTS.
 fn normalize_search_query(query: &str) -> Option<(String, String)> {
     let mut normalized = String::with_capacity(query.len());
     for ch in query.trim().chars() {
@@ -210,6 +212,8 @@ pub async fn search_global(
         return Ok(Vec::new());
     };
 
+    // Ranking favors phrase matches in the entity name before weighted FTS
+    // relevance so exact-looking name hits are ordered ahead of broader matches.
     let rows = sqlx::query_as::<_, GlobalSearchRawRow>(
         r"
         WITH
