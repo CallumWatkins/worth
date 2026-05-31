@@ -31,12 +31,12 @@
       <UPageCard
         title="General"
       >
-        <div class="space-y-6">
+        <div :class="settingsRowsClass">
           <UFormField
             label="Share anonymous diagnostics and feedback"
             description="Helps improve Worth by sharing anonymous usage events, crash reports, and any feedback you choose to send. Personal or financial details are never sent."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USwitch
               :model-value="analyticsEnabled"
@@ -51,7 +51,7 @@
             label="Data folder"
             description="Worth stores all data locally on this device. Open this folder to view and back up your data."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-folder-open"
@@ -71,12 +71,12 @@
       <UPageCard
         title="Display"
       >
-        <div class="space-y-6">
+        <div :class="settingsRowsClass">
           <UFormField
             label="Default display currency"
             description="Aggregated balances use this currency, using conversion if necessary."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USelect
               :model-value="defaultDisplayCurrencyCode"
@@ -94,7 +94,7 @@
             label="Display locale"
             description="Controls date, number, and language formatting."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USelect
               :model-value="displayLocale"
@@ -112,7 +112,7 @@
             label="Theme"
             description="Choose how Worth looks."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USelect
               :model-value="theme"
@@ -129,8 +129,8 @@
       </UPageCard>
 
       <UPageCard title="About">
-        <div class="space-y-6">
-          <p class="text-sm text-muted">
+        <div :class="settingsRowsClass">
+          <p class="col-span-full text-sm text-muted">
             Worth is made in the open by <ULink
               to="https://www.callumwatkins.com"
               external
@@ -144,7 +144,7 @@
             label="Open source"
             description="View the source code, report issues, and contribute on GitHub."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-github"
@@ -161,7 +161,7 @@
             label="Feedback"
             description="Share a bug, suggestion, or piece of feedback."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-message-circle-heart"
@@ -177,7 +177,7 @@
             label="Support Worth"
             description="Worth is free to use. If it has been useful to you and you would like to say thanks, a small donation means a lot."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-heart"
@@ -193,7 +193,7 @@
             label="Licenses"
             description="View license notices for Worth and included third-party software."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-scroll-text"
@@ -206,7 +206,7 @@
             </UButton>
           </UFormField>
 
-          <div class="space-y-2">
+          <div class="col-span-full space-y-2">
             <UFormField
               :label="updateRow.title"
               :description="updateRow.description"
@@ -298,6 +298,13 @@ const localeItems = [
 ] satisfies { label: string, value: AppLocaleCode }[];
 
 const themeItems = [...themePreferenceItems];
+
+const settingsRowsClass = "grid grid-cols-[minmax(0,1fr)_max-content] gap-x-10 gap-y-6";
+const settingsFieldUi = {
+  root: "grid grid-cols-subgrid col-span-full items-center justify-start justify-items-stretch gap-[inherit]",
+  wrapper: "min-w-0",
+  container: "justify-self-end"
+} as const;
 
 function syncEditableSettings(value: AppSettingsDto) {
   analyticsEnabled.value = value.analytics_enabled;
