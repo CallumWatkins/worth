@@ -213,6 +213,12 @@
               orientation="horizontal"
               class="items-center gap-25"
             >
+              <template #label>
+                <span v-bind="updateRow.titleProps">
+                  {{ updateRow.title }}
+                </span>
+              </template>
+
               <div class="flex min-w-40 justify-end">
                 <template v-if="updateRow.control.kind === 'progress'">
                   <UProgress
