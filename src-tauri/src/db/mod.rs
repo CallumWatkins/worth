@@ -11,14 +11,15 @@ use std::time::Duration;
 use tauri::Manager;
 use tauri::path::BaseDirectory;
 
-pub async fn init_pool(app: &tauri::AppHandle) -> tauri::Result<SqlitePool> {
-    let db_path: PathBuf = app
-        .path()
-        .resolve("db/worth.sqlite", BaseDirectory::AppLocalData)?;
+pub fn database_dir(app: &tauri::AppHandle) -> tauri::Result<PathBuf> {
+    app.path().resolve("db", BaseDirectory::AppLocalData)
+}
 
-    if let Some(parent) = db_path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
+pub async fn init_pool(app: &tauri::AppHandle) -> tauri::Result<SqlitePool> {
+    let db_dir = database_dir(app)?;
+    std::fs::create_dir_all(&db_dir)?;
+
+    let db_path: PathBuf = db_dir.join("worth.sqlite");
 
     let options = SqliteConnectOptions::new()
         .filename(&db_path)

@@ -20,23 +20,23 @@
       />
 
       <UAlert
-        v-if="saveError"
+        v-if="settingsError"
         color="error"
         variant="subtle"
         orientation="horizontal"
-        :title="saveError"
+        :title="settingsError"
         :actions="hasErrorDetailsSurvey ? [getErrorDetailsSurveyAction()] : []"
       />
 
       <UPageCard
         title="General"
       >
-        <div class="space-y-6">
+        <div :class="settingsRowsClass">
           <UFormField
             label="Share anonymous diagnostics and feedback"
             description="Helps improve Worth by sharing anonymous usage events, crash reports, and any feedback you choose to send. Personal or financial details are never sent."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USwitch
               :model-value="analyticsEnabled"
@@ -46,18 +46,37 @@
               @update:model-value="onAnalyticsEnabledUpdate"
             />
           </UFormField>
+
+          <UFormField
+            label="Data folder"
+            description="Worth stores all data locally on this device. Open this folder to view and back up your data."
+            orientation="horizontal"
+            :ui="settingsFieldUi"
+          >
+            <UButton
+              icon="i-lucide-folder-open"
+              class="whitespace-nowrap"
+              variant="subtle"
+              color="neutral"
+              :loading="openDataFolder.isPending"
+              :disabled="isSettingsBusy || openDataFolder.isPending"
+              @click="onOpenDataFolder"
+            >
+              Open folder
+            </UButton>
+          </UFormField>
         </div>
       </UPageCard>
 
       <UPageCard
         title="Display"
       >
-        <div class="space-y-6">
+        <div :class="settingsRowsClass">
           <UFormField
             label="Default display currency"
             description="Aggregated balances use this currency, using conversion if necessary."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USelect
               :model-value="defaultDisplayCurrencyCode"
@@ -75,7 +94,7 @@
             label="Display locale"
             description="Controls date, number, and language formatting."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USelect
               :model-value="displayLocale"
@@ -93,7 +112,7 @@
             label="Theme"
             description="Choose how Worth looks."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <USelect
               :model-value="theme"
@@ -110,8 +129,8 @@
       </UPageCard>
 
       <UPageCard title="About">
-        <div class="space-y-6">
-          <p class="text-sm text-muted">
+        <div :class="settingsRowsClass">
+          <p class="col-span-full text-sm text-muted">
             Worth is made in the open by <ULink
               to="https://www.callumwatkins.com"
               external
@@ -125,7 +144,7 @@
             label="Open source"
             description="View the source code, report issues, and contribute on GitHub."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-github"
@@ -142,7 +161,7 @@
             label="Feedback"
             description="Share a bug, suggestion, or piece of feedback."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-message-circle-heart"
@@ -158,7 +177,7 @@
             label="Support Worth"
             description="Worth is free to use. If it has been useful to you and you would like to say thanks, a small donation means a lot."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-heart"
@@ -174,7 +193,7 @@
             label="Licenses"
             description="View license notices for Worth and included third-party software."
             orientation="horizontal"
-            class="items-center gap-25"
+            :ui="settingsFieldUi"
           >
             <UButton
               icon="i-lucide-scroll-text"
@@ -187,13 +206,19 @@
             </UButton>
           </UFormField>
 
-          <div class="space-y-2">
+          <div class="col-span-full space-y-2">
             <UFormField
               :label="updateRow.title"
               :description="updateRow.description"
               orientation="horizontal"
               class="items-center gap-25"
             >
+              <template #label>
+                <span v-bind="updateRow.titleProps">
+                  {{ updateRow.title }}
+                </span>
+              </template>
+
               <div class="flex min-w-40 justify-end">
                 <template v-if="updateRow.control.kind === 'progress'">
                   <UProgress
@@ -234,6 +259,7 @@
 import type { AnalyticsEventProperties } from "~/composables/useAnalytics";
 import type { AppLocaleCode, AppSettingsDto, AppSettingsUpdateInput, CurrencyCode, ThemePreference } from "~/generated/bindings";
 
+import { useMutation } from "@tanstack/vue-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { supportedCurrencyCodes } from "~/utils/currencies";
 import { APP_LOCALES } from "~/utils/i18n";
@@ -247,8 +273,9 @@ const {
   updateSetting
 } = useSettingsManager();
 const { updateRow } = useAppUpdateRow();
+const api = useApi();
 
-const saveError = ref<string | null>(null);
+const settingsError = ref<string | null>(null);
 const pendingField = ref<SettingsField | null>(null);
 const analyticsEnabled = ref(true);
 const defaultDisplayCurrencyCode = ref<CurrencyCode>();
@@ -259,6 +286,9 @@ const isSettingsBusy = computed(() => settingsQuery.isPending || unref(updateSet
 const { hasFeedbackSurvey, openFeedbackSurvey } = useFeedbackSurvey();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const { captureAnalyticsEvent } = useAnalytics();
+const openDataFolder = proxyRefs(useMutation({
+  mutationFn: api.dataFolderOpen
+}));
 
 const currencyItems = supportedCurrencyCodes.map((currencyCode) => ({
   label: currencyCode,
@@ -275,6 +305,13 @@ const localeItems = [
 
 const themeItems = [...themePreferenceItems];
 
+const settingsRowsClass = "grid grid-cols-[minmax(0,1fr)_max-content] gap-x-10 gap-y-6";
+const settingsFieldUi = {
+  root: "grid grid-cols-subgrid col-span-full items-center justify-start justify-items-stretch gap-[inherit]",
+  wrapper: "min-w-0",
+  container: "justify-self-end"
+} as const;
+
 function syncEditableSettings(value: AppSettingsDto) {
   analyticsEnabled.value = value.analytics_enabled;
   defaultDisplayCurrencyCode.value = value.default_display_currency_code;
@@ -289,7 +326,7 @@ async function saveSetting(field: SettingsField, patch: Partial<AppSettingsUpdat
   const startedAt = performance.now();
   const analyticsProperties = getSettingAnalyticsProperties(field, patch);
 
-  saveError.value = null;
+  settingsError.value = null;
   pendingField.value = field;
 
   try {
@@ -310,9 +347,19 @@ async function saveSetting(field: SettingsField, patch: Partial<AppSettingsUpdat
     }
 
     syncEditableSettings(previous);
-    saveError.value = error instanceof Error ? error.message : "Failed to save settings";
+    settingsError.value = error instanceof Error ? error.message : "Failed to save settings";
   } finally {
     pendingField.value = null;
+  }
+}
+
+async function onOpenDataFolder() {
+  settingsError.value = null;
+
+  try {
+    await openDataFolder.mutateAsync();
+  } catch {
+    settingsError.value = "Could not open data folder";
   }
 }
 

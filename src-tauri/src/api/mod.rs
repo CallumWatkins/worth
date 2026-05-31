@@ -248,6 +248,14 @@ pub async fn settings_update(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn data_folder_open(app: AppHandle) -> Result<(), ApiError> {
+    let db_dir = db::database_dir(&app).map_err(|_| ApiError::Db)?;
+    std::fs::create_dir_all(&db_dir).map_err(|_| ApiError::Db)?;
+    tauri_plugin_opener::open_path(&db_dir, None::<&str>).map_err(|_| ApiError::Db)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn app_updates_state_get(
     state: State<'_, AppState>,
 ) -> Result<AppUpdateStateDto, ApiError> {
@@ -1773,6 +1781,7 @@ pub(crate) fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         .commands(collect_commands![
             settings_get,
             settings_update,
+            data_folder_open,
             app_updates_state_get,
             app_updates_check,
             app_updates_install_pending_and_restart,

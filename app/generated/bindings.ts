@@ -8,6 +8,7 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 export const commands = {
 	settingsGet: () => typedError<AppSettingsDto, ApiError>(__TAURI_INVOKE("settings_get")),
 	settingsUpdate: (input: AppSettingsUpdateInput) => typedError<AppSettingsDto, ApiError>(__TAURI_INVOKE("settings_update", { input })),
+	dataFolderOpen: () => typedError<null, ApiError>(__TAURI_INVOKE("data_folder_open")),
 	appUpdatesStateGet: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_state_get")),
 	appUpdatesCheck: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_check")),
 	appUpdatesInstallPendingAndRestart: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_install_pending_and_restart")),
