@@ -1,5 +1,7 @@
 import { LazyConfirmDialog } from "#components";
 
+let activeConfirmDialogCancel: (() => void) | null = null;
+
 export interface ConfirmDialogOptions {
   title: string
   description?: string
@@ -17,7 +19,24 @@ export const useConfirmDialog = () => {
     });
 
     const opened = modal.open();
-    // eslint-disable-next-line ts/no-unsafe-return
-    return opened.result;
+    const cancel = () => modal.close(false);
+    activeConfirmDialogCancel = cancel;
+
+    try {
+      // eslint-disable-next-line ts/no-unsafe-return
+      return await opened.result;
+    } finally {
+      if (activeConfirmDialogCancel === cancel) {
+        activeConfirmDialogCancel = null;
+      }
+    }
   };
+};
+
+export const cancelActiveConfirmDialog = () => {
+  if (!activeConfirmDialogCancel) return false;
+
+  activeConfirmDialogCancel();
+  activeConfirmDialogCancel = null;
+  return true;
 };
