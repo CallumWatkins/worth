@@ -1691,6 +1691,8 @@ async fn build_account_dtos(
     Ok(out)
 }
 
+// A missing snapshot date means "unchanged since the previous snapshot"; values
+// stay None before the first known balance so callers can choose how to handle absence.
 fn filled_values_for_period(
     snapshots_by_date: &HashMap<NaiveDate, i64>,
     initial_before: Option<i64>,

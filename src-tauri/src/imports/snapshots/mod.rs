@@ -239,6 +239,8 @@ fn build_plan(
         .collect::<BTreeMap<_, _>>();
     let mut planned_by_row = HashMap::<u32, SnapshotImportPreviewRowDto>::new();
     let mut writes = Vec::<SnapshotImportWrite>::new();
+    // Plan in chronological order so previous-balance and unchanged-value decisions
+    // include earlier imported rows; preview rows are keyed back to source order for display.
     let mut chronological = candidates.clone();
     chronological.sort_by_key(|row| (row.date, row.source_row_number));
 

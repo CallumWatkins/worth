@@ -1,3 +1,7 @@
+//! Rust contracts are the source of truth for IPC types, JSON Schema export,
+//! and frontend Zod form schemas; keep validation rules and user-facing copy
+//! here so generated frontend types and forms stay aligned.
+
 pub mod schema_export;
 
 use std::str::FromStr;
@@ -247,6 +251,8 @@ pub struct AppSettingsUpdateInput {
     pub theme: Option<ThemePreference>,
 }
 
+// Keep balances comfortably within JavaScript's safe integer range because
+// generated IPC bindings cast Rust i64 values to TypeScript number.
 pub(crate) const BALANCE_MINOR_ABS_MAX: i64 = 99_999_999_999_999;
 
 const INSTITUTION_NAME_REQUIRED: &str = "Enter an institution name";
@@ -265,6 +271,8 @@ const BALANCE_TOO_LARGE: &str = "Balance is too large";
 #[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct InstitutionUpsertInput {
+    // x-validation is consumed by the Zod generator; keep it paired with the
+    // matching garde rule so client and server validation use the same message.
     #[garde(custom(validate_institution_name))]
     #[schemars(
         length(min = 1, max = 80),
@@ -367,6 +375,7 @@ pub struct AccountSnapshotWriteInput {
             "type": BALANCE_REQUIRED
         }))
     )]
+    // Signed balance in minor units; liability accounts are entered as negative balances.
     pub balance_minor: i64,
     #[garde(skip)]
     pub overwrite_existing: bool,

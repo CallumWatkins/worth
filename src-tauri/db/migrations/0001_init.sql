@@ -46,6 +46,8 @@ CREATE INDEX idx_balance_date_account ON account_balance_snapshots (balance_date
 
 CREATE INDEX idx_accounts_institution ON accounts (institution_id);
 
+-- search_fts is denormalized so global search can match account names, institution names,
+-- and account types from one FTS table; triggers keep joined text in sync.
 CREATE VIRTUAL TABLE search_fts USING fts5 (
   kind unindexed,
   entity_id unindexed,
