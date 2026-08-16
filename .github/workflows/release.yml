@@ -133,32 +133,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          node <<'NODE'
-          const fs = require("node:fs");
-
-          const tagVersion = process.env.TAG_NAME.slice(1);
-          console.log(`Checking source versions against ${tagVersion}.`);
-          const cargoToml = fs.readFileSync("src-tauri/Cargo.toml", "utf8");
-          const cargoVersion = cargoToml.match(/^\[package\][\s\S]*?^version\s*=\s*"([^"]+)"/m)?.[1];
-          const versions = [
-            ["package.json", JSON.parse(fs.readFileSync("package.json", "utf8")).version],
-            ["src-tauri/tauri.conf.json", JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")).version],
-            ["src-tauri/Cargo.toml", cargoVersion]
-          ];
-
-          let failed = false;
-          for (const [file, version] of versions) {
-            if (version !== tagVersion) {
-              console.error(`::error file=${file}::Expected version ${tagVersion}, found ${version ?? "missing"}.`);
-              failed = true;
-            }
-          }
-
-          if (failed) process.exit(1);
-
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `app_version=${tagVersion}\n`);
-          console.log(`Source versions match ${tagVersion}.`);
-          NODE
+          app_version="${TAG_NAME#v}"
+          node app/scripts/check-versions.mjs "${app_version}"
+          echo "app_version=${app_version}" >> "${GITHUB_OUTPUT}"
 
   publish-tauri:
     name: Build ${{ matrix.platform }} release
