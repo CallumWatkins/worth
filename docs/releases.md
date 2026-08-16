@@ -6,7 +6,7 @@ Worth releases are created by pushing a signed stable version tag, such as `v1.2
 
 - The tag must be a signed annotated tag verified by GitHub.
 - The tagged commit must be contained in `master`.
-- `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` must match the tag version without the leading `v`.
+- `package.json`, `src-tauri/tauri.conf.json5`, and `src-tauri/Cargo.toml` must match the tag version without the leading `v`.
 - The release commit must land through a pull request that passes the required `ci-required` check.
 - Release tags matching `v*.*.*` are protected by a GitHub ruleset and can only be created, updated, or deleted by explicit bypass actors. See `docs/ci.md` for CI and repository ruleset settings.
 - Worth release packages are built natively on each GitHub runner. Local cross-compilation is unsupported.

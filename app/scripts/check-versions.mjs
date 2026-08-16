@@ -28,7 +28,7 @@ async function readCargoVersion(filePath) {
 
 const versions = [
   ["package.json", await readKeyValueVersion("package.json")],
-  ["src-tauri/tauri.conf.json", await readKeyValueVersion("src-tauri/tauri.conf.json")],
+  ["src-tauri/tauri.conf.json5", await readKeyValueVersion("src-tauri/tauri.conf.json5")],
   ["src-tauri/Cargo.toml", await readCargoVersion("src-tauri/Cargo.toml")]
 ];
 

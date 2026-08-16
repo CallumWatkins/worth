@@ -141,7 +141,7 @@ export default defineNuxtConfig({
       "/**": {
         headers: {
           "Content-Security-Policy": [
-            // CSP for dev server. For builds, CSP is configured in tauri.conf.json.
+            // CSP for dev server. For builds, CSP is configured in tauri.conf.json5.
             // Dev-only allowances: localhost:3000 for Nuxt assets, localhost:3001/ws for Vite HMR,
             // and unsafe-inline/unsafe-eval for Nuxt/Vite dev scripts.
             "default-src 'self' http://localhost:3000",

@@ -7,7 +7,7 @@ Rust interacts with the Tauri Updater plugin to check for, download, and install
 | Area | File |
 | --- | --- |
 | Rust update flow and DTOs | `src-tauri/src/updates.rs` |
-| Tauri updater config | `src-tauri/tauri.conf.json` and `src-tauri/tauri.dev.conf.json` |
+| Tauri updater config | `src-tauri/tauri.conf.json5` and `src-tauri/tauri.dev.conf.json` |
 | Frontend update state and commands | `app/composables/useAppUpdates.ts` |
 | App-level update event listener | `app/plugins/app-updates.client.ts` |
 | Settings row view model | `app/composables/useAppUpdateRow.ts` |

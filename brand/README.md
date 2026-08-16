@@ -62,4 +62,4 @@ bunx icon-gen -i ./brand/tauri/icns-src -o ./brand/tauri/ --icns --icns-name ico
 
 After exporting and generating, the following files are copied into `src-tauri/icons/`: `32x32.png`, `128x128.png`, `128x128@2x.png`, `icon.png`, `icon.ico`, and `icon.icns`.
 
-Tauri then references these icons from `src-tauri/tauri.conf.json`.
+Tauri then references these icons from `src-tauri/tauri.conf.json5`.
