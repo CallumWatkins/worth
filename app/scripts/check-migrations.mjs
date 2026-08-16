@@ -143,6 +143,7 @@ if (!baselineTag) {
     "--",
     migrationsPath
   ]).filter((filePath) => filePath.endsWith(".sql"));
+  const releasedMigrationFileSet = new Set(releasedMigrationFiles);
 
   for (const filePath of releasedMigrationFiles) {
     const baselineEntry = nullSeparatedGitOutput(["ls-tree", "-z", baselineTag, "--", filePath])[0];
@@ -169,7 +170,14 @@ if (!baselineTag) {
   }
 
   if (!failed) {
-    console.log(`Released migrations match ${baselineTag}; unreleased migrations remain editable.`);
+    const editableMigrationFiles = currentMigrationFiles.filter((filePath) => !releasedMigrationFileSet.has(filePath));
+    console.log(`Released migrations match ${baselineTag}.`);
+    if (editableMigrationFiles.length === 0) {
+      console.log("No existing migration files can be modified before the next release.");
+    } else {
+      console.log("Migration files that can still be modified before the next release:");
+      for (const filePath of editableMigrationFiles) console.log(`- ${filePath}`);
+    }
   }
 }
 

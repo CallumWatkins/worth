@@ -49,7 +49,9 @@ test("allows migrations to change until they are released", async () => {
   await writeMigration(repository, "0001_init.sql", "CREATE TABLE example (id INTEGER PRIMARY KEY);\n");
   commit(repository, "initial migration");
 
-  assert.equal(runChecker(repository).status, 0);
+  const initialResult = runChecker(repository);
+  assert.equal(initialResult.status, 0);
+  assert.match(initialResult.stdout, /No stable release tag exists yet/);
 
   await writeMigration(repository, "0001_init.sql", "CREATE TABLE example (id INTEGER PRIMARY KEY, name TEXT);\n");
   commit(repository, "edit unreleased migration");
@@ -102,7 +104,12 @@ test("freezes newly added migrations at the next release tag", async () => {
   await writeMigration(repository, "0002_name.sql", "ALTER TABLE example ADD COLUMN display_name TEXT;\n");
   commit(repository, "edit second migration before release");
 
-  assert.equal(runChecker(repository).status, 0);
+  const beforeReleaseResult = runChecker(repository);
+  assert.equal(beforeReleaseResult.status, 0);
+  assert.match(
+    beforeReleaseResult.stdout,
+    /Migration files that can still be modified before the next release:\r?\n- src-tauri\/db\/migrations\/0002_name\.sql/
+  );
 
   execFileSync("git", ["tag", "v1.1.0"], { cwd: repository });
   await writeMigration(repository, "0002_name.sql", "ALTER TABLE example ADD COLUMN final_name TEXT;\n");
