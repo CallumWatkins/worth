@@ -7,7 +7,7 @@
 </p>
 
 > [!IMPORTANT]
-> Worth is currently in active development. There are no packaged releases to download yet, but it is in a working state if you are willing to build it from source. I am not guaranteeing backwards compatibility until Worth has a proper release.
+> Worth is currently in active development. It is in a working state, but I am not guaranteeing backwards compatibility before version 1.0.
 
 ## Worth
 

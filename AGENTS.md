@@ -12,7 +12,7 @@ Worth is a balance tracking desktop app built with **Tauri 2 (Rust)** + **Nuxt 4
 
 - **Frontend**: Nuxt 4, Nuxt UI 4, TailwindCSS 4, TypeScript, TanStack Vue Query, ECharts
 - **Desktop**: Tauri 2 (`@tauri-apps/api`, `@tauri-apps/cli`)
-- **Backend**: Rust 2021, `tokio`, `sqlx` (SQLite)
+- **Backend**: Rust 2024, `tokio`, `sqlx` (SQLite)
 - **Type sharing**:
   - `specta` / `tauri-specta` generates `app/generated/bindings.ts` via `src-tauri/dev-bin/export_bindings.rs`
   - `schemars` / `garde` generates `app/generated/schemas/*.schema.json` via `src-tauri/dev-bin/export_schemas.rs`
