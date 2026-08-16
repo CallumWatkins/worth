@@ -497,6 +497,16 @@ const deleteSnapshotsOpen = ref(false);
 const deleteSnapshotIds = ref<number[]>([]);
 const selectedSnapshotRowIds = ref<Record<string, boolean>>({});
 
+watch(accountId, () => {
+  addSnapshotsOpen.value = false;
+  importSnapshotsOpen.value = false;
+  editSnapshotOpen.value = false;
+  editSnapshotId.value = null;
+  deleteSnapshotsOpen.value = false;
+  deleteSnapshotIds.value = [];
+  selectedSnapshotRowIds.value = {};
+});
+
 useResourcePageError({
   resourceName: "Account",
   resourceId: accountId,

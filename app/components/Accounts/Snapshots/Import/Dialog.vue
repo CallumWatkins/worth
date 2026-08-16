@@ -169,6 +169,17 @@ const isCompleteNoop = computed(() => selectedFlow.value?.isCompleteNoop?.() ?? 
 const showContinue = computed(() => stepIndex.value > 0 && stepIndex.value < flowSteps.value.length);
 const showComplete = computed(() => stepIndex.value > 0 && stepIndex.value === flowSteps.value.length);
 
+useNavigationLayer({
+  id: "snapshot-import-dialog",
+  open,
+  dirty: computed(() => stepIndex.value > 0 || selectedFlowId.value != null),
+  pending: busy,
+  close: () => {
+    open.value = false;
+  },
+  discardTitle: "Discard snapshot import?"
+});
+
 watch(open, (isOpen) => {
   if (!isOpen) return;
   reset();

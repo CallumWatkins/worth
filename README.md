@@ -120,6 +120,9 @@ $ bun run bump
 ### Release
 See `docs/releases.md` for the signed tag release process.
 
+### Maintainer documentation
+See [`docs/README.md`](docs/README.md) for architecture, repository, and release documentation.
+
 ## License
 The source code for Worth is [licensed](./LICENSE) under `AGPL-3.0-only`.
 

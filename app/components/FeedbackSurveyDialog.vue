@@ -90,6 +90,14 @@ const trimmedFeedback = computed(() => feedback.value.trim());
 const trimmedEmail = computed(() => email.value.trim());
 const hasCompletedField = computed(() => rating.value != null || trimmedFeedback.value !== "" || trimmedEmail.value !== "");
 
+useNavigationLayer({
+  id: "feedback-survey-dialog",
+  open: computed(() => !closed.value),
+  dirty: hasCompletedField,
+  close: closeSurvey,
+  discardTitle: "Discard feedback and close?"
+});
+
 function handleOpenUpdate(open: boolean) {
   if (!open) closeSurvey();
 }

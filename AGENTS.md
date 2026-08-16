@@ -29,6 +29,10 @@ Worth is a balance tracking desktop app built with **Tauri 2 (Rust)** + **Nuxt 4
   - **`src-tauri/dev-bin/db.rs`**: DB dev CLI (seed/backup/restore/clear)
   - **`src-tauri/dev-bin/export_bindings.rs`**: exports TS bindings
 
+### Documentation
+
+- Start with [`docs/README.md`](docs/README.md) and read the relevant document before changing a documented subsystem.
+
 ### Common commands
 
 ```sh

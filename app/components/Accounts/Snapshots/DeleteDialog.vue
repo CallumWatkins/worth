@@ -101,6 +101,15 @@ const submitError = ref<string | null>(null);
 const dialogSnapshots = ref<AccountBalanceSnapshotDto[]>([]);
 const showAllSnapshots = ref(false);
 
+useNavigationLayer({
+  id: "snapshot-delete-dialog",
+  open,
+  pending: computed(() => deleteSnapshots.isPending),
+  close: () => {
+    open.value = false;
+  }
+});
+
 const visibleSnapshots = computed(() => {
   return showAllSnapshots.value ? dialogSnapshots.value : dialogSnapshots.value.slice(0, 5);
 });

@@ -240,7 +240,9 @@
           v-model:open="deleteOpen"
           :account-id="accountId"
           :redirect-to="{ name: 'accounts' }"
+          redirect-replace
           analytics-category="account_settings"
+          @deleted="accountDeleted = true"
         />
       </template>
     </UPageBody>
@@ -304,6 +306,7 @@ const hasHydrated = ref(false);
 const initialOpenedDate = ref<string | undefined>(undefined);
 const initialClosedDate = ref<string | undefined>(undefined);
 const deleteOpen = ref(false);
+const accountDeleted = ref(false);
 const {
   state,
   institutionItems,
@@ -330,6 +333,7 @@ watch(() => accountQuery.data, (account) => {
 watch(accountId, () => {
   hasHydrated.value = false;
   didSave.value = false;
+  accountDeleted.value = false;
   initialOpenedDate.value = undefined;
   initialClosedDate.value = undefined;
 });
@@ -375,7 +379,7 @@ function onInstitutionMenuCreate(name: string) {
 
 usePreventRouteNavigation({
   isSubmitting: computed(() => form.value?.loading ?? false),
-  isDirty: computed(() => form.value?.dirty ?? false),
+  isDirty: computed(() => !accountDeleted.value && (form.value?.dirty ?? false)),
   title: "Discard account changes?",
   description: "You have unsaved account changes that will be lost if you leave this page."
 });

@@ -236,4 +236,15 @@ const {
   closedDate: toRef(props, "closedDate"),
   snapshots: toRef(props, "snapshots")
 });
+
+useNavigationLayer({
+  id: "snapshot-add-dialog",
+  open,
+  dirty: computed(() => !isEmpty.value),
+  pending: computed(() => createSnapshots.isPending),
+  close: () => {
+    open.value = false;
+  },
+  discardTitle: "Discard snapshot changes?"
+});
 </script>

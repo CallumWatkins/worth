@@ -312,6 +312,8 @@ const settingsFieldUi = {
   container: "justify-self-end"
 } as const;
 
+useBlockRouteNavigationWhile(computed(() => unref(updateSettings.isPending)));
+
 function syncEditableSettings(value: AppSettingsDto) {
   analyticsEnabled.value = value.analytics_enabled;
   defaultDisplayCurrencyCode.value = value.default_display_currency_code;

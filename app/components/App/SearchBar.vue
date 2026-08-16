@@ -71,6 +71,7 @@ const { captureAnalyticsEvent } = useAnalytics();
 
 const selectedItem = ref<SearchResultDto | null>(null);
 const searchInputMenu = useTemplateRef<ComponentExposed<typeof UInputMenu>>("searchInputMenu");
+const route = useRoute();
 const rawMenuOpen = ref(false);
 const searchTerm = ref("");
 let hasCapturedCurrentSearchAnalytics = false;
@@ -89,6 +90,12 @@ watch(hasSearchTerm, (hasValue) => {
 
 watch(trimmedSearchTerm, () => {
   hasCapturedCurrentSearchAnalytics = false;
+});
+
+watch(() => route.fullPath, () => {
+  selectedItem.value = null;
+  searchTerm.value = "";
+  rawMenuOpen.value = false;
 });
 
 watchDebounced(trimmedSearchTerm, captureSearchAnalytics, { debounce: 750 });

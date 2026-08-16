@@ -240,6 +240,24 @@ const changeMinor = computed(() => {
   return amountMinor.value - previousSnapshot.value.balance_minor;
 });
 
+useNavigationLayer({
+  id: "snapshot-edit-dialog",
+  open,
+  dirty: computed(() => {
+    const snapshot = currentSnapshot.value;
+    if (snapshot == null) return false;
+
+    return state.date !== snapshot.date
+      || amountMinor.value !== snapshot.balance_minor
+      || state.overwriteExisting;
+  }),
+  pending: computed(() => updateSnapshot.isPending),
+  close: () => {
+    open.value = false;
+  },
+  discardTitle: "Discard snapshot changes?"
+});
+
 watch(open, (isOpen) => {
   if (!isOpen) return;
   today.value = getTodayCalendarDateIsoString();

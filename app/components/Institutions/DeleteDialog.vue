@@ -115,19 +115,32 @@ import { useQuery } from "@tanstack/vue-query";
 const props = defineProps<{
   institutionId: number | null
   redirectTo?: RouteLocationRaw
+  redirectReplace?: boolean
   analyticsCategory: AnalyticsEventCategory
+}>();
+const emit = defineEmits<{
+  deleted: []
 }>();
 
 const CONFIRM_PHRASE = "delete";
 
 const open = defineModel<boolean>("open", { required: true });
 const api = useApi();
-const { deleteInstitution } = useInstitutionMutations();
+const { deleteInstitution, invalidateInstitutionWrites } = useInstitutionMutations();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const { captureAnalyticsEvent } = useAnalytics();
 
 const confirmationState = reactive({ confirmationInput: "" });
 const submitError = ref<string | null>(null);
+
+useNavigationLayer({
+  id: "institution-delete-dialog",
+  open,
+  pending: computed(() => deleteInstitution.isPending),
+  close: () => {
+    open.value = false;
+  }
+});
 
 const deletePreviewQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.institutions.deletePreview(props.institutionId!)),
@@ -150,6 +163,7 @@ watch(open, (isOpen) => {
 async function onDelete() {
   if (props.institutionId === null || !canDelete.value) return;
   submitError.value = null;
+  const delayInvalidation = props.redirectTo !== undefined && props.redirectReplace === true;
   const startedAt = performance.now();
   const analyticsProperties = {
     account_count: deletePreviewQuery.data?.accounts.length ?? 0,
@@ -158,14 +172,10 @@ async function onDelete() {
   };
 
   try {
-    await deleteInstitution.mutateAsync(props.institutionId);
-    captureAnalyticsEvent(`${props.analyticsCategory}:institution_delete`, analyticsProperties, {
-      operationStartedAt: startedAt
+    await deleteInstitution.mutateAsync({
+      institutionId: props.institutionId,
+      invalidate: !delayInvalidation
     });
-    open.value = false;
-    if (props.redirectTo !== undefined) {
-      await navigateTo(props.redirectTo);
-    }
   } catch (error) {
     captureAnalyticsEvent(`${props.analyticsCategory}:institution_delete_fail`, {
       ...analyticsProperties,
@@ -175,6 +185,19 @@ async function onDelete() {
     });
 
     submitError.value = error instanceof Error ? error.message : "Failed to delete institution";
+    return;
+  }
+
+  captureAnalyticsEvent(`${props.analyticsCategory}:institution_delete`, analyticsProperties, {
+    operationStartedAt: startedAt
+  });
+  emit("deleted");
+  open.value = false;
+  if (props.redirectTo !== undefined) {
+    await navigateTo(props.redirectTo, { replace: props.redirectReplace === true });
+  }
+  if (delayInvalidation) {
+    await invalidateInstitutionWrites();
   }
 }
 
