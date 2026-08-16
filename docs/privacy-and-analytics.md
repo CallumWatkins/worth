@@ -28,7 +28,7 @@ Before adding a request or analytics property:
 
 1. Confirm it cannot contain financial or identifying user content.
 2. Use the existing analytics/error helpers so opt-out and redaction apply.
-3. Update both development CSP in `nuxt.config.ts` and packaged CSP in `src-tauri/tauri.conf.json` when a new connection origin is required.
+3. Update both development CSP in `nuxt.config.ts` and packaged CSP in `src-tauri/tauri.conf.json5` when a new connection origin is required.
 4. Update Tauri capabilities for newly opened external URLs.
 5. Update this document and user-facing privacy copy when the data boundary changes.
 

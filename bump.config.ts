@@ -8,7 +8,7 @@ export default defineConfig({
   push: false,
   files: [
     "package.json",
-    "src-tauri/tauri.conf.json",
+    "src-tauri/tauri.conf.json5",
     "src-tauri/Cargo.toml"
   ],
   execute: ({ state }) => new Promise<void>((resolve, reject) => {

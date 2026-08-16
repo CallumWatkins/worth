@@ -36,9 +36,9 @@
     "brand:generate-ico": "bun run app/scripts/generate-ico.mjs",
     "tauri:before-build": "bun run app/scripts/tauri-before-build.mjs",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
+    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json5",
     "tauri:build": "tauri build",
-    "tauri:build:debug": "tauri build --debug --config src-tauri/tauri.dev.conf.json"
+    "tauri:build:debug": "tauri build --debug --config src-tauri/tauri.dev.conf.json5"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.0.0",

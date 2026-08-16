@@ -22,7 +22,7 @@
   ],
   "files.associations": {
     "*.css": "tailwindcss",
-    "tauri*.conf.json": "jsonc"
+    "*.json5": "jsonc"
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "editor.quickSuggestions": {
