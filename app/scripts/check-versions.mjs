@@ -32,7 +32,7 @@ const versions = [
   ["src-tauri/Cargo.toml", await readCargoVersion("src-tauri/Cargo.toml")]
 ];
 
-const expectedVersion = versions[0][1];
+const expectedVersion = process.argv[2] ?? versions[0][1];
 let failed = false;
 
 for (const [filePath, version] of versions) {
