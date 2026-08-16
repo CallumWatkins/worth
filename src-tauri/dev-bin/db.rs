@@ -245,11 +245,11 @@ fn resolve_db_path() -> Result<PathBuf> {
 }
 
 fn read_bundle_identifier() -> Result<String> {
-    let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tauri.dev.conf.json");
+    let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tauri.dev.conf.json5");
     let raw = std::fs::read_to_string(&config_path)
         .with_context(|| format!("read {}", config_path.display()))?;
     let v: serde_json::Value =
-        serde_json::from_str(&raw).with_context(|| format!("parse {}", config_path.display()))?;
+        json5::from_str(&raw).with_context(|| format!("parse {}", config_path.display()))?;
     let id = v
         .get("identifier")
         .and_then(|x| x.as_str())
