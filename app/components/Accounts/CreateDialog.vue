@@ -173,6 +173,17 @@ const { captureAnalyticsEvent } = useAnalytics();
 const submitError = ref<string | null>(null);
 const institutionMenuOpen = ref(false);
 
+useNavigationLayer({
+  id: "account-create-dialog",
+  open,
+  dirty: computed(() => form.value?.dirty ?? false),
+  pending: computed(() => (form.value?.loading ?? false) || createAccount.isPending),
+  close: () => {
+    open.value = false;
+  },
+  discardTitle: "Discard account changes?"
+});
+
 const institutionsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.institutions.list(),
   queryFn: api.institutionsList

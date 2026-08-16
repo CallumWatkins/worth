@@ -69,6 +69,17 @@ const { state, reset } = useInstitutionUpsertForm();
 
 const { createInstitution } = useInstitutionMutations();
 
+useNavigationLayer({
+  id: "institution-create-dialog",
+  open,
+  dirty: computed(() => form.value?.dirty ?? false),
+  pending: computed(() => (form.value?.loading ?? false) || createInstitution.isPending),
+  close: () => {
+    open.value = false;
+  },
+  discardTitle: "Discard institution changes?"
+});
+
 watch(open, (isOpen) => {
   if (isOpen) {
     submitError.value = null;

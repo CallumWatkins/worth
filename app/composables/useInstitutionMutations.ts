@@ -27,13 +27,16 @@ export const useInstitutionMutations = () => {
   }));
 
   const deleteInstitution = proxyRefs(useMutation({
-    mutationFn: async (institutionId: number) => api.institutionsDelete(institutionId),
-    onSuccess: invalidateInstitutionWrites
+    mutationFn: async ({ institutionId }: { institutionId: number, invalidate: boolean }) => api.institutionsDelete(institutionId),
+    onSuccess: async (_, { invalidate }) => {
+      if (invalidate) await invalidateInstitutionWrites();
+    }
   }));
 
   return {
     createInstitution,
     updateInstitution,
-    deleteInstitution
+    deleteInstitution,
+    invalidateInstitutionWrites
   };
 };

@@ -66,6 +66,14 @@ const surveyState = computed(() => ({ details: details.value }));
 const trimmedDetails = computed(() => details.value.trim());
 const hasCompletedField = computed(() => trimmedDetails.value !== "");
 
+useNavigationLayer({
+  id: "error-details-survey-dialog",
+  open: computed(() => !closed.value),
+  dirty: hasCompletedField,
+  close: closeSurvey,
+  discardTitle: "Discard error details and close?"
+});
+
 function handleOpenUpdate(open: boolean) {
   if (!open) closeSurvey();
 }

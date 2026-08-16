@@ -57,4 +57,12 @@ const { keyboardShortcutsOpen, shortcuts } = useGlobalKeyboardShortcuts(({ keybo
     }
   }
 ]);
+
+useNavigationLayer({
+  id: "keyboard-shortcuts-dialog",
+  open: keyboardShortcutsOpen,
+  close: () => {
+    keyboardShortcutsOpen.value = false;
+  }
+});
 </script>

@@ -206,6 +206,14 @@ type LicenseRow
 const open = defineModel<boolean>("open", { required: true });
 const expandedPackageValues = ref(new Set<string>());
 
+useNavigationLayer({
+  id: "licenses-dialog",
+  open,
+  close: () => {
+    open.value = false;
+  }
+});
+
 const licensesQuery = proxyRefs(useQuery<LicenseNotices, Error>({
   queryKey: ["license-notices"],
   queryFn: fetchLicenseNotices,

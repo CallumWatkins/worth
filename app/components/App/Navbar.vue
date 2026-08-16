@@ -1,5 +1,6 @@
 <template>
   <UHeader
+    v-model:open="mobileNavOpen"
     mode="slideover"
     :ui="{
       left: 'lg:flex-none pr-4',
@@ -53,6 +54,15 @@ import logoDarkTheme from "~/assets/worth_combo_mark_gradient_green.svg";
 import logoLightTheme from "~/assets/worth_combo_mark_gradient_green_dark.svg";
 
 const colorMode = useColorMode();
+const mobileNavOpen = ref(false);
+
+useNavigationLayer({
+  id: "mobile-navigation-slideover",
+  open: mobileNavOpen,
+  close: () => {
+    mobileNavOpen.value = false;
+  }
+});
 
 const items: NavigationMenuItem[] = [
   {

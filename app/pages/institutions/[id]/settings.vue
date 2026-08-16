@@ -78,7 +78,9 @@
           v-model:open="deleteOpen"
           :institution-id="institutionId"
           :redirect-to="{ name: 'institutions' }"
+          redirect-replace
           analytics-category="institution_settings"
+          @deleted="institutionDeleted = true"
         />
       </template>
     </UPageBody>
@@ -119,11 +121,13 @@ const submitError = ref<string | null>(null);
 const didSave = ref(false);
 const hasHydrated = ref(false);
 const deleteOpen = ref(false);
+const institutionDeleted = ref(false);
 const { state, hydrateFromInstitution } = useInstitutionUpsertForm();
 
 watch(institutionId, () => {
   hasHydrated.value = false;
   didSave.value = false;
+  institutionDeleted.value = false;
 });
 
 watch(() => institutionQuery.data, (institution) => {
@@ -135,7 +139,7 @@ watch(() => institutionQuery.data, (institution) => {
 
 usePreventRouteNavigation({
   isSubmitting: computed(() => form.value?.loading ?? false),
-  isDirty: computed(() => form.value?.dirty ?? false),
+  isDirty: computed(() => !institutionDeleted.value && (form.value?.dirty ?? false)),
   title: "Discard institution changes?",
   description: "You have unsaved institution changes that will be lost if you leave this page."
 });

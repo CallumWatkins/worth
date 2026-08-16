@@ -99,19 +99,32 @@ import { useQuery } from "@tanstack/vue-query";
 const props = defineProps<{
   accountId: number | null
   redirectTo?: RouteLocationRaw
+  redirectReplace?: boolean
   analyticsCategory: AnalyticsEventCategory
+}>();
+const emit = defineEmits<{
+  deleted: []
 }>();
 
 const CONFIRM_PHRASE = "delete";
 
 const open = defineModel<boolean>("open", { required: true });
 const api = useApi();
-const { deleteAccount } = useAccountMutations();
+const { deleteAccount, invalidateAccountWrites } = useAccountMutations();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const { captureAnalyticsEvent } = useAnalytics();
 
 const confirmationState = reactive({ confirmationInput: "" });
 const submitError = ref<string | null>(null);
+
+useNavigationLayer({
+  id: "account-delete-dialog",
+  open,
+  pending: computed(() => deleteAccount.isPending),
+  close: () => {
+    open.value = false;
+  }
+});
 
 const deletePreviewQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.deletePreview(props.accountId!)),
@@ -134,6 +147,7 @@ watch(open, (isOpen) => {
 async function onDelete() {
   if (props.accountId === null || !canDelete.value) return;
   submitError.value = null;
+  const delayInvalidation = props.redirectTo !== undefined && props.redirectReplace === true;
   const startedAt = performance.now();
   const analyticsProperties = {
     snapshot_count: deletePreviewQuery.data?.snapshot_count ?? 0,
@@ -141,14 +155,10 @@ async function onDelete() {
   };
 
   try {
-    await deleteAccount.mutateAsync(props.accountId);
-    captureAnalyticsEvent(`${props.analyticsCategory}:account_delete`, analyticsProperties, {
-      operationStartedAt: startedAt
+    await deleteAccount.mutateAsync({
+      accountId: props.accountId,
+      invalidate: !delayInvalidation
     });
-    open.value = false;
-    if (props.redirectTo !== undefined) {
-      await navigateTo(props.redirectTo);
-    }
   } catch (error) {
     captureAnalyticsEvent(`${props.analyticsCategory}:account_delete_fail`, {
       ...analyticsProperties,
@@ -158,6 +168,19 @@ async function onDelete() {
     });
 
     submitError.value = error instanceof Error ? error.message : "Failed to delete account";
+    return;
+  }
+
+  captureAnalyticsEvent(`${props.analyticsCategory}:account_delete`, analyticsProperties, {
+    operationStartedAt: startedAt
+  });
+  emit("deleted");
+  open.value = false;
+  if (props.redirectTo !== undefined) {
+    await navigateTo(props.redirectTo, { replace: props.redirectReplace === true });
+  }
+  if (delayInvalidation) {
+    await invalidateAccountWrites();
   }
 }
 </script>
