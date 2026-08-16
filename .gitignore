@@ -18,6 +18,7 @@ dist-ssr
 .nuxt
 .nitro
 .cache
+plans/
 
 public/licenses/*.json.gz
 
