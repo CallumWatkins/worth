@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# SQLx hashes migration bytes, so every build must embed identical line endings.
+src-tauri/db/migrations/*.sql text eol=lf

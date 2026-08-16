@@ -11,6 +11,7 @@ The aggregate job depends on these checks:
 | Job | Purpose |
 | --- | --- |
 | `changes` | Detect whether releases worker files changed. |
+| `migrations` | Reject changes to migrations frozen by a stable release tag and test the checker. |
 | `ts-lint` | Run strict TypeScript/Vue ESLint. |
 | `ts-typecheck` | Run Nuxt typecheck. |
 | `rust-fmt` | Check Rust app formatting. |
@@ -30,6 +31,14 @@ bun run check:ci
 ```
 
 The local `check:ci` script covers the app and release gates. Releases worker checks are worker-local and are run by GitHub Actions when releases worker paths change.
+
+## Released migrations
+
+A migration becomes immutable when it is included in a stable `v*.*.*` tag. The migration check compares `HEAD` with the highest stable tag, rejecting changes, deletions, and renames of migration files present in that tag. Migrations added after the tag remain editable until the next stable tag is created.
+
+The release workflow excludes the tag currently being validated and compares against the preceding stable tag. If a release attempt is abandoned, delete its tag before changing a migration it introduced.
+
+Git normalizes repository text files to LF through `.gitattributes`. Migration files have an explicit LF rule because SQLx hashes their exact bytes. Rust tests execute the current migration chain against an empty SQLite database and upgrade a database built from the latest stable tag.
 
 ## `master` Ruleset
 

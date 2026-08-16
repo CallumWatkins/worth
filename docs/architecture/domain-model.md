@@ -29,7 +29,7 @@ Worth does not perform foreign-exchange conversion. Account views format values 
 
 ## Schema and search
 
-The schema lives in `src-tauri/db/migrations`; matching `sqlx::FromRow` table models live in `src-tauri/src/db/rows.rs`. Migrations run on app startup. Add a new numbered migration when existing local databases must be upgraded; only rewrite an applied migration when intentionally dropping that compatibility.
+The schema lives in `src-tauri/db/migrations`; matching `sqlx::FromRow` table models live in `src-tauri/src/db/rows.rs`. Migrations run on app startup. A migration remains editable until it is included in a stable release tag; after that, it is immutable and schema changes require a new numbered migration. SQLx hashes exact migration bytes, so migration files must retain the repository's LF line endings.
 
 Global search uses the denormalized `search_fts` table. SQLite triggers keep institution, account, and account-type text synchronized. A schema or write-path change that affects searchable text must preserve those triggers.
 

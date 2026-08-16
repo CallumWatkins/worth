@@ -137,6 +137,11 @@ jobs:
           node app/scripts/check-versions.mjs "${app_version}"
           echo "app_version=${app_version}" >> "${GITHUB_OUTPUT}"
 
+      - name: Check released migrations
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: node app/scripts/check-migrations.mjs --exclude-tag "${TAG_NAME}"
+
   publish-tauri:
     name: Build ${{ matrix.platform }} release
     needs: validate
