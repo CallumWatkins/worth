@@ -5,6 +5,8 @@ const GITHUB_OWNER: &str = "CallumWatkins";
 const GITHUB_REPO: &str = "worth";
 const RELEASE_METADATA_CACHE_URL: &str =
     "https://releases.useworth.app/__cache/github-release-latest";
+const RELEASE_BY_TAG_CACHE_PREFIX: &str =
+    "https://releases.useworth.app/__cache/github-release-tag-";
 const STABLE_JSON_CACHE_PATH: &str = "/__cache/stable-json";
 const LATEST_JSON_CACHE_PATH: &str = "/__cache/latest-json";
 const LATEST_JSON_TTL_SECONDS: u32 = 60;
@@ -109,9 +111,11 @@ struct GitHubRelease {
 
 #[derive(Deserialize)]
 struct GitHubAsset {
+    id: u64,
     name: String,
     size: u64,
     digest: String,
+    browser_download_url: String,
 }
 
 #[derive(Serialize)]
@@ -203,8 +207,8 @@ fn health() -> Result<Response> {
     json_response(&HealthResponse { ok: true }, Some(0))
 }
 
-async fn stable_update(req: Request, _ctx: RouteContext<()>) -> Result<Response> {
-    cached_updater_manifest_response(releases_base_url(&req)?)
+async fn stable_update(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    cached_updater_manifest_response(&ctx, releases_base_url(&req)?)
         .await
         .or_else(|error| upstream_unavailable(&error))
 }
@@ -340,7 +344,10 @@ fn build_stable_manifest(release: &GitHubRelease, base_url: &Url) -> Result<Stab
     })
 }
 
-async fn cached_updater_manifest_response(base_url: Url) -> Result<Response> {
+async fn cached_updater_manifest_response(
+    ctx: &RouteContext<()>,
+    base_url: Url,
+) -> Result<Response> {
     let cache = Cache::default();
     let cache_key_url = cache_url(&base_url, LATEST_JSON_CACHE_PATH)?;
     let cache_key = Request::new(&cache_key_url, Method::Get)?;
@@ -353,7 +360,18 @@ async fn cached_updater_manifest_response(base_url: Url) -> Result<Response> {
         "https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest/download/latest.json"
     ))
     .await?;
-    let text = rewrite_update_manifest(&text, &base_url)?;
+    let release_tag = update_manifest_release_tag(&text)?;
+    let release_text = cached_github_api_text(
+        ctx,
+        &format!("{RELEASE_BY_TAG_CACHE_PREFIX}{release_tag}"),
+        &format!(
+            "https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/tags/{release_tag}"
+        ),
+        RELEASE_METADATA_TTL_SECONDS,
+    )
+    .await?;
+    let release = serde_json::from_str(&release_text)?;
+    let text = rewrite_update_manifest(&text, &base_url, &release)?;
     let mut response = json_text_response(text, LATEST_JSON_TTL_SECONDS)?;
 
     cache.put(&cache_key, response.cloned()?).await?;
@@ -553,7 +571,7 @@ fn stable_download_kind_matches(kind: StableDownloadKind, name: &str) -> bool {
     }
 }
 
-fn rewrite_update_manifest(text: &str, base_url: &Url) -> Result<String> {
+fn rewrite_update_manifest(text: &str, base_url: &Url, release: &GitHubRelease) -> Result<String> {
     let mut manifest: serde_json::Value = serde_json::from_str(text)?;
 
     if let Some(platforms) = manifest
@@ -561,10 +579,8 @@ fn rewrite_update_manifest(text: &str, base_url: &Url) -> Result<String> {
         .and_then(serde_json::Value::as_object_mut)
     {
         for platform in platforms.values_mut() {
-            if let Some(url) = platform
-                .get("url")
-                .and_then(serde_json::Value::as_str)
-                .and_then(|url| rewrite_update_download_url(url, base_url))
+            if let Some(url) = platform.get("url").and_then(serde_json::Value::as_str)
+                && let Some(url) = rewrite_update_download_url(url, base_url, release)?
             {
                 platform["url"] = serde_json::Value::String(url);
             }
@@ -574,27 +590,106 @@ fn rewrite_update_manifest(text: &str, base_url: &Url) -> Result<String> {
     serde_json::to_string(&manifest).map_err(Error::from)
 }
 
-fn rewrite_update_download_url(url: &str, base_url: &Url) -> Option<String> {
-    let url = Url::parse(url).ok()?;
+fn update_manifest_release_tag(text: &str) -> Result<String> {
+    let manifest: serde_json::Value = serde_json::from_str(text)?;
+    let version = manifest
+        .get("version")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| Error::RustError("Updater manifest has no version".to_string()))?;
+    let normalized = version.strip_prefix('v').unwrap_or(version);
 
+    if !validate_version(normalized) {
+        return Err(Error::RustError(
+            "Updater manifest has an invalid version".to_string(),
+        ));
+    }
+
+    Ok(format!("v{normalized}"))
+}
+
+fn rewrite_update_download_url(
+    url: &str,
+    base_url: &Url,
+    release: &GitHubRelease,
+) -> Result<Option<String>> {
+    let Ok(url) = Url::parse(url) else {
+        return Ok(None);
+    };
+
+    if url.host_str() == Some("github.com") {
+        return Ok(github_release_download_parts(&url)
+            .and_then(|(version, filename)| {
+                versioned_download_url(base_url.clone(), version, filename).ok()
+            })
+            .map(String::from));
+    }
+
+    if url.host_str() != Some("api.github.com") {
+        return Ok(None);
+    }
+
+    let Some(segments) = url.path_segments().map(Iterator::collect::<Vec<_>>) else {
+        return Ok(None);
+    };
+
+    if segments.len() != 6
+        || segments[0] != "repos"
+        || !segments[1].eq_ignore_ascii_case(GITHUB_OWNER)
+        || !segments[2].eq_ignore_ascii_case(GITHUB_REPO)
+        || segments[3] != "releases"
+        || segments[4] != "assets"
+    {
+        return Ok(None);
+    }
+
+    let asset_id = segments[5]
+        .parse::<u64>()
+        .map_err(|_| Error::RustError("Updater asset URL has an invalid asset ID".to_string()))?;
+    let asset = release
+        .assets
+        .iter()
+        .find(|asset| asset.id == asset_id)
+        .ok_or_else(|| {
+            Error::RustError(format!(
+                "Updater asset {asset_id} is not part of release {}",
+                release.tag_name
+            ))
+        })?;
+    let asset_url = Url::parse(&asset.browser_download_url)?;
+    let (version, filename) = github_release_download_parts(&asset_url).ok_or_else(|| {
+        Error::RustError(format!(
+            "Updater asset `{}` does not have a Worth GitHub download URL",
+            asset.name
+        ))
+    })?;
+
+    if version != release.tag_name {
+        return Err(Error::RustError(format!(
+            "Updater asset `{}` belongs to release {version}, not {}",
+            asset.name, release.tag_name
+        )));
+    }
+
+    Ok(Some(String::from(versioned_download_url(
+        base_url.clone(),
+        version,
+        filename,
+    )?)))
+}
+
+fn github_release_download_parts(url: &Url) -> Option<(&str, &str)> {
     if url.host_str() != Some("github.com") {
         return None;
     }
 
     let segments = url.path_segments()?.collect::<Vec<_>>();
 
-    if segments.len() != 6
-        || !segments[0].eq_ignore_ascii_case(GITHUB_OWNER)
-        || !segments[1].eq_ignore_ascii_case(GITHUB_REPO)
-        || segments[2] != "releases"
-        || segments[3] != "download"
-    {
-        return None;
-    }
-
-    versioned_download_url(base_url.clone(), segments[4], segments[5])
-        .ok()
-        .map(String::from)
+    (segments.len() == 6
+        && segments[0].eq_ignore_ascii_case(GITHUB_OWNER)
+        && segments[1].eq_ignore_ascii_case(GITHUB_REPO)
+        && segments[2] == "releases"
+        && segments[3] == "download")
+        .then_some((segments[4], segments[5]))
 }
 
 fn validate_version(version: &str) -> bool {
@@ -654,4 +749,127 @@ fn decoded_route_param(ctx: &RouteContext<()>, name: &str) -> Result<String> {
         .map_err(Error::from)?
         .as_string()
         .ok_or_else(|| Error::RustError(format!("Unable to decode `{name}` route parameter")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        GitHubAsset, GitHubRelease, rewrite_update_download_url, rewrite_update_manifest,
+        update_manifest_release_tag,
+    };
+    use worker::Url;
+
+    fn release() -> GitHubRelease {
+        GitHubRelease {
+            tag_name: "v1.2.3".to_string(),
+            published_at: "2026-08-22T00:00:00Z".to_string(),
+            assets: vec![GitHubAsset {
+                id: 12345,
+                name: "Worth_1.2.3_x64-setup.nsis.zip".to_string(),
+                size: 42,
+                digest: "sha256:abc".to_string(),
+                browser_download_url: "https://github.com/CallumWatkins/worth/releases/download/v1.2.3/Worth_1.2.3_x64-setup.nsis.zip".to_string(),
+            }],
+        }
+    }
+
+    #[test]
+    fn rewrites_legacy_browser_download_urls() {
+        let base_url = Url::parse("https://releases.useworth.app").unwrap();
+        let rewritten = rewrite_update_download_url(
+            "https://github.com/CallumWatkins/worth/releases/download/v1.2.3/Worth_1.2.3_x64-setup.nsis.zip",
+            &base_url,
+            &release(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            rewritten.as_deref(),
+            Some("https://releases.useworth.app/v1/download/v1.2.3/Worth_1.2.3_x64-setup.nsis.zip")
+        );
+    }
+
+    #[test]
+    fn rewrites_tauri_action_v1_asset_urls_using_release_metadata() {
+        let base_url = Url::parse("https://releases.useworth.app").unwrap();
+        let rewritten = rewrite_update_download_url(
+            "https://api.github.com/repos/CallumWatkins/worth/releases/assets/12345",
+            &base_url,
+            &release(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            rewritten.as_deref(),
+            Some("https://releases.useworth.app/v1/download/v1.2.3/Worth_1.2.3_x64-setup.nsis.zip")
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_tauri_action_v1_asset_ids() {
+        let base_url = Url::parse("https://releases.useworth.app").unwrap();
+        let result = rewrite_update_download_url(
+            "https://api.github.com/repos/CallumWatkins/worth/releases/assets/67890",
+            &base_url,
+            &release(),
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_asset_metadata_from_a_different_release() {
+        let base_url = Url::parse("https://releases.useworth.app").unwrap();
+        let mut release = release();
+        release.assets[0].browser_download_url = "https://github.com/CallumWatkins/worth/releases/download/v1.2.2/Worth_1.2.3_x64-setup.nsis.zip".to_string();
+        let result = rewrite_update_download_url(
+            "https://api.github.com/repos/CallumWatkins/worth/releases/assets/12345",
+            &base_url,
+            &release,
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn derives_the_exact_release_tag_from_the_updater_manifest() {
+        assert_eq!(
+            update_manifest_release_tag(r#"{"version":"1.2.3"}"#).unwrap(),
+            "v1.2.3"
+        );
+        assert_eq!(
+            update_manifest_release_tag(r#"{"version":"v1.2.3"}"#).unwrap(),
+            "v1.2.3"
+        );
+        assert!(update_manifest_release_tag(r#"{"version":"../latest"}"#).is_err());
+    }
+
+    #[test]
+    fn rewrites_mixed_updater_manifests() {
+        let base_url = Url::parse("https://releases.useworth.app").unwrap();
+        let manifest = r#"{
+            "version": "1.2.3",
+            "platforms": {
+                "windows-x86_64-nsis": {
+                    "signature": "signature",
+                    "url": "https://api.github.com/repos/CallumWatkins/worth/releases/assets/12345"
+                },
+                "linux-x86_64-appimage": {
+                    "signature": "signature",
+                    "url": "https://github.com/CallumWatkins/worth/releases/download/v1.2.3/Worth_1.2.3_x64-setup.nsis.zip"
+                }
+            }
+        }"#;
+
+        let rewritten = rewrite_update_manifest(manifest, &base_url, &release()).unwrap();
+
+        assert!(!rewritten.contains("api.github.com"));
+        assert!(!rewritten.contains("github.com/CallumWatkins/worth/releases/download"));
+        assert_eq!(
+            rewritten
+                .matches("releases.useworth.app/v1/download")
+                .count(),
+            2
+        );
+    }
 }
