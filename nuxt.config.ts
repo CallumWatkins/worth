@@ -113,12 +113,7 @@ export default defineNuxtConfig({
       ]
     },
     server: {
-      strictPort: true,
-      hmr: {
-        protocol: "ws",
-        host: "0.0.0.0",
-        port: 3001
-      }
+      strictPort: true
     },
     resolve: {
       alias: {
@@ -142,10 +137,10 @@ export default defineNuxtConfig({
         headers: {
           "Content-Security-Policy": [
             // CSP for dev server. For builds, CSP is configured in tauri.conf.json5.
-            // Dev-only allowances: localhost:3000 for Nuxt assets, localhost:3001/ws for Vite HMR,
+            // Dev-only allowances: localhost:3000 for Nuxt assets and Vite HMR,
             // and unsafe-inline/unsafe-eval for Nuxt/Vite dev scripts.
             "default-src 'self' http://localhost:3000",
-            "connect-src 'self' ipc: http://ipc.localhost https://i.useworth.app http://localhost:3000 http://localhost:3001 ws:",
+            "connect-src 'self' ipc: http://ipc.localhost https://i.useworth.app http://localhost:3000 ws://localhost:3000",
             "script-src 'self' http://localhost:3000 'unsafe-inline' 'unsafe-eval'",
             "style-src 'self' 'unsafe-inline' http://localhost:3000",
             "img-src 'self' data: blob: http://localhost:3000",

@@ -52,30 +52,32 @@ export default defineNuxtPlugin({
           label: update.kind === "downloaded" ? "Update and restart Worth" : "Restart Worth",
           color: "neutral",
           variant: "outline",
-          onClick: async () => {
-            toastActionRunning = true;
+          onClick: () => {
+            void (async () => {
+              toastActionRunning = true;
 
-            try {
-              if (update.kind === "downloaded") {
-                try {
-                  const state = await api.appUpdatesInstallPendingAndRestart();
-                  setState(state);
-                  if (state.status.kind === "error" && state.status.phase === "installing") {
+              try {
+                if (update.kind === "downloaded") {
+                  try {
+                    const state = await api.appUpdatesInstallPendingAndRestart();
+                    setState(state);
+                    if (state.status.kind === "error" && state.status.phase === "installing") {
+                      showActionErrorToast("install");
+                    }
+                  } catch {
                     showActionErrorToast("install");
                   }
-                } catch {
-                  showActionErrorToast("install");
+                } else {
+                  try {
+                    await relaunch();
+                  } catch {
+                    showActionErrorToast("restart");
+                  }
                 }
-              } else {
-                try {
-                  await relaunch();
-                } catch {
-                  showActionErrorToast("restart");
-                }
+              } finally {
+                toastActionRunning = false;
               }
-            } finally {
-              toastActionRunning = false;
-            }
+            })();
           }
         }],
         "onUpdate:open": (open: boolean) => {

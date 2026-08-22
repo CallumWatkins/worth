@@ -3,11 +3,8 @@
     ref="searchInputMenu"
     v-model:search-term="searchTerm"
     v-model:open="menuOpen"
-    :model-value="
-      /* Reka treats `undefined` as uncontrolled. Allow `null` to force clear on select.
-      https://github.com/nuxt/ui/pull/6060 might fix the need for this workaround once released. */
-      (selectedItem as SearchResultDto | undefined)
-    "
+    :model-value="selectedItem"
+    :model-modifiers="{ nullable: true }"
     :items="searchQuery.data"
     label-key="name"
     leading-icon="i-lucide-search"
@@ -119,7 +116,7 @@ useContextualKeyboardShortcuts([
   }
 ]);
 
-async function onSelect(item: SearchResultDto | undefined) {
+async function onSelect(item: SearchResultDto | null) {
   if (!item) return;
   captureSearchAnalytics();
 
