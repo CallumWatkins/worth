@@ -407,6 +407,19 @@ jobs:
       - name: Setup Rust
         run: rustup toolchain install
 
+      - name: Add Rust wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
       - name: Cache Cargo releases worker artifacts
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -421,6 +434,12 @@ jobs:
 
       - name: Test releases worker Rust
         run: cargo test --manifest-path workers/releases/Cargo.toml --locked
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test compiled releases worker routes
+        run: bun run test:releases-worker
 
   ci-required:
     name: ci-required

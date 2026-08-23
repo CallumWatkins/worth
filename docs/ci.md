@@ -21,7 +21,7 @@ The aggregate job depends on these checks:
 | `versions` | Check source version sync. |
 | `contracts` | Regenerate committed contracts and fail on drift. |
 | `licenses` | Run release-target license policy checks. |
-| `releases-worker-*` | Run releases worker Cargo checks when releases worker paths changed. |
+| `releases-worker-*` | Run releases worker Cargo checks and compiled-route tests when releases worker paths changed. |
 
 Local app CI simulation:
 

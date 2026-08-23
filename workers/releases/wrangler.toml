@@ -1,6 +1,10 @@
 name = "worth-releases"
 main = "build/index.js"
-compatibility_date = "2026-05-14"
+compatibility_date = "2026-08-23"
+compatibility_flags = [
+  "no_nodejs_compat",
+  "no_nodejs_compat_v2",
+]
 workers_dev = false
 
 [[routes]]

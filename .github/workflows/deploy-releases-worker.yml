@@ -42,6 +42,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           packageManager: bun
+          wranglerVersion: 4.125.0
           workingDirectory: workers/releases
           command: deploy
           secrets: |

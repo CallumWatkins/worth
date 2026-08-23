@@ -17,6 +17,8 @@
     "check:migrations": "bun run app/scripts/check-migrations.mjs",
     "check:licenses": "bun run generate && bun run app/scripts/generate-licenses.mjs --preview",
     "check:licenses:all": "bun run check:licenses --cargo-targets x86_64-pc-windows-msvc,aarch64-pc-windows-msvc,x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-apple-darwin,aarch64-apple-darwin",
+    "build:releases-worker": "wrangler deploy --cwd workers/releases --dry-run --outdir dist",
+    "test:releases-worker": "bun run build:releases-worker && node --test workers/releases/tests/*.test.mjs",
     "lint:ts": "eslint . --max-warnings=0",
     "lint:ts:fix": "eslint . --fix --max-warnings=0",
     "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml --all-targets --features dev-tools --locked",
