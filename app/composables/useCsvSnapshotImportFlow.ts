@@ -424,5 +424,5 @@ export function useCsvSnapshotImportFlow(params: UseCsvSnapshotImportFlowParams)
 }
 
 function getLocalTimezone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  return new Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
