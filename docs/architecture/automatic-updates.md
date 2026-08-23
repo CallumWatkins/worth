@@ -22,11 +22,11 @@ The frontend owns the Settings row presentation. It fetches/listens for Rust sta
 
 | Build | Updater plugin | `supports_updates` | Startup check | Settings row |
 | --- | --- | --- | --- | --- |
-| Debug/dev | Not registered | `false` | Never runs | `Updates are disabled for this installation.` |
+| Debug or `dev-build` | Not registered | `false` | Never runs | `Updates are disabled for this installation.` |
 | Production with supported updater target | Registered | `true` | Runs on app startup | Real update state |
 | Production without supported updater target | Registered | `false` | Never runs | `Updates are disabled for this installation.` |
 
-Debug builds set the updater config to `null` and do not register the updater plugin.
+Debug builds and release-profile dev installers set the updater config to `null` and do not register the updater plugin. The dev installer enables the `dev-build` Cargo feature so it retains release-profile Windows GUI behavior without enabling production updates.
 
 ## IPC commands
 

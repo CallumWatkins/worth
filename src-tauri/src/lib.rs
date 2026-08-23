@@ -31,7 +31,7 @@ pub fn run() {
             }))
             .plugin(tauri_plugin_window_state::Builder::default().build());
 
-        #[cfg(not(debug_assertions))]
+        #[cfg(all(not(debug_assertions), not(feature = "dev-build")))]
         {
             builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
         }

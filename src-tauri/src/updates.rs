@@ -159,6 +159,7 @@ impl AppUpdateManager {
                     updated_at: timestamp(),
                     revision: 0,
                     supports_updates: !cfg!(debug_assertions)
+                        && !cfg!(feature = "dev-build")
                         && tauri_plugin_updater::target().is_some(),
                 },
                 pending_update: None,

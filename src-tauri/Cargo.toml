@@ -19,6 +19,7 @@ crate-type = [
 
 [features]
 dev-tools = []
+dev-build = []
 
 [[bin]]
 name = "worth"
