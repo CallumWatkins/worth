@@ -22,6 +22,7 @@
         "visible": false,
         "resizable": true,
         "fullscreen": false,
+        "generalAutofillEnabled": false,
         "backgroundColor": "#09090B"
       }
     ],
@@ -42,7 +43,7 @@
       },
       "devCsp": {
         "default-src": "'self' http://localhost:3000",
-        "connect-src": "'self' ipc: http://ipc.localhost http://localhost:3000 http://localhost:3001 ws: https://i.useworth.app",
+        "connect-src": "'self' ipc: http://ipc.localhost http://localhost:3000 ws://localhost:3000 https://i.useworth.app",
         "script-src": "'self' http://localhost:3000",
         "style-src": "'self' 'unsafe-inline' http://localhost:3000",
         "img-src": "'self' data: blob: http://localhost:3000",

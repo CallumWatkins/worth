@@ -1,21 +1,9 @@
-import type { Nuxt } from "@nuxt/schema";
 import { APP_I18N_CONFIG } from "./app/utils/i18n";
-
-const addUiIconsToIconClientBundle = (_options: unknown, nuxt: Nuxt) => {
-  nuxt.hook("icon:clientBundleIcons", (icons) => {
-    const uiIcons = nuxt.options.appConfig.ui?.icons as Record<string, unknown> | undefined;
-
-    for (const icon of Object.values(uiIcons ?? {})) {
-      if (typeof icon === "string") icons.add(icon.replace(/^i-([a-z0-9]+)-/, "$1:"));
-    }
-  });
-};
 
 export default defineNuxtConfig({
   modules: [
     "@vueuse/nuxt",
     "@nuxt/ui",
-    addUiIconsToIconClientBundle,
     "reka-ui/nuxt",
     "@nuxt/eslint",
     "nuxt-echarts",
@@ -113,12 +101,7 @@ export default defineNuxtConfig({
       ]
     },
     server: {
-      strictPort: true,
-      hmr: {
-        protocol: "ws",
-        host: "0.0.0.0",
-        port: 3001
-      }
+      strictPort: true
     },
     resolve: {
       alias: {
@@ -142,10 +125,10 @@ export default defineNuxtConfig({
         headers: {
           "Content-Security-Policy": [
             // CSP for dev server. For builds, CSP is configured in tauri.conf.json5.
-            // Dev-only allowances: localhost:3000 for Nuxt assets, localhost:3001/ws for Vite HMR,
+            // Dev-only allowances: localhost:3000 for Nuxt assets and Vite HMR,
             // and unsafe-inline/unsafe-eval for Nuxt/Vite dev scripts.
             "default-src 'self' http://localhost:3000",
-            "connect-src 'self' ipc: http://ipc.localhost https://i.useworth.app http://localhost:3000 http://localhost:3001 ws:",
+            "connect-src 'self' ipc: http://ipc.localhost https://i.useworth.app http://localhost:3000 ws://localhost:3000",
             "script-src 'self' http://localhost:3000 'unsafe-inline' 'unsafe-eval'",
             "style-src 'self' 'unsafe-inline' http://localhost:3000",
             "img-src 'self' data: blob: http://localhost:3000",
@@ -166,7 +149,8 @@ export default defineNuxtConfig({
     }
   },
   experimental: {
-    typedPages: true
+    typedPages: true,
+    watcher: "builder"
   },
   telemetry: false,
   compatibilityDate: "2026-01-01",
@@ -177,7 +161,7 @@ export default defineNuxtConfig({
     publicKey: "phc_pREdKqdwjhVFDkWkFrTzzEruDgVM7vfxYDyyWCPFz737",
     host: "https://i.useworth.app",
     clientConfig: {
-      defaults: "2026-01-30",
+      defaults: "2026-05-30",
       debug: process.env.NODE_ENV === "development",
       capture_exceptions: true,
       autocapture: false,

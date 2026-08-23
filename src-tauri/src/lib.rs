@@ -31,7 +31,7 @@ pub fn run() {
             }))
             .plugin(tauri_plugin_window_state::Builder::default().build());
 
-        #[cfg(not(debug_assertions))]
+        #[cfg(all(not(debug_assertions), not(feature = "dev-build")))]
         {
             builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
         }
@@ -74,7 +74,6 @@ fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         builder = builder.platform(
             PlatformOptions::new()
                 .default_script_dialogs(false)
-                .general_autofill(false)
                 .host_objects(false)
                 .password_autosave(false)
                 .pinch_zoom(false)
@@ -106,7 +105,6 @@ fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 .default_context_menus(false)
                 .default_script_dialogs(false)
                 .dev_tools(false)
-                .general_autofill(false)
                 .host_objects(false)
                 .password_autosave(false)
                 .pinch_zoom(false)

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Args, Parser, Subcommand};
 use sqlx::{
-    SqlitePool,
+    AssertSqlSafe, SqlitePool,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
 };
 use std::collections::HashSet;
@@ -812,7 +812,8 @@ async fn run_seed(pool: &SqlitePool, seed_path: &Path) -> Result<()> {
     }
 
     let mut conn = pool.acquire().await.context("acquire sqlite connection")?;
-    sqlx::raw_sql(&seed_sql)
+    // Seed files are trusted repository assets, not user-provided SQL.
+    sqlx::raw_sql(AssertSqlSafe(seed_sql))
         .execute(&mut *conn)
         .await
         .with_context(|| format!("execute seed SQL from {}", seed_path.display()))?;

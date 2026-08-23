@@ -1843,7 +1843,7 @@ mod tests {
         SqlitePool,
         sqlite::{SqliteConnectOptions, SqlitePoolOptions},
     };
-    use std::str::FromStr;
+    use std::{assert_matches, str::FromStr};
 
     use super::{
         ApiError, SnapshotImportOptionsInput, SnapshotImportSourceInput,
@@ -1904,7 +1904,7 @@ mod tests {
         )
         .await;
 
-        assert!(matches!(result, Err(ApiError::NotFound)));
+        assert_matches!(result, Err(ApiError::NotFound));
     }
 
     #[tokio::test]

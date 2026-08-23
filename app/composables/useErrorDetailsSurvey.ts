@@ -38,8 +38,8 @@ export function useErrorDetailsSurvey() {
       color: "error",
       variant: "ghost",
       ...overrides,
-      onClick: async () => {
-        await openErrorDetailsSurvey();
+      onClick: () => {
+        void openErrorDetailsSurvey();
       }
     };
   }

@@ -15,6 +15,16 @@ Cloudflare Worker for `https://releases.useworth.app`.
 bunx wrangler dev --cwd workers/releases
 ```
 
+## Tests
+
+```sh
+bun run test:releases-worker
+```
+
+The command performs a Wrangler deployment dry run, then exercises the compiled
+Wasm worker through Wrangler's local test harness. Rust unit tests and the
+separate Wasm check and Clippy gates remain part of CI.
+
 ## Deployment
 
 Deployment is handled by the `deploy-releases-worker` GitHub Actions workflow when changes are merged into the master branch.

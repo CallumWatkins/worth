@@ -17,9 +17,20 @@
         @submit="submitSurvey"
       >
         <UFormField label="Rate Worth" hint="Optional">
-          <StarRating
+          <UInputRating
             v-model="rating"
-            :max="5"
+            color="warning"
+            hoverable
+            clearable
+            empty-icon="i-ph-star"
+            icon="i-ph-star-fill"
+            :length="5"
+            :ui="{
+              item: 'flex size-11 items-center justify-center',
+              indicator: 'flex items-center justify-center',
+              icon: 'size-8',
+              emptyIcon: 'size-8'
+            }"
           />
         </UFormField>
 
@@ -77,7 +88,7 @@ const posthog = usePostHog();
 const toast = useToast();
 
 const closed = ref(false);
-const rating = ref<number | null>(null);
+const rating = ref(0);
 const feedback = ref("");
 const email = ref("");
 
@@ -88,7 +99,7 @@ const surveyState = computed(() => ({
 }));
 const trimmedFeedback = computed(() => feedback.value.trim());
 const trimmedEmail = computed(() => email.value.trim());
-const hasCompletedField = computed(() => rating.value != null || trimmedFeedback.value !== "" || trimmedEmail.value !== "");
+const hasCompletedField = computed(() => rating.value > 0 || trimmedFeedback.value !== "" || trimmedEmail.value !== "");
 
 useNavigationLayer({
   id: "feedback-survey-dialog",
@@ -117,7 +128,7 @@ function submitSurvey() {
 
   const properties: Properties = { $survey_id: "019dfe8e-ec1b-0000-5f3f-49ca32eae32b" };
 
-  if (rating.value != null) {
+  if (rating.value > 0) {
     properties["$survey_response_efb7a2a0-2235-4155-8f79-c38c3322243e"] = String(rating.value);
   }
 
@@ -146,7 +157,7 @@ function closeDialog() {
 }
 
 function resetSurveyForm() {
-  rating.value = null;
+  rating.value = 0;
   feedback.value = "";
   email.value = "";
 }

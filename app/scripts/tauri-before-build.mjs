@@ -81,7 +81,7 @@ async function removeFrontendSourceMaps() {
   }
 }
 
-async function uploadPosthogSourcemaps() {
+async function processPosthogSourcemaps() {
   if (process.env.POSTHOG_SOURCEMAPS !== "true") return;
 
   const releaseVersion = requiredEnv("APP_VERSION");
@@ -95,7 +95,7 @@ async function uploadPosthogSourcemaps() {
     POSTHOG_CLI_API_KEY: requiredEnv("POSTHOG_PERSONAL_API_KEY")
   };
   const commonArgs = [
-    "--ignore",
+    "--exclude",
     "**/node_modules/**",
     "--directory",
     publicOutputDir
@@ -106,19 +106,12 @@ async function uploadPosthogSourcemaps() {
   await runCommand(nodeCommand, [
     cliEntrypoint,
     "sourcemap",
-    "inject",
+    "process",
     ...commonArgs,
     "--release-name",
     posthogReleaseName,
     "--release-version",
-    releaseVersion
-  ], { env: cliEnv });
-
-  await runCommand(nodeCommand, [
-    cliEntrypoint,
-    "sourcemap",
-    "upload",
-    ...commonArgs,
+    releaseVersion,
     "--delete-after"
   ], { env: cliEnv });
 }
@@ -127,7 +120,7 @@ async function run() {
   await runCommand(bunCommand, ["run", "generate"]);
   // License generation and PostHog upload need source maps; packaged app assets must not include them.
   await runCommand(bunCommand, ["run", "app/scripts/generate-licenses.mjs"]);
-  await uploadPosthogSourcemaps();
+  await processPosthogSourcemaps();
   await removeFrontendSourceMaps();
 }
 
