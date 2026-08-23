@@ -29,6 +29,7 @@
         "@antfu/eslint-config": "^8.0.0",
         "@apidevtools/json-schema-ref-parser": "^15.0.0",
         "@iconify-json/lucide": "^1.0.0",
+        "@iconify-json/ph": "^1.0.0",
         "@nuxt/eslint": "^1.0.0",
         "@posthog/cli": "^0.7.0",
         "@tauri-apps/cli": "~2.11.0",
@@ -255,6 +256,8 @@
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
 
     "@iconify-json/lucide": ["@iconify-json/lucide@1.2.124", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-mO6JyBVNER7uXEkW2bXiN9Rrm6w91IXxwnNmIMbu2KZX0ZPcVZH1xDUTw94pryxESUIpBhinkOUIZIav+TA9ng=="],
+
+    "@iconify-json/ph": ["@iconify-json/ph@1.2.2", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-PgkEZNtqa8hBGjHXQa4pMwZa93hmfu8FUSjs/nv4oUU6yLsgv+gh9nu28Kqi8Fz9CCVu4hj1MZs9/60J57IzFw=="],
 
     "@iconify/collections": ["@iconify/collections@1.0.726", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-nPr2Y90fsIK8YO9y3WVur9TmuWMHoqgZwTgy0rQHojtcNyEdBgztIvKVXVBHq6IHRMyUO6s+LCWEVxr8x/pemg=="],
 
