@@ -22,6 +22,7 @@
         "visible": false,
         "resizable": true,
         "fullscreen": false,
+        "generalAutofillEnabled": false,
         "backgroundColor": "#09090B"
       }
     ],
