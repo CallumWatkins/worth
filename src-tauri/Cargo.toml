@@ -1,6 +1,6 @@
 [package]
 name = "worth"
-version = "0.3.0"
+version = "0.3.1"
 publish = false
 description = "A balance tracking desktop app"
 authors = [ "Callum Watkins <callum@callumwatkins.com>" ]
