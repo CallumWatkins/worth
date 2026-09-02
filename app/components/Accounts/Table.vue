@@ -1,11 +1,25 @@
 <template>
+  <div v-if="hideEmpty" class="flex items-center gap-2 text-sm">
+    <UBadge label="Hide empty accounts" color="neutral" variant="subtle" />
+    <UButton
+      label="Clear filter"
+      color="neutral"
+      variant="link"
+      size="sm"
+      @click="emit('clearFilters')"
+    />
+  </div>
+
   <UTable
     v-model:sorting="sorting"
+    v-model:expanded="expanded"
     v-model:column-visibility="columnVisibility"
     :data="accountsData"
     :columns="columns"
     :grouping="grouping"
     :grouping-options="groupingOptions"
+    :expanded-options="{ autoResetExpanded: false }"
+    :get-row-id="(account) => String(account.id)"
     empty="No accounts match these filters."
     :ui="{
       td: 'empty:p-0',
@@ -165,7 +179,7 @@
 
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
-import type { Column, GroupingOptions } from "@tanstack/vue-table";
+import type { Column, ExpandedState, GroupingOptions, SortingState } from "@tanstack/vue-table";
 import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
 import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
@@ -189,6 +203,9 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   clearFilters: []
 }>();
+
+const sorting = defineModel<SortingState>("sorting", { required: true });
+const expanded = defineModel<ExpandedState>("expanded", { required: true });
 
 const settings = useSettings();
 const colorMode = useColorMode();
@@ -234,12 +251,6 @@ const columnVisibility = ref<Record<string, boolean>>({
   type_group: false
 });
 
-const sorting = ref([
-  {
-    id: "name",
-    desc: false
-  }
-]);
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 
 function activityValues(account: Account, period: ActivityPeriod): Array<number | null> {
@@ -386,7 +397,7 @@ function sparklinePath(values: Array<number | null>) {
 function getGroupLabel(row: TableRow<Account>) {
   const id = row.groupingColumnId;
   if (id === "institution_group") {
-    return row.getValue<string>("institution_group") ?? "";
+    return row.original.institution.name;
   }
   if (id === "type_group") {
     return ACCOUNT_TYPE_META[row.getValue<AccountTypeName>("type_group")].label;
@@ -465,7 +476,7 @@ const columns = computed<TableColumn<Account>[]>(() => {
   if (!hasHiddenInstitution.value) {
     out.push({
       id: "institution_group",
-      accessorFn: (row) => row.institution.name,
+      accessorFn: (row) => row.institution.id,
       enableSorting: false
     });
   }
