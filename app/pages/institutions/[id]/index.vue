@@ -63,9 +63,9 @@
                 </div>
               </div>
               <AccountsTableViewOptions
-                v-model:group-by="groupBy"
-                v-model:activity-period="activityPeriod"
-                v-model:hide-empty="hideEmpty"
+                v-model:group-by="options.groupBy"
+                v-model:activity-period="options.activityPeriod"
+                v-model:hide-empty="options.hideEmpty"
                 :group-by-items="groupByItems"
                 :activity-period-items="activityPeriodItems"
               />
@@ -73,13 +73,15 @@
           </template>
 
           <AccountsTable
+            v-model:sorting="options.sorting"
+            v-model:expanded="options.expanded"
             :accounts="institutionQuery.data.accounts"
-            :group-by="groupBy"
-            :hide-empty="hideEmpty"
-            :activity-period="activityPeriod"
+            :group-by="options.groupBy"
+            :hide-empty="options.hideEmpty"
+            :activity-period="options.activityPeriod"
             :hide-columns="hideColumns"
             analytics-category="institution"
-            @clear-filters="hideEmpty = false"
+            @clear-filters="options.hideEmpty = false"
           />
         </UPageCard>
       </template>
@@ -98,20 +100,18 @@ import type { BreadcrumbItem } from "@nuxt/ui";
 import { useQuery } from "@tanstack/vue-query";
 
 const route = useRoute("institutions-id");
+const institutionId = useRouteParamInt(route, "id");
 const api = useApi();
 const hideColumns = ref<AccountsHideColumn[]>(["institution"]);
 const createAccountOpen = ref(false);
 const {
-  groupBy,
+  options,
   groupByItems,
-  hideEmpty,
-  activityPeriod,
   activityPeriodItems
 } = useAccountsTableOptions({
+  scope: () => `institution:${institutionId.value}`,
   hideColumns
 });
-
-const institutionId = useRouteParamInt(route, "id");
 
 const institutionQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.institutions.get(institutionId.value!)),

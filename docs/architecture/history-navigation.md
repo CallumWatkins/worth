@@ -14,6 +14,10 @@ Worth supports browser-style Back and Forward inputs in its Tauri WebView, inclu
 
 Opening a modal must not push a history entry, change the URL, or clear Forward history.
 
+## View state across navigation
+
+Some list configuration (e.g. sorting and grouping of the Accounts list) is remembered in Nuxt `useState` for the current app session. Back, Forward, breadcrumbs, and navbar links all restore the latest configuration for that list. Reloading or restarting the app restores defaults.
+
 ## Choosing a primitive
 
 | Situation | Primitive |
