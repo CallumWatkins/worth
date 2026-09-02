@@ -64,6 +64,137 @@ async fn current_migrations_apply_to_an_empty_database_and_are_idempotent() {
             .await
             .expect("count applied migrations");
     assert_eq!(applied_migration_count, MIGRATOR.iter().count() as i64);
+
+    let account_types: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM account_types ORDER BY name")
+            .fetch_all(&pool)
+            .await
+            .expect("read current account types");
+    assert_eq!(
+        account_types,
+        [
+            "cash",
+            "credit_card",
+            "current",
+            "investment",
+            "loan",
+            "pension",
+            "savings"
+        ]
+    );
+}
+
+#[tokio::test]
+async fn removing_isa_preserves_accounts_snapshots_and_search() {
+    let pool = in_memory_pool().await;
+    sqlx::raw_sql(include_str!("../db/migrations/0001_init.sql"))
+        .execute(&pool)
+        .await
+        .expect("create the schema before ISA removal");
+    sqlx::raw_sql(
+        "INSERT INTO institutions (id, name) VALUES (1, 'Test Bank');
+         INSERT INTO accounts (id, name, institution_id, type_id, currency_code,
+                               account_classification, opened_date, closed_date,
+                               created_at, updated_at)
+         SELECT id, name || ' account', 1, id, 'GBP', 'asset', '2020-01-01', NULL,
+                '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z'
+         FROM account_types;
+         INSERT INTO accounts (name, institution_id, type_id, currency_code,
+                               account_classification, closed_date)
+         SELECT 'Closed Stocks & Shares ISA', 1, id, 'GBP', 'asset', '2025-01-01'
+         FROM account_types WHERE name = 'isa';
+         INSERT INTO account_balance_snapshots (account_id, balance_date, balance_minor)
+         SELECT id, '2024-01-01', id * 100 FROM accounts;
+         INSERT INTO account_balance_snapshots (account_id, balance_date, balance_minor)
+         SELECT id, '2024-02-01', id * 200 FROM accounts;
+         CREATE TEMP TABLE original_accounts AS SELECT * FROM accounts;
+         CREATE TEMP TABLE original_snapshots AS SELECT * FROM account_balance_snapshots;
+         CREATE TEMP TABLE expected_types AS
+         SELECT a.id, CASE WHEN t.name = 'isa' THEN 'savings' ELSE t.name END AS name
+         FROM accounts a JOIN account_types t ON t.id = a.type_id;",
+    )
+    .execute(&pool)
+    .await
+    .expect("seed active and closed accounts with balance history");
+
+    sqlx::raw_sql(include_str!(
+        "../db/migrations/0002_remove_isa_account_type.sql"
+    ))
+    .execute(&pool)
+    .await
+    .expect("remove the ISA account type");
+
+    let remaining_isa_types: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM account_types WHERE name = 'isa'")
+            .fetch_one(&pool)
+            .await
+            .expect("count remaining ISA types");
+    assert_eq!(remaining_isa_types, 0);
+
+    let account_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM accounts")
+        .fetch_one(&pool)
+        .await
+        .expect("count preserved accounts");
+    assert_eq!(account_count, 9);
+
+    let unexpected_accounts: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM (
+           SELECT id, name, institution_id, currency_code, account_classification,
+                  opened_date, closed_date, created_at, updated_at FROM original_accounts
+           EXCEPT
+           SELECT id, name, institution_id, currency_code, account_classification,
+                  opened_date, closed_date, created_at, updated_at FROM accounts
+         )",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("compare account details before and after migration");
+    assert_eq!(unexpected_accounts, 0);
+
+    let actual_types: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT a.id, t.name FROM accounts a
+         JOIN account_types t ON t.id = a.type_id ORDER BY a.id",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("read migrated account types");
+    let expected_types: Vec<(i64, String)> =
+        sqlx::query_as("SELECT id, name FROM expected_types ORDER BY id")
+            .fetch_all(&pool)
+            .await
+            .expect("read expected account types");
+    assert_eq!(actual_types, expected_types);
+
+    let snapshot_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM account_balance_snapshots")
+        .fetch_one(&pool)
+        .await
+        .expect("count preserved snapshots");
+    assert_eq!(snapshot_count, 18);
+    let missing_snapshots: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM (
+           SELECT * FROM original_snapshots EXCEPT SELECT * FROM account_balance_snapshots
+         )",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("compare balance history before and after migration");
+    assert_eq!(missing_snapshots, 0);
+
+    let search_types: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT entity_id, account_type FROM search_fts WHERE kind = 'account' ORDER BY entity_id",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("read updated search entries");
+    assert_eq!(search_types, expected_types);
+
+    let savings_search_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM search_fts WHERE search_fts MATCH 'account_type:savings'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("search for savings accounts after migration");
+    assert_eq!(savings_search_count, 3);
 }
 
 #[tokio::test]

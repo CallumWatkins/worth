@@ -135,7 +135,6 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
       "current",
       "savings",
       "credit_card",
-      "isa",
       "investment",
       "pension",
       "cash",
