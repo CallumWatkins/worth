@@ -301,11 +301,10 @@ const shellRef = shallowRef<HTMLElement | null>(null);
 const allocationRotationDeg = -4;
 const allocationRotationRad = allocationRotationDeg * (Math.PI / 180);
 const allocation = [
-  { accountType: "current", percent: 8 },
-  { accountType: "savings", percent: 12 },
-  { accountType: "isa", percent: 29 },
-  { accountType: "investment", percent: 15 },
-  { accountType: "pension", percent: 36 }
+  { accountType: "current", percent: 11 },
+  { accountType: "savings", percent: 17 },
+  { accountType: "investment", percent: 21 },
+  { accountType: "pension", percent: 51 }
 ] as const satisfies Array<{ accountType: AccountTypeName, percent: number }>;
 let allocationOffset = 0;
 const allocationSegments = allocation.map(({ accountType, percent }) => {

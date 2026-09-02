@@ -45,12 +45,6 @@ const ACCOUNT_TYPE_CONFIG = {
     badgeClass: "ring ring-inset bg-[#FEE2E2] text-[#B91C1C] ring-[#F87171]/55 dark:bg-[#DC2626]/15 dark:text-[#FCA5A5] dark:ring-[#DC2626]/35",
     lineColorDark: "#F87171"
   },
-  isa: {
-    label: "ISA",
-    color: "#f97316",
-    badgeClass: "ring ring-inset bg-[#FFEDD5] text-[#C2410C] ring-[#FB923C]/55 dark:bg-[#EA580C]/15 dark:text-[#FDBA74] dark:ring-[#EA580C]/35",
-    lineColorDark: "#FB923C"
-  },
   investment: {
     label: "Investment",
     color: "#a855f7",

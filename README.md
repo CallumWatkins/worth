@@ -130,5 +130,5 @@ The Worth™ name, logo, app icons, wordmarks, source artwork, exported images, 
 
 ## Terminology
 - **Institution**: A provider that groups related accounts together, e.g. a bank, broker, credit card company, or pension provider.
-- **Account**: A financial account held at an institution, e.g. a current account, savings account, ISA, pension, credit card, or loan.
+- **Account**: A financial account held at an institution, e.g. a current account, savings account, pension, credit card, or loan.
 - **Snapshot**: A recorded account balance on a specific date.

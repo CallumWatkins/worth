@@ -95,7 +95,7 @@ export type AccountTypeDto = {
 	name: AccountTypeName,
 };
 
-export type AccountTypeName = "current" | "savings" | "credit_card" | "isa" | "investment" | "pension" | "cash" | "loan";
+export type AccountTypeName = "current" | "savings" | "credit_card" | "investment" | "pension" | "cash" | "loan";
 
 export type AccountUpsertInput = {
 	institution: InstitutionRef,

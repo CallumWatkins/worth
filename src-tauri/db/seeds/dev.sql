@@ -99,7 +99,7 @@ VALUES
       FROM
         account_types
       WHERE
-        name = 'isa'
+        name = 'investment'
     ),
     'GBP',
     'asset',
@@ -167,7 +167,7 @@ VALUES
       FROM
         account_types
       WHERE
-        name = 'isa'
+        name = 'savings'
     ),
     'GBP',
     'asset',
