@@ -101,7 +101,7 @@
 
 <script lang="ts" setup>
 import type { TableColumn, TableRow } from "@nuxt/ui";
-import type { Column } from "@tanstack/vue-table";
+import type { Column, SortingState } from "@tanstack/vue-table";
 import type { InstitutionSummaryDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
@@ -136,7 +136,7 @@ const institutionsData = computed<Institution[]>(() => institutionsQuery.data ??
 const { formatCurrencyMinor } = useLocaleFormatters();
 const settings = useSettings();
 
-const sorting = ref([
+const sorting = useState<SortingState>("institutionsTableSorting", () => [
   {
     id: "name",
     desc: false

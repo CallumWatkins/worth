@@ -10,9 +10,9 @@
     >
       <template #links>
         <AccountsTableViewOptions
-          v-model:group-by="groupBy"
-          v-model:activity-period="activityPeriod"
-          v-model:hide-empty="hideEmpty"
+          v-model:group-by="options.groupBy"
+          v-model:activity-period="options.activityPeriod"
+          v-model:hide-empty="options.hideEmpty"
           :group-by-items="groupByItems"
           :activity-period-items="activityPeriodItems"
         />
@@ -48,13 +48,15 @@
 
       <AccountsTable
         v-else
+        v-model:sorting="options.sorting"
+        v-model:expanded="options.expanded"
         :accounts="accountsQuery.data ?? []"
-        :group-by="groupBy"
-        :hide-empty="hideEmpty"
-        :activity-period="activityPeriod"
+        :group-by="options.groupBy"
+        :hide-empty="options.hideEmpty"
+        :activity-period="options.activityPeriod"
         :hide-columns="hideColumns"
         analytics-category="accounts"
-        @clear-filters="hideEmpty = false"
+        @clear-filters="options.hideEmpty = false"
       />
 
       <AccountsCreateDialog
@@ -74,12 +76,11 @@ const hideColumns = ref<AccountsHideColumn[]>([]);
 const createDialogOpen = ref(false);
 
 const {
-  groupBy,
+  options,
   groupByItems,
-  hideEmpty,
-  activityPeriod,
   activityPeriodItems
 } = useAccountsTableOptions({
+  scope: "accounts",
   hideColumns
 });
 
