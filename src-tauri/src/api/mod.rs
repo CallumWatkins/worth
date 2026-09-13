@@ -1058,9 +1058,13 @@ pub async fn account_balance_over_time(
 #[tauri::command]
 #[specta::specta]
 pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, ApiError> {
-    let pool = &state.pool;
-    let today = Local::now().date_naive();
+    dashboard_get_with_today(&state.pool, Local::now().date_naive()).await
+}
 
+async fn dashboard_get_with_today(
+    pool: &SqlitePool,
+    today: NaiveDate,
+) -> Result<DashboardDto, ApiError> {
     let accounts = db::accounts_list_full(pool)
         .await
         .map_err(|_| ApiError::Db)?;
@@ -1105,7 +1109,7 @@ pub async fn dashboard_get(state: State<'_, AppState>) -> Result<DashboardDto, A
 
     let monthly_yield_minor = last_minor - month_ago_minor;
     let change_vs_last_month_pct = if month_ago_minor != 0 {
-        (monthly_yield_minor as f64) / (month_ago_minor as f64) * 100.0
+        (monthly_yield_minor as f64) / (month_ago_minor as f64).abs() * 100.0
     } else {
         0.0
     };
@@ -1850,6 +1854,38 @@ mod tests {
         account_snapshot_import_commit_with_today, build_account_dtos,
     };
     use crate::db;
+
+    #[tokio::test]
+    async fn dashboard_monthly_metrics_follow_balance_direction() {
+        let cases = [
+            (-523_595, -182_810, 340_785, 65.08561006121143),
+            (-1000, -1500, -500, -50.0),
+            (-1000, 500, 1500, 150.0),
+            (1000, -500, -1500, -150.0),
+            (1000, 1500, 500, 50.0),
+            (-1000, -1000, 0, 0.0),
+            (0, 1000, 1000, 0.0),
+        ];
+
+        for (starting, ending, expected_yield, expected_pct) in cases {
+            let pool = test_pool().await;
+            let account_id = create_account(&pool).await;
+            let today = date(2026, 9, 13);
+            // Carry the starting balance forward to the 30-day boundary.
+            insert_snapshot_on(&pool, account_id, today - Duration::days(40), starting).await;
+            insert_snapshot_on(&pool, account_id, today, ending).await;
+            insert_snapshot_on(&pool, account_id, today + Duration::days(1), 999_999).await;
+
+            let dto = super::dashboard_get_with_today(&pool, today).await.unwrap();
+
+            assert_eq!(dto.monthly_yield_minor, expected_yield);
+            assert!(
+                (dto.change_vs_last_month_pct - expected_pct).abs() < 0.000001,
+                "{starting} -> {ending}: got {}%, expected {expected_pct}%",
+                dto.change_vs_last_month_pct
+            );
+        }
+    }
 
     #[tokio::test]
     async fn account_monthly_change_uses_zero_when_no_balance_thirty_days_ago() {
