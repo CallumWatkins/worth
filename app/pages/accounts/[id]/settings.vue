@@ -204,6 +204,10 @@
               </UFormField>
             </div>
 
+            <UFormField name="include_in_dashboard">
+              <UCheckbox v-model="state.include_in_dashboard" label="Include in dashboard" />
+            </UFormField>
+
             <div class="flex items-center justify-end gap-3">
               <Transition name="save-status-fade">
                 <span v-if="didSave && !form?.dirty" class="text-sm text-success">

@@ -350,6 +350,8 @@ pub struct AccountUpsertInput {
     })))]
     pub account_classification: AccountClassification,
     #[garde(skip)]
+    pub include_in_dashboard: bool,
+    #[garde(skip)]
     #[specta(optional)]
     pub opened_date: Option<NaiveDate>,
     #[garde(skip)]

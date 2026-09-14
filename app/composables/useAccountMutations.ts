@@ -26,6 +26,19 @@ export const useAccountMutations = () => {
     onSuccess: invalidateAccountWrites
   }));
 
+  const setDashboardInclusion = proxyRefs(useMutation({
+    mutationFn: async ({ accountId, include }: { accountId: number, include: boolean }) =>
+      api.accountsSetDashboardInclusion(accountId, include),
+    onSuccess: async (_, { accountId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts.list() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts.get(accountId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.institutions.prefixes.root() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.prefixes.root() })
+      ]);
+    }
+  }));
+
   const deleteAccount = proxyRefs(useMutation({
     mutationFn: async ({ accountId }: { accountId: number, invalidate: boolean }) => api.accountsDelete(accountId),
     onSuccess: async (_, { invalidate }) => {
@@ -36,6 +49,7 @@ export const useAccountMutations = () => {
   return {
     createAccount,
     updateAccount,
+    setDashboardInclusion,
     deleteAccount,
     invalidateAccountWrites
   };

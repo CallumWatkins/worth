@@ -114,6 +114,7 @@ pub struct AccountListRow {
     pub id: i64,
     pub name: String,
     pub currency_code: String,
+    pub include_in_dashboard: bool,
     pub account_classification: String,
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
@@ -346,6 +347,7 @@ pub async fn accounts_list_full(pool: &SqlitePool) -> Result<Vec<AccountListRow>
             a.name,
             a.currency_code,
             a.account_classification,
+            a.include_in_dashboard,
             a.opened_date,
             a.closed_date,
             i.id AS institution_id,
@@ -407,6 +409,7 @@ pub async fn accounts_list_full_for_institution(
             a.name,
             a.currency_code,
             a.account_classification,
+            a.include_in_dashboard,
             a.opened_date,
             a.closed_date,
             i.id AS institution_id,
@@ -569,6 +572,7 @@ pub async fn account_get_full(
             a.name,
             a.currency_code,
             a.account_classification,
+            a.include_in_dashboard,
             a.opened_date,
             a.closed_date,
             i.id AS institution_id,
@@ -887,14 +891,6 @@ pub async fn last_snapshots_before(
     Ok(rows)
 }
 
-pub async fn earliest_snapshot_date(pool: &SqlitePool) -> Result<Option<NaiveDate>, sqlx::Error> {
-    let min_date: Option<NaiveDate> =
-        sqlx::query_scalar("SELECT MIN(balance_date) FROM account_balance_snapshots")
-            .fetch_one(pool)
-            .await?;
-    Ok(min_date)
-}
-
 pub async fn earliest_snapshot_date_for_account(
     pool: &SqlitePool,
     account_id: i64,
@@ -1111,6 +1107,7 @@ pub struct AccountMutationInput {
     pub name: String,
     pub type_id: i64,
     pub currency_code: String,
+    pub include_in_dashboard: bool,
     pub account_classification: String,
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
@@ -1129,11 +1126,12 @@ pub async fn account_create(
                 type_id,
                 currency_code,
                 account_classification,
+                include_in_dashboard,
                 opened_date,
                 closed_date
             )
         VALUES
-            (?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?)
         ",
     )
     .bind(&input.name)
@@ -1141,6 +1139,7 @@ pub async fn account_create(
     .bind(input.type_id)
     .bind(&input.currency_code)
     .bind(&input.account_classification)
+    .bind(input.include_in_dashboard)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .execute(pool)
@@ -1156,6 +1155,7 @@ pub async fn account_create(
             type_id,
             currency_code,
             account_classification,
+            include_in_dashboard,
             opened_date,
             closed_date,
             created_at,
@@ -1186,11 +1186,12 @@ pub async fn account_create_tx(
                 type_id,
                 currency_code,
                 account_classification,
+                include_in_dashboard,
                 opened_date,
                 closed_date
             )
         VALUES
-            (?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?)
         ",
     )
     .bind(&input.name)
@@ -1198,6 +1199,7 @@ pub async fn account_create_tx(
     .bind(input.type_id)
     .bind(&input.currency_code)
     .bind(&input.account_classification)
+    .bind(input.include_in_dashboard)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .execute(&mut **tx)
@@ -1219,6 +1221,7 @@ pub async fn account_update(
             type_id = ?,
             currency_code = ?,
             account_classification = ?,
+            include_in_dashboard = ?,
             opened_date = ?,
             closed_date = ?,
             updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
@@ -1231,6 +1234,7 @@ pub async fn account_update(
     .bind(input.type_id)
     .bind(&input.currency_code)
     .bind(&input.account_classification)
+    .bind(input.include_in_dashboard)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .bind(account_id)
@@ -1250,6 +1254,7 @@ pub async fn account_update(
             type_id,
             currency_code,
             account_classification,
+            include_in_dashboard,
             opened_date,
             closed_date,
             created_at,
@@ -1281,6 +1286,7 @@ pub async fn account_update_tx(
             type_id = ?,
             currency_code = ?,
             account_classification = ?,
+            include_in_dashboard = ?,
             opened_date = ?,
             closed_date = ?,
             updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
@@ -1293,12 +1299,26 @@ pub async fn account_update_tx(
     .bind(input.type_id)
     .bind(&input.currency_code)
     .bind(&input.account_classification)
+    .bind(input.include_in_dashboard)
     .bind(input.opened_date)
     .bind(input.closed_date)
     .bind(account_id)
     .execute(&mut **tx)
     .await?;
 
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn account_set_dashboard_inclusion(
+    pool: &SqlitePool,
+    account_id: i64,
+    include_in_dashboard: bool,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("UPDATE accounts SET include_in_dashboard = ?, updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?")
+        .bind(include_in_dashboard)
+        .bind(account_id)
+        .execute(pool)
+        .await?;
     Ok(result.rows_affected() > 0)
 }
 

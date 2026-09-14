@@ -36,6 +36,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
       institution: undefined,
       name: undefined,
       account_classification: "asset",
+      include_in_dashboard: true,
       opened_date: undefined,
       closed_date: undefined
     };
@@ -171,6 +172,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.account_type = account.account_type.name;
     state.currency_code = account.currency_code;
     state.account_classification = account.account_classification;
+    state.include_in_dashboard = account.include_in_dashboard;
     state.opened_date = account.opened_date == null ? undefined : parseDate(account.opened_date);
     state.closed_date = account.closed_date == null ? undefined : parseDate(account.closed_date);
     institutionSearchTerm.value = "";

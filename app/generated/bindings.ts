@@ -15,6 +15,7 @@ export const commands = {
 	accountsList: () => typedError<AccountDto[], ApiError>(__TAURI_INVOKE("accounts_list")),
 	accountsCreate: (input: AccountUpsertInput) => typedError<CreatedIdDto, ApiError>(__TAURI_INVOKE("accounts_create", { input })),
 	accountsUpdate: (accountId: number, input: AccountUpsertInput) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_update", { accountId, input })),
+	accountsSetDashboardInclusion: (accountId: number, includeInDashboard: boolean) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_set_dashboard_inclusion", { accountId, includeInDashboard })),
 	accountsDeletePreview: (accountId: number) => typedError<AccountDeletePreviewDto, ApiError>(__TAURI_INVOKE("accounts_delete_preview", { accountId })),
 	accountsDelete: (accountId: number) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_delete", { accountId })),
 	institutionsList: () => typedError<InstitutionSummaryDto[], ApiError>(__TAURI_INVOKE("institutions_list")),
@@ -61,6 +62,7 @@ export type AccountDto = {
 	account_type: AccountTypeDto,
 	currency_code: CurrencyCode,
 	account_classification: AccountClassification,
+	include_in_dashboard: boolean,
 	opened_date: string | null,
 	closed_date: string | null,
 	first_snapshot_date: string | null,
@@ -103,6 +105,7 @@ export type AccountUpsertInput = {
 	account_type: AccountTypeName,
 	currency_code: CurrencyCode,
 	account_classification: AccountClassification,
+	include_in_dashboard: boolean,
 	opened_date?: string | null,
 	closed_date?: string | null,
 };
