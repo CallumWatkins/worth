@@ -39,6 +39,14 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            #[cfg(debug_assertions)]
+            if app.config().identifier == "app.useworth" {
+                return Err(anyhow::anyhow!(
+                    "Development builds must use a separate app identifier. Run bun run tauri:dev."
+                )
+                .into());
+            }
+
             let handle = app.handle().clone();
             let updates = updates::AppUpdateManager::new(app.package_info().version.to_string());
             tauri::async_runtime::block_on(async move {
