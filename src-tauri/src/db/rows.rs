@@ -22,6 +22,7 @@ pub struct AccountRow {
     pub institution_id: i64,
     pub type_id: i64,
     pub currency_code: String,
+    pub include_in_dashboard: bool,
     pub account_classification: String, // CHECK (account_classification IN ('asset', 'liability'))
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,

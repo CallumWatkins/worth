@@ -34,6 +34,9 @@
         "type": "Select a currency"
       }
     },
+    "include_in_dashboard": {
+      "type": "boolean"
+    },
     "institution": {
       "$ref": "#/$defs/InstitutionRef",
       "x-validation": {
@@ -67,7 +70,8 @@
     "name",
     "account_type",
     "currency_code",
-    "account_classification"
+    "account_classification",
+    "include_in_dashboard"
   ],
   "$defs": {
     "AccountClassification": {

@@ -126,6 +126,7 @@ pub struct AccountDto {
     pub account_type: AccountTypeDto,
     pub currency_code: CurrencyCode,
     pub account_classification: AccountClassification,
+    pub include_in_dashboard: bool,
     pub opened_date: Option<NaiveDate>,
     pub closed_date: Option<NaiveDate>,
     pub first_snapshot_date: Option<NaiveDate>,
@@ -465,6 +466,22 @@ pub async fn accounts_delete(state: State<'_, AppState>, account_id: i64) -> Res
 
 #[tauri::command]
 #[specta::specta]
+pub async fn accounts_set_dashboard_inclusion(
+    state: State<'_, AppState>,
+    account_id: i64,
+    include_in_dashboard: bool,
+) -> Result<(), ApiError> {
+    if !db::account_set_dashboard_inclusion(&state.pool, account_id, include_in_dashboard)
+        .await
+        .map_err(|_| ApiError::Db)?
+    {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn accounts_create(
     state: State<'_, AppState>,
     input: AccountUpsertInput,
@@ -480,6 +497,7 @@ pub async fn accounts_create(
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
                 account_classification: validated.account_classification.as_str().to_owned(),
+                include_in_dashboard: validated.include_in_dashboard,
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -502,6 +520,7 @@ pub async fn accounts_create(
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
                 account_classification: validated.account_classification.as_str().to_owned(),
+                include_in_dashboard: validated.include_in_dashboard,
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -546,6 +565,7 @@ pub async fn accounts_update(
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
                 account_classification: validated.account_classification.as_str().to_owned(),
+                include_in_dashboard: validated.include_in_dashboard,
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -568,6 +588,7 @@ pub async fn accounts_update(
                 type_id: validated.type_id,
                 currency_code: validated.currency_code.clone(),
                 account_classification: validated.account_classification.as_str().to_owned(),
+                include_in_dashboard: validated.include_in_dashboard,
                 opened_date: validated.opened_date,
                 closed_date: validated.closed_date,
             };
@@ -1068,6 +1089,11 @@ async fn dashboard_get_with_today(
     let accounts = db::accounts_list_full(pool)
         .await
         .map_err(|_| ApiError::Db)?;
+    let total_accounts = u32::try_from(accounts.len()).expect("account count should fit in u32");
+    let accounts = accounts
+        .into_iter()
+        .filter(|account| account.include_in_dashboard)
+        .collect::<Vec<_>>();
 
     let mut total_balance_minor: i64 = 0;
     let mut active_accounts: u32 = 0;
@@ -1118,7 +1144,7 @@ async fn dashboard_get_with_today(
         total_balance_minor,
         change_vs_last_month_pct,
         monthly_yield_minor,
-        total_accounts: u32::try_from(accounts.len()).expect("account count should fit in u32"),
+        total_accounts,
         active_accounts,
         active_institutions: u32::try_from(active_institution_ids.len())
             .expect("active institution count should fit in u32"),
@@ -1132,23 +1158,30 @@ pub async fn dashboard_balance_over_time(
     state: State<'_, AppState>,
     period: BalanceOverTimePeriod,
 ) -> Result<Vec<DashboardBalancePointDto>, ApiError> {
-    let today = Local::now().date_naive();
-    let pool = &state.pool;
+    dashboard_balance_over_time_with_today(&state.pool, period, Local::now().date_naive()).await
+}
+
+async fn dashboard_balance_over_time_with_today(
+    pool: &SqlitePool,
+    period: BalanceOverTimePeriod,
+    today: NaiveDate,
+) -> Result<Vec<DashboardBalancePointDto>, ApiError> {
     let accounts = db::accounts_list_full(pool)
         .await
-        .map_err(|_| ApiError::Db)?;
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .filter(|account| account.include_in_dashboard)
+        .collect::<Vec<_>>();
 
     let start = match period {
         BalanceOverTimePeriod::P1M => today - Duration::days(30 - 1),
         BalanceOverTimePeriod::P6M => today - Duration::days(183 - 1),
         BalanceOverTimePeriod::P1Y => today - Duration::days(365 - 1),
-        BalanceOverTimePeriod::Max => match db::earliest_snapshot_date(pool)
-            .await
-            .map_err(|_| ApiError::Db)?
-        {
-            Some(s) => s,
-            None => today,
-        },
+        BalanceOverTimePeriod::Max => accounts
+            .iter()
+            .filter_map(|account| account.first_snapshot_date)
+            .min()
+            .unwrap_or(today),
     };
 
     total_balance_over_time(pool, &accounts, start, today).await
@@ -1172,6 +1205,7 @@ struct ValidatedAccountUpsert {
     type_id: i64,
     currency_code: String,
     account_classification: AccountClassification,
+    include_in_dashboard: bool,
     opened_date: Option<NaiveDate>,
     closed_date: Option<NaiveDate>,
 }
@@ -1334,6 +1368,7 @@ async fn validate_account_upsert(
         type_id: type_id.expect("validated above"),
         currency_code: normalized.currency_code.as_str().to_owned(),
         account_classification: normalized.account_classification,
+        include_in_dashboard: normalized.include_in_dashboard,
         opened_date: normalized.opened_date,
         closed_date: normalized.closed_date,
     })
@@ -1543,6 +1578,7 @@ fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
         account_type: input.account_type,
         currency_code: input.currency_code,
         account_classification: input.account_classification,
+        include_in_dashboard: input.include_in_dashboard,
         opened_date: input.opened_date,
         closed_date: input.closed_date,
     }
@@ -1682,6 +1718,7 @@ async fn build_account_dtos(
             account_type,
             currency_code: a.currency_code.parse().map_err(|_| ApiError::Db)?,
             account_classification: a.account_classification.parse().map_err(|_| ApiError::Db)?,
+            include_in_dashboard: a.include_in_dashboard,
             opened_date: a.opened_date,
             closed_date: a.closed_date,
             first_snapshot_date: a.first_snapshot_date,
@@ -1794,6 +1831,7 @@ pub(crate) fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             accounts_list,
             accounts_create,
             accounts_update,
+            accounts_set_dashboard_inclusion,
             accounts_delete_preview,
             accounts_delete,
             institutions_list,
@@ -1854,6 +1892,107 @@ mod tests {
         account_snapshot_import_commit_with_today, build_account_dtos,
     };
     use crate::db;
+
+    #[tokio::test]
+    async fn dashboard_exclusions_apply_to_summary_history_and_account_lifecycle() {
+        let pool = test_pool().await;
+        let savings = create_account(&pool).await;
+        let today = date(2026, 9, 13);
+        let loan = sqlx::query("INSERT INTO accounts (name, institution_id, type_id, currency_code, account_classification) SELECT 'Student loan', institution_id, (SELECT id FROM account_types WHERE name = 'loan'), 'GBP', 'liability' FROM accounts WHERE id = ?")
+            .bind(savings).execute(&pool).await.unwrap().last_insert_rowid();
+        insert_snapshot_on(&pool, savings, today - Duration::days(40), 10_000).await;
+        insert_snapshot_on(&pool, savings, today, 12_000).await;
+        insert_snapshot_on(&pool, loan, today - Duration::days(80), -90_000).await;
+        insert_snapshot_on(&pool, loan, today, -95_000).await;
+        assert!(
+            db::account_get_full(&pool, loan)
+                .await
+                .unwrap()
+                .unwrap()
+                .include_in_dashboard
+        );
+        assert_eq!(
+            super::dashboard_get_with_today(&pool, today)
+                .await
+                .unwrap()
+                .total_balance_minor,
+            -83_000
+        );
+
+        assert!(
+            db::account_set_dashboard_inclusion(&pool, loan, false)
+                .await
+                .unwrap()
+        );
+        let summary = super::dashboard_get_with_today(&pool, today).await.unwrap();
+        assert_eq!(summary.total_balance_minor, 12_000);
+        assert_eq!(summary.total_accounts, 2);
+        assert_eq!(summary.active_accounts, 1);
+        assert_eq!(summary.active_institutions, 1);
+        assert_eq!(summary.monthly_yield_minor, 2_000);
+        assert_eq!(summary.change_vs_last_month_pct, 20.0);
+        assert_eq!(summary.allocation_by_type.len(), 1);
+        assert_eq!(summary.allocation_by_type[0].balance_minor, 12_000);
+        let history = super::dashboard_balance_over_time_with_today(
+            &pool,
+            super::BalanceOverTimePeriod::Max,
+            today,
+        )
+        .await
+        .unwrap();
+        assert_eq!(history.first().unwrap().date, today - Duration::days(40));
+        assert_eq!(history.first().unwrap().balance_minor, 10_000);
+        assert_eq!(history.last().unwrap().balance_minor, 12_000);
+        assert!(
+            history[..40]
+                .iter()
+                .all(|point| point.balance_minor == 10_000)
+        );
+        assert_eq!(db::accounts_list_full(&pool).await.unwrap().len(), 2);
+        assert_eq!(
+            db::account_get_full(&pool, loan)
+                .await
+                .unwrap()
+                .unwrap()
+                .latest_balance_minor,
+            Some(-95_000)
+        );
+
+        db::account_set_dashboard_inclusion(&pool, savings, false)
+            .await
+            .unwrap();
+        let empty = super::dashboard_get_with_today(&pool, today).await.unwrap();
+        assert_eq!(empty.total_accounts, 2);
+        assert_eq!(empty.total_balance_minor, 0);
+        assert_eq!(empty.active_accounts, 0);
+        assert_eq!(empty.active_institutions, 0);
+        assert_eq!(empty.monthly_yield_minor, 0);
+        assert!(empty.allocation_by_type.is_empty());
+        db::account_set_dashboard_inclusion(&pool, savings, true)
+            .await
+            .unwrap();
+        db::account_delete(&pool, loan).await.unwrap();
+        assert!(
+            !db::account_set_dashboard_inclusion(&pool, loan, true)
+                .await
+                .unwrap()
+        );
+        assert_eq!(
+            super::dashboard_get_with_today(&pool, today)
+                .await
+                .unwrap()
+                .total_balance_minor,
+            12_000
+        );
+        db::account_delete(&pool, savings).await.unwrap();
+        assert_eq!(
+            super::dashboard_get_with_today(&pool, today)
+                .await
+                .unwrap()
+                .total_accounts,
+            0
+        );
+    }
 
     #[tokio::test]
     async fn dashboard_monthly_metrics_follow_balance_direction() {

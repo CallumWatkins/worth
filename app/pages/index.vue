@@ -15,12 +15,16 @@
     <template v-else-if="dashboardQuery.isSuccess">
       <UPageHeader
         title="Balance Overview"
-        description="A summary of your balances across all accounts"
+        description="A summary of your account balances"
         :ui="{
           root: 'pb-0 border-none',
           description: 'mt-1'
         }"
-      />
+      >
+        <template #links>
+          <DashboardViewOptions />
+        </template>
+      </UPageHeader>
       <UPageBody class="space-y-8">
         <UPageCard
           title="Total Current Balance"
@@ -475,28 +479,39 @@ watchEffect(() => {
 const allocationVisibleTotal = computed(() => allocationData.value.reduce((sum, d) => sum + (allocationSelected.value[d.label] === false ? 0 : d.value), 0));
 
 let dashboardNumberAnimationRun = 0;
+let hasAnimatedDashboardNumbers = false;
 
-const replayDashboardNumberAnimations = async () => {
+const updateDashboardNumberAnimations = async () => {
   if (dashboardQuery.data == null) return;
 
   const run = ++dashboardNumberAnimationRun;
-  dashboardNumberAnimationKey.value += 1;
-  allocationTotalUsesDashboardTiming.value = true;
-  animatedTotalBalance.value = 0;
-  animatedChangePct.value = 0;
-  animatedMonthlyYield.value = 0;
-  animatedActiveAccounts.value = 0;
-  animatedActiveInstitutions.value = 0;
-  animatedAllocationTotal.value = 0;
-
-  await nextTick();
-  for (let i = 0; i < 2; i++) {
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
+  if (dashboardQuery.data.total_accounts === 0) {
+    hasAnimatedDashboardNumbers = false;
+    return;
   }
 
-  if (run !== dashboardNumberAnimationRun) return;
+  allocationTotalUsesDashboardTiming.value = true;
+  // Only replay from zero when the dashboard first appears. Keep NumberFlow
+  // instances mounted on refresh so they animate from their current values.
+  if (!hasAnimatedDashboardNumbers) {
+    dashboardNumberAnimationKey.value += 1;
+    animatedTotalBalance.value = 0;
+    animatedChangePct.value = 0;
+    animatedMonthlyYield.value = 0;
+    animatedActiveAccounts.value = 0;
+    animatedActiveInstitutions.value = 0;
+    animatedAllocationTotal.value = 0;
+
+    await nextTick();
+    for (let i = 0; i < 2; i++) {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+    }
+
+    if (run !== dashboardNumberAnimationRun) return;
+    hasAnimatedDashboardNumbers = true;
+  }
 
   animatedTotalBalance.value = convertCurrencyMinorUnitsToMajorAmount(dashboardQuery.data?.total_balance_minor ?? 0);
   animatedChangePct.value = targetChangePct.value ?? 0;
@@ -508,11 +523,11 @@ const replayDashboardNumberAnimations = async () => {
 
 watch(
   () => dashboardQuery.data,
-  () => void replayDashboardNumberAnimations(),
+  () => void updateDashboardNumberAnimations(),
   { flush: "post" }
 );
 
-onMounted(() => void replayDashboardNumberAnimations());
+onMounted(() => void updateDashboardNumberAnimations());
 
 const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: AllocationDatum[]): ECOption => {
   const visibleData = data.filter((d) => selected[d.label] !== false);
