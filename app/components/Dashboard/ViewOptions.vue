@@ -58,6 +58,7 @@
               as="span"
               role="button"
               tabindex="0"
+              icon="i-lucide-x"
               color="neutral"
               variant="link"
               aria-label="Show all accounts"
