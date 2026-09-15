@@ -65,7 +65,6 @@
               <AccountsTableViewOptions
                 v-model:group-by="options.groupBy"
                 v-model:activity-period="options.activityPeriod"
-                v-model:hide-empty="options.hideEmpty"
                 :group-by-items="groupByItems"
                 :activity-period-items="activityPeriodItems"
               />
@@ -77,11 +76,9 @@
             v-model:expanded="options.expanded"
             :accounts="institutionQuery.data.accounts"
             :group-by="options.groupBy"
-            :hide-empty="options.hideEmpty"
             :activity-period="options.activityPeriod"
             :hide-columns="hideColumns"
             analytics-category="institution"
-            @clear-filters="options.hideEmpty = false"
           />
         </UPageCard>
       </template>

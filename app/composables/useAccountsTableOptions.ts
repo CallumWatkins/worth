@@ -12,8 +12,8 @@ interface UseAccountsTableOptionsArgs {
 }
 
 interface AccountsTableOptions {
+  filters: AccountFilters
   groupBy: AccountGroupBy
-  hideEmpty: boolean
   activityPeriod: ActivityPeriod
   sorting: SortingState
   expanded: ExpandedState
@@ -24,8 +24,8 @@ export function useAccountsTableOptions(args: UseAccountsTableOptionsArgs) {
 
   watch(() => toValue(args.scope), (scope) => {
     views.value[scope] ??= {
+      filters: { institutionIds: [], types: [], statuses: [], balances: [], balanceRange: createAccountBalanceRange() },
       groupBy: "none",
-      hideEmpty: false,
       activityPeriod: "1M",
       sorting: [{ id: "name", desc: false }],
       expanded: {}
