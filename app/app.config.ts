@@ -9,6 +9,13 @@ export default defineAppConfig({
         base: "cursor-pointer"
       }
     },
+    selectMenu: {
+      variants: {
+        variant: {
+          soft: "focus:bg-elevated/50 focus:hover:bg-elevated"
+        }
+      }
+    },
     pageBody: {
       base: "pb-12"
     },

@@ -12,7 +12,6 @@
         <AccountsTableViewOptions
           v-model:group-by="options.groupBy"
           v-model:activity-period="options.activityPeriod"
-          v-model:hide-empty="options.hideEmpty"
           :group-by-items="groupByItems"
           :activity-period-items="activityPeriodItems"
         />
@@ -46,18 +45,49 @@
         @action="createDialogOpen = true"
       />
 
-      <AccountsTable
-        v-else
-        v-model:sorting="options.sorting"
-        v-model:expanded="options.expanded"
-        :accounts="accountsQuery.data ?? []"
-        :group-by="options.groupBy"
-        :hide-empty="options.hideEmpty"
-        :activity-period="options.activityPeriod"
-        :hide-columns="hideColumns"
-        analytics-category="accounts"
-        @clear-filters="options.hideEmpty = false"
-      />
+      <div v-else class="space-y-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <AccountsFilterMenu
+            v-model="options.filters.institutionIds"
+            label="Institution"
+            :items="institutionItems"
+          />
+          <AccountsFilterMenu
+            v-model="options.filters.types"
+            label="Type"
+            :items="typeItems"
+          />
+          <AccountsFilterMenu
+            v-model="options.filters.statuses"
+            label="Status"
+            :items="statusItems"
+          />
+          <AccountsBalanceFilter
+            v-model="options.filters.balances"
+            v-model:range="options.filters.balanceRange"
+            :items="balanceItems"
+          />
+          <UButton
+            v-if="hasFilters"
+            label="Reset filters"
+            color="neutral"
+            variant="link"
+            @click="resetFilters"
+          />
+        </div>
+
+        <AccountsTable
+          v-model:sorting="options.sorting"
+          v-model:expanded="options.expanded"
+          :accounts="filteredAccounts"
+          :total-count="accountsQuery.data?.length ?? 0"
+          :group-by="options.groupBy"
+          :activity-period="options.activityPeriod"
+          :hide-columns="hideColumns"
+          analytics-category="accounts"
+          @show-all="resetFilters"
+        />
+      </div>
 
       <AccountsCreateDialog
         v-model:open="createDialogOpen"
@@ -88,6 +118,16 @@ const accountsQuery = proxyRefs(useQuery({
   queryKey: queryKeys.accounts.list(),
   queryFn: api.accountsList
 }));
+
+const { institutionItems, typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters } = useAccountFilters(
+  () => accountsQuery.data ?? [],
+  computed({
+    get: () => options.value.filters,
+    set: (filters) => {
+      options.value.filters = filters;
+    }
+  })
+);
 
 useContextualKeyboardShortcuts([
   {

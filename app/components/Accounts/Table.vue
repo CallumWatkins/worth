@@ -1,20 +1,9 @@
 <template>
-  <div v-if="hideEmpty" class="flex items-center gap-2 text-sm">
-    <UBadge label="Hide empty accounts" color="neutral" variant="subtle" />
-    <UButton
-      label="Clear filter"
-      color="neutral"
-      variant="link"
-      size="sm"
-      @click="emit('clearFilters')"
-    />
-  </div>
-
   <UTable
     v-model:sorting="sorting"
     v-model:expanded="expanded"
     v-model:column-visibility="columnVisibility"
-    :data="accountsData"
+    :data="accounts"
     :columns="columns"
     :grouping="grouping"
     :grouping-options="groupingOptions"
@@ -152,17 +141,17 @@
     </template>
 
     <template #body-bottom>
-      <tr v-if="props.accounts.length - accountsData.length > 0">
+      <tr v-if="hiddenCount > 0">
         <td colspan="100" class="p-4 text-sm text-muted">
           <div class="flex items-center justify-center gap-3">
-            <span class="-translate-y-px">{{ props.accounts.length - accountsData.length }} account{{ props.accounts.length - accountsData.length === 1 ? "" : "s" }} hidden</span>
+            <span class="-translate-y-px">{{ hiddenCount }} account{{ hiddenCount === 1 ? "" : "s" }} hidden</span>
             <UButton
               label="Show"
               color="neutral"
               variant="link"
               size="sm"
               class="p-0"
-              @click.stop="emit('clearFilters')"
+              @click.stop="emit('showAll')"
             />
           </div>
         </td>
@@ -191,8 +180,8 @@ type HideColumn = "institution";
 
 const props = withDefaults(defineProps<{
   accounts: Account[]
+  totalCount?: number
   groupBy: GroupBy
-  hideEmpty: boolean
   activityPeriod: ActivityPeriod
   analyticsCategory: AnalyticsEventCategory
   hideColumns?: HideColumn[]
@@ -201,7 +190,7 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-  clearFilters: []
+  showAll: []
 }>();
 
 const sorting = defineModel<SortingState>("sorting", { required: true });
@@ -223,13 +212,7 @@ const resolvedGroupBy = computed<GroupBy>(() => (
     : props.groupBy
 ));
 
-const accountsData = computed(() => {
-  if (props.hideEmpty) {
-    return props.accounts.filter((a) => a.latest_balance_minor !== 0);
-  }
-
-  return props.accounts;
-});
+const hiddenCount = computed(() => (props.totalCount ?? props.accounts.length) - props.accounts.length);
 
 const grouping = computed(() => {
   if (resolvedGroupBy.value === "institution") {
