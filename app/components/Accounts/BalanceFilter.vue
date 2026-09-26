@@ -7,6 +7,9 @@
     :active="range.minimum !== null || range.maximum !== null"
     @clear="range = createAccountBalanceRange()"
   >
+    <template #item-label="{ item }">
+      {{ item.label }} <span class="text-muted">({{ item.value === 'active' ? '≠ 0' : '= 0' }})</span>
+    </template>
     <template #content-bottom>
       <div
         class="border-t border-default p-3 space-y-3"

@@ -19,6 +19,11 @@
       <template #default>
         {{ label }}
       </template>
+      <template #item-label="{ item }">
+        <slot name="item-label" :item="item">
+          {{ item.label }}
+        </slot>
+      </template>
       <template #content-bottom>
         <slot name="content-bottom" />
         <div class="border-t border-default p-1">
