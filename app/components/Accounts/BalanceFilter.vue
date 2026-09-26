@@ -30,6 +30,7 @@
               :format-options="{ maximumFractionDigits: 2 }"
               aria-label="Minimum balance"
               class="w-36"
+              @input="range.minimum = parseCurrencyInputNumberEventValue($event) ?? null"
               @update:model-value="range.minimum = $event ?? null"
             />
           </UFieldGroup>
@@ -52,6 +53,7 @@
               :format-options="{ maximumFractionDigits: 2 }"
               aria-label="Maximum balance"
               class="w-36"
+              @input="range.maximum = parseCurrencyInputNumberEventValue($event) ?? null"
               @update:model-value="range.maximum = $event ?? null"
             />
           </UFieldGroup>
