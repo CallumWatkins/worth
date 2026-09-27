@@ -71,14 +71,50 @@
             </div>
           </template>
 
+          <div class="flex flex-wrap items-center gap-3">
+            <FiltersMenu
+              v-model="options.filters.types"
+              label="Type"
+              :items="typeItems"
+            />
+            <FiltersMenu
+              v-model="options.filters.statuses"
+              label="Status"
+              :items="statusItems"
+            />
+            <FiltersMenu
+              v-model="options.filters.balances"
+              label="Balance"
+              :items="balanceItems"
+              :active="options.filters.balanceRange.minimum !== null || options.filters.balanceRange.maximum !== null"
+              @clear="options.filters.balanceRange = createBalanceRange()"
+            >
+              <template #item-label="{ item }">
+                {{ item.label }} <span class="text-muted">({{ item.value === 'active' ? '≠ 0' : '= 0' }})</span>
+              </template>
+              <template #content-bottom>
+                <FiltersBalanceRangeInputs v-model="options.filters.balanceRange" class="border-t border-default" />
+              </template>
+            </FiltersMenu>
+            <UButton
+              v-if="hasFilters"
+              label="Reset filters"
+              color="neutral"
+              variant="link"
+              @click="resetFilters"
+            />
+          </div>
+
           <AccountsTable
             v-model:sorting="options.sorting"
             v-model:expanded="options.expanded"
-            :accounts="institutionQuery.data.accounts"
+            :accounts="filteredAccounts"
+            :total-count="institutionQuery.data.accounts.length"
             :group-by="options.groupBy"
             :activity-period="options.activityPeriod"
             :hide-columns="hideColumns"
             analytics-category="institution"
+            @show-all="resetFilters"
           />
         </UPageCard>
       </template>
@@ -115,6 +151,16 @@ const institutionQuery = proxyRefs(useQuery({
   enabled: computed(() => institutionId.value !== null),
   queryFn: async () => api.institutionsGet(institutionId.value!)
 }));
+
+const { typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters } = useAccountFilters(
+  () => institutionQuery.data?.accounts ?? [],
+  computed({
+    get: () => options.value.filters,
+    set: (filters) => {
+      options.value.filters = filters;
+    }
+  })
+);
 
 useContextualKeyboardShortcuts([
   {
