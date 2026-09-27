@@ -2,7 +2,7 @@
   <UChip :show="model.length > 0 || active">
     <USelectMenu
       :model-value="model as (string | number)[]"
-      :items="items as { label: string, value: string | number, chip?: ChipProps }[]"
+      :items="items as MenuItems"
       value-key="value"
       multiple
       :aria-label="label"
@@ -12,6 +12,7 @@
       variant="soft"
       :ui="{
         content: ['w-max max-w-[calc(100vw-2rem)]', contentClass],
+        empty: !items?.length ? 'hidden' : undefined,
         itemTrailing: 'min-w-5 shrink-0'
       }"
       @update:model-value="model = $event as T[]"
@@ -44,14 +45,22 @@
 <script lang="ts" setup generic="T extends string | number">
 import type { ChipProps } from "@nuxt/ui";
 
+interface FilterItem<V> {
+  label: string
+  value: V
+  chip?: ChipProps
+}
+
+type MenuItems = FilterItem<string | number>[] | FilterItem<string | number>[][];
+
 defineProps<{
   label: string
   active?: boolean
   contentClass?: string
-  items: { label: string, value: T, chip?: ChipProps }[]
+  items?: FilterItem<T>[] | FilterItem<T>[][]
 }>();
 
 const emit = defineEmits<{ clear: [] }>();
 
-const model = defineModel<T[]>({ required: true });
+const model = defineModel<T[]>({ default: () => [] });
 </script>

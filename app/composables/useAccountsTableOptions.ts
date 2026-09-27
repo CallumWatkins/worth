@@ -24,7 +24,7 @@ export function useAccountsTableOptions(args: UseAccountsTableOptionsArgs) {
 
   watch(() => toValue(args.scope), (scope) => {
     views.value[scope] ??= {
-      filters: { institutionIds: [], types: [], statuses: [], balances: [], balanceRange: createAccountBalanceRange() },
+      filters: { institutionIds: [], types: [], statuses: [], balances: [], balanceRange: createBalanceRange() },
       groupBy: "none",
       activityPeriod: "1M",
       sorting: [{ id: "name", desc: false }],

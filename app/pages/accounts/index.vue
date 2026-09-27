@@ -47,26 +47,35 @@
 
       <div v-else class="space-y-6">
         <div class="flex flex-wrap items-center gap-3">
-          <AccountsFilterMenu
+          <FiltersMenu
             v-model="options.filters.institutionIds"
             label="Institution"
             :items="institutionItems"
           />
-          <AccountsFilterMenu
+          <FiltersMenu
             v-model="options.filters.types"
             label="Type"
             :items="typeItems"
           />
-          <AccountsFilterMenu
+          <FiltersMenu
             v-model="options.filters.statuses"
             label="Status"
             :items="statusItems"
           />
-          <AccountsBalanceFilter
+          <FiltersMenu
             v-model="options.filters.balances"
-            v-model:range="options.filters.balanceRange"
+            label="Balance"
             :items="balanceItems"
-          />
+            :active="options.filters.balanceRange.minimum !== null || options.filters.balanceRange.maximum !== null"
+            @clear="options.filters.balanceRange = createBalanceRange()"
+          >
+            <template #item-label="{ item }">
+              {{ item.label }} <span class="text-muted">({{ item.value === 'active' ? '≠ 0' : '= 0' }})</span>
+            </template>
+            <template #content-bottom>
+              <FiltersBalanceRangeInputs v-model="options.filters.balanceRange" class="border-t border-default" />
+            </template>
+          </FiltersMenu>
           <UButton
             v-if="hasFilters"
             label="Reset filters"
