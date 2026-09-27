@@ -192,6 +192,22 @@ VALUES
     NULL
   );
 
+-- Keep labels sparse: most accounts have none, with one example using multiple labels.
+INSERT INTO
+  labels (id, name, name_key)
+VALUES
+  (1, 'ISA', 'isa'),
+  (2, 'House deposit', 'house deposit'),
+  (3, 'Retirement', 'retirement');
+
+INSERT INTO
+  account_labels (account_id, label_id)
+VALUES
+  (5, 1), -- Stocks & Shares ISA: ISA, House deposit
+  (5, 2),
+  (7, 3), -- Workplace Pension: Retirement
+  (9, 1); -- Cash ISA (Legacy): ISA
+
 -- Balance snapshots (irregular) for ~5 years.
 -- Notes:
 -- - `balance_date` is stored as ISO `YYYY-MM-DD`.

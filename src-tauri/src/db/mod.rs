@@ -235,7 +235,7 @@ pub async fn search_global(
                     search_fts
                 WHERE
                     search_fts MATCH ?
-                    AND rank MATCH 'bm25(0.0, 0.0, 10.0, 2.0, 1.0)'
+                    AND rank MATCH 'bm25(0.0, 0.0, 10.0, 2.0, 1.0, 1.0)'
             ),
             account_hits AS (
                 SELECT
