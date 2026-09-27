@@ -39,54 +39,93 @@
         @action="createDialogOpen = true"
       />
 
-      <UTable
-        v-else
-        v-model:sorting="sorting"
-        :data="institutionsData"
-        :columns="columns"
-        empty="No institutions available."
-        :ui="{
-          tr: 'data-[selectable=true]:cursor-pointer'
-        }"
-        class="flex-1"
-        @select="onSelect"
-      >
-        <template #name-cell="{ row }">
-          <span class="text-highlighted">
-            {{ row.original.name }}
-          </span>
-        </template>
-
-        <template #accounts-cell="{ row }">
-          {{ row.original.account_count }}
-        </template>
-
-        <template #emptyAccounts-cell="{ row }">
-          {{ row.original.empty_account_count }}
-        </template>
-
-        <template #accountTypes-cell="{ row }">
-          <div
-            v-if="row.original.account_types.length"
-            class="flex items-center gap-1.5"
+      <div v-else class="space-y-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <FiltersMenu v-model="filters.types" label="Account type" :items="typeItems" />
+          <FiltersMenu v-model="filters.accounts" label="Accounts" :items="accountItems" />
+          <FiltersMenu
+            label="Balance"
+            :active="filters.balanceRange.minimum !== null || filters.balanceRange.maximum !== null"
+            @clear="filters.balanceRange = createBalanceRange()"
           >
-            <UBadge
-              v-for="accountType in row.original.account_types"
-              :key="accountType"
-              variant="subtle"
-              color="neutral"
-              :class="ACCOUNT_TYPE_META[accountType].badgeClass"
-            >
-              {{ ACCOUNT_TYPE_META[accountType].label }}
-            </UBadge>
-          </div>
-          <span v-else class="text-muted">-</span>
-        </template>
+            <template #content-bottom>
+              <FiltersBalanceRangeInputs v-model="filters.balanceRange" />
+            </template>
+          </FiltersMenu>
+          <UButton
+            v-if="hasFilters"
+            label="Reset filters"
+            color="neutral"
+            variant="link"
+            @click="resetFilters"
+          />
+        </div>
 
-        <template #balance-cell="{ row }">
-          {{ formatCurrencyMinor(row.original.total_balance_minor, settings.default_display_currency_code) }}
-        </template>
-      </UTable>
+        <UTable
+          v-model:sorting="sorting"
+          :data="filteredInstitutions"
+          :columns="columns"
+          empty="No institutions match your filters."
+          :ui="{
+            tr: 'data-[selectable=true]:cursor-pointer'
+          }"
+          class="flex-1"
+          @select="onSelect"
+        >
+          <template #name-cell="{ row }">
+            <span class="text-highlighted">
+              {{ row.original.name }}
+            </span>
+          </template>
+
+          <template #accounts-cell="{ row }">
+            {{ row.original.account_count }}
+          </template>
+
+          <template #emptyAccounts-cell="{ row }">
+            {{ row.original.empty_account_count }}
+          </template>
+
+          <template #accountTypes-cell="{ row }">
+            <div
+              v-if="row.original.account_types.length"
+              class="flex items-center gap-1.5"
+            >
+              <UBadge
+                v-for="accountType in row.original.account_types"
+                :key="accountType"
+                variant="subtle"
+                color="neutral"
+                :class="ACCOUNT_TYPE_META[accountType].badgeClass"
+              >
+                {{ ACCOUNT_TYPE_META[accountType].label }}
+              </UBadge>
+            </div>
+            <span v-else class="text-muted">-</span>
+          </template>
+
+          <template #balance-cell="{ row }">
+            {{ formatCurrencyMinor(row.original.total_balance_minor, settings.default_display_currency_code) }}
+          </template>
+          <template #body-bottom>
+            <tr v-if="hiddenCount > 0">
+              <td colspan="100" class="p-4 text-sm text-muted">
+                <div class="flex items-center justify-center gap-3">
+                  <span class="-translate-y-px">{{ hiddenCount }} institution{{ hiddenCount === 1 ? "" : "s" }} hidden</span>
+                  <UButton
+                    label="Show"
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    class="p-0"
+                    @click.stop="resetFilters"
+                  />
+                </div>
+              </td>
+            </tr>
+          </template>
+        </UTable>
+      </div>
 
       <InstitutionsDeleteDialog
         v-model:open="deleteOpen"
@@ -133,6 +172,13 @@ useContextualKeyboardShortcuts([
 ]);
 
 const institutionsData = computed<Institution[]>(() => institutionsQuery.data ?? []);
+const filters = useState<InstitutionFilters>("institutionFilters", () => ({
+  types: [],
+  accounts: [],
+  balanceRange: createBalanceRange()
+}));
+const { typeItems, accountItems, hasFilters, filteredInstitutions, resetFilters } = useInstitutionFilters(institutionsData, filters);
+const hiddenCount = computed(() => institutionsData.value.length - filteredInstitutions.value.length);
 const { formatCurrencyMinor } = useLocaleFormatters();
 const settings = useSettings();
 
