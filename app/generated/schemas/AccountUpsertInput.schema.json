@@ -45,6 +45,12 @@
         "type": "Select or create an institution"
       }
     },
+    "labels": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LabelRef"
+      }
+    },
     "name": {
       "type": "string",
       "maxLength": 80,
@@ -71,7 +77,8 @@
     "account_type",
     "currency_code",
     "account_classification",
-    "include_in_dashboard"
+    "include_in_dashboard",
+    "labels"
   ],
   "$defs": {
     "AccountClassification": {
@@ -158,6 +165,72 @@
             "maxLength": "Institution name must be 80 characters or fewer",
             "required": "Enter an institution name",
             "type": "Enter an institution name"
+          }
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "LabelRef": {
+      "discriminator": {
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1,
+              "x-validation": {
+                "minimum": "Select a label",
+                "required": "Select a label",
+                "type": "Select a label"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "existing"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "input": {
+              "$ref": "#/$defs/LabelUpsertInput"
+            },
+            "kind": {
+              "type": "string",
+              "const": "new"
+            }
+          },
+          "required": [
+            "kind",
+            "input"
+          ]
+        }
+      ]
+    },
+    "LabelUpsertInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 20,
+          "minLength": 1,
+          "pattern": "^[^\\u0000]*[^\\s\\u0000][^\\u0000]*$",
+          "x-validation": {
+            "blank": "Enter a label name",
+            "maxLength": "Label name must be 20 characters or fewer",
+            "required": "Enter a label name",
+            "type": "Enter a label name"
           }
         }
       },

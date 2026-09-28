@@ -110,6 +110,146 @@ pub async fn app_settings_update(
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct LabelSummaryRow {
+    pub id: i64,
+    pub name: String,
+    pub account_count: i64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountLabelNameRow {
+    pub account_id: i64,
+    pub id: i64,
+    pub name: String,
+}
+
+pub async fn labels_list(pool: &SqlitePool) -> Result<Vec<LabelSummaryRow>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT l.id, l.name, COUNT(al.account_id) AS account_count
+         FROM labels l LEFT JOIN account_labels al ON al.label_id = l.id
+         GROUP BY l.id ORDER BY l.name_key, l.id",
+    )
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn label_create(
+    pool: &SqlitePool,
+    name: &str,
+    name_key: &str,
+) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar("INSERT INTO labels (name, name_key) VALUES (?, ?) RETURNING id")
+        .bind(name)
+        .bind(name_key)
+        .fetch_one(pool)
+        .await
+}
+
+pub async fn label_update(
+    pool: &SqlitePool,
+    label_id: i64,
+    name: &str,
+    name_key: &str,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE labels SET name = ?, name_key = ?,
+         updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
+    )
+    .bind(name)
+    .bind(name_key)
+    .bind(label_id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn label_delete(pool: &SqlitePool, label_id: i64) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("DELETE FROM labels WHERE id = ?")
+        .bind(label_id)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn label_exists_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    label_id: i64,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM labels WHERE id = ?)")
+        .bind(label_id)
+        .fetch_one(&mut **tx)
+        .await
+}
+
+pub async fn label_get_or_create_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    name: &str,
+    name_key: &str,
+) -> Result<i64, sqlx::Error> {
+    // Reusing a name must preserve its chosen capitalization and modification timestamp.
+    sqlx::query(
+        "INSERT INTO labels (name, name_key) VALUES (?, ?) ON CONFLICT(name_key) DO NOTHING",
+    )
+    .bind(name)
+    .bind(name_key)
+    .execute(&mut **tx)
+    .await?;
+    sqlx::query_scalar("SELECT id FROM labels WHERE name_key = ?")
+        .bind(name_key)
+        .fetch_one(&mut **tx)
+        .await
+}
+
+pub async fn account_labels_replace_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    account_id: i64,
+    label_ids: &[i64],
+) -> Result<(), sqlx::Error> {
+    let mut delete = QueryBuilder::<Sqlite>::new("DELETE FROM account_labels WHERE account_id = ");
+    delete.push_bind(account_id);
+    if !label_ids.is_empty() {
+        delete.push(" AND label_id NOT IN (");
+        let mut ids = delete.separated(", ");
+        label_ids.iter().for_each(|id| {
+            ids.push_bind(id);
+        });
+        delete.push(")");
+    }
+    delete.build().execute(&mut **tx).await?;
+
+    if label_ids.is_empty() {
+        return Ok(());
+    }
+    let mut insert =
+        QueryBuilder::<Sqlite>::new("INSERT INTO account_labels (account_id, label_id) ");
+    insert.push_values(label_ids, |mut row, label_id| {
+        row.push_bind(account_id).push_bind(label_id);
+    });
+    insert.push(" ON CONFLICT(account_id, label_id) DO NOTHING");
+    insert.build().execute(&mut **tx).await?;
+    Ok(())
+}
+
+pub async fn labels_for_accounts(
+    pool: &SqlitePool,
+    account_ids: &[i64],
+) -> Result<Vec<AccountLabelNameRow>, sqlx::Error> {
+    if account_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut query = QueryBuilder::<Sqlite>::new(
+        "SELECT al.account_id, l.id, l.name FROM account_labels al
+         INNER JOIN labels l ON l.id = al.label_id WHERE al.account_id IN (",
+    );
+    let mut ids = query.separated(", ");
+    account_ids.iter().for_each(|id| {
+        ids.push_bind(id);
+    });
+    query.push(") ORDER BY al.account_id, l.name_key, l.id");
+    query.build_query_as().fetch_all(pool).await
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct AccountListRow {
     pub id: i64,
     pub name: String,
@@ -1113,66 +1253,6 @@ pub struct AccountMutationInput {
     pub closed_date: Option<NaiveDate>,
 }
 
-pub async fn account_create(
-    pool: &SqlitePool,
-    input: &AccountMutationInput,
-) -> Result<rows::AccountRow, sqlx::Error> {
-    let result = sqlx::query(
-        r"
-        INSERT INTO
-            accounts (
-                name,
-                institution_id,
-                type_id,
-                currency_code,
-                account_classification,
-                include_in_dashboard,
-                opened_date,
-                closed_date
-            )
-        VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?)
-        ",
-    )
-    .bind(&input.name)
-    .bind(input.institution_id)
-    .bind(input.type_id)
-    .bind(&input.currency_code)
-    .bind(&input.account_classification)
-    .bind(input.include_in_dashboard)
-    .bind(input.opened_date)
-    .bind(input.closed_date)
-    .execute(pool)
-    .await?;
-
-    let id = result.last_insert_rowid();
-    let created = sqlx::query_as::<_, rows::AccountRow>(
-        r"
-        SELECT
-            id,
-            name,
-            institution_id,
-            type_id,
-            currency_code,
-            account_classification,
-            include_in_dashboard,
-            opened_date,
-            closed_date,
-            created_at,
-            updated_at
-        FROM
-            accounts
-        WHERE
-            id = ?
-        ",
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(created)
-}
-
 pub async fn account_create_tx(
     tx: &mut sqlx::Transaction<'_, Sqlite>,
     input: &AccountMutationInput,
@@ -1205,71 +1285,6 @@ pub async fn account_create_tx(
     .execute(&mut **tx)
     .await?;
     Ok(result.last_insert_rowid())
-}
-
-pub async fn account_update(
-    pool: &SqlitePool,
-    account_id: i64,
-    input: &AccountMutationInput,
-) -> Result<Option<rows::AccountRow>, sqlx::Error> {
-    let result = sqlx::query(
-        r"
-        UPDATE accounts
-        SET
-            institution_id = ?,
-            name = ?,
-            type_id = ?,
-            currency_code = ?,
-            account_classification = ?,
-            include_in_dashboard = ?,
-            opened_date = ?,
-            closed_date = ?,
-            updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
-        WHERE
-            id = ?
-        ",
-    )
-    .bind(input.institution_id)
-    .bind(&input.name)
-    .bind(input.type_id)
-    .bind(&input.currency_code)
-    .bind(&input.account_classification)
-    .bind(input.include_in_dashboard)
-    .bind(input.opened_date)
-    .bind(input.closed_date)
-    .bind(account_id)
-    .execute(pool)
-    .await?;
-
-    if result.rows_affected() == 0 {
-        return Ok(None);
-    }
-
-    let updated = sqlx::query_as::<_, rows::AccountRow>(
-        r"
-        SELECT
-            id,
-            name,
-            institution_id,
-            type_id,
-            currency_code,
-            account_classification,
-            include_in_dashboard,
-            opened_date,
-            closed_date,
-            created_at,
-            updated_at
-        FROM
-            accounts
-        WHERE
-            id = ?
-        ",
-    )
-    .bind(account_id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(updated)
 }
 
 pub async fn account_update_tx(

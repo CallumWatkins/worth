@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LabelUpsertInput",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 1,
+      "pattern": "^[^\\u0000]*[^\\s\\u0000][^\\u0000]*$",
+      "x-validation": {
+        "blank": "Enter a label name",
+        "maxLength": "Label name must be 20 characters or fewer",
+        "required": "Enter a label name",
+        "type": "Enter a label name"
+      }
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

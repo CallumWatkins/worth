@@ -11,7 +11,8 @@ use tauri::{AppHandle, State};
 use crate::contracts::{
     AccountClassification, AccountSnapshotUpdateInput, AccountSnapshotsCreateInput,
     AccountSnapshotsDeleteInput, AccountTypeName, AccountUpsertInput, AppLocaleCode,
-    AppSettingsUpdateInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput, ThemePreference,
+    AppSettingsUpdateInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput, LabelRef,
+    LabelUpsertInput, ThemePreference,
 };
 use crate::imports::snapshots::{
     SnapshotImportCommitDto, SnapshotImportInspectionDto, SnapshotImportOptionsInput,
@@ -119,11 +120,25 @@ pub struct AccountTypeDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct LabelDto {
+    pub id: i64,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct LabelSummaryDto {
+    pub id: i64,
+    pub name: String,
+    pub account_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct AccountDto {
     pub id: i64,
     pub name: String,
     pub institution: InstitutionDto,
     pub account_type: AccountTypeDto,
+    pub labels: Vec<LabelDto>,
     pub currency_code: CurrencyCode,
     pub account_classification: AccountClassification,
     pub include_in_dashboard: bool,
@@ -208,6 +223,7 @@ pub enum SearchResultDto {
         name: String,
         account_type: AccountTypeName,
         institution_name: String,
+        labels: Vec<LabelDto>,
     },
     Institution {
         id: i64,
@@ -349,6 +365,15 @@ pub async fn search(
         .await
         .map_err(|_| ApiError::Db)?;
 
+    let account_ids = rows
+        .iter()
+        .filter_map(|row| match row {
+            db::GlobalSearchRow::Account { id, .. } => Some(*id),
+            db::GlobalSearchRow::Institution { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    let mut labels = account_labels_by_id(pool, &account_ids).await?;
+
     rows.into_iter()
         .map(|row| match row {
             db::GlobalSearchRow::Account {
@@ -361,6 +386,7 @@ pub async fn search(
                 name,
                 account_type: type_name.parse().map_err(|_| ApiError::Db)?,
                 institution_name,
+                labels: labels.remove(&id).unwrap_or_default(),
             }),
             db::GlobalSearchRow::Institution { id, name } => {
                 Ok(SearchResultDto::Institution { id, name })
@@ -482,59 +508,89 @@ pub async fn accounts_set_dashboard_inclusion(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn labels_list(state: State<'_, AppState>) -> Result<Vec<LabelSummaryDto>, ApiError> {
+    db::labels_list(&state.pool)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .map(|label| {
+            Ok(LabelSummaryDto {
+                id: label.id,
+                name: label.name,
+                account_count: u32::try_from(label.account_count).map_err(|_| ApiError::Db)?,
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn labels_create(
+    state: State<'_, AppState>,
+    input: LabelUpsertInput,
+) -> Result<CreatedIdDto, ApiError> {
+    let id = save_label(&state.pool, &input, None).await?;
+    Ok(CreatedIdDto { id })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn labels_update(
+    state: State<'_, AppState>,
+    label_id: i64,
+    input: LabelUpsertInput,
+) -> Result<(), ApiError> {
+    save_label(&state.pool, &input, Some(label_id)).await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn labels_delete(state: State<'_, AppState>, label_id: i64) -> Result<(), ApiError> {
+    if !db::label_delete(&state.pool, label_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+    {
+        return Err(ApiError::NotFound);
+    }
+    Ok(())
+}
+
+async fn save_label(
+    pool: &SqlitePool,
+    input: &LabelUpsertInput,
+    label_id: Option<i64>,
+) -> Result<i64, ApiError> {
+    let normalized = normalize_label_upsert(input);
+    let issues = validation_issues_from_garde_report(normalized.validate().err());
+    if !issues.is_empty() {
+        return Err(ApiError::Validation(issues));
+    }
+    let name_key = normalized.name.to_lowercase();
+    match label_id {
+        Some(id) => {
+            if !db::label_update(pool, id, &normalized.name, &name_key)
+                .await
+                .map_err(map_label_write_error)?
+            {
+                return Err(ApiError::NotFound);
+            }
+            Ok(id)
+        }
+        None => db::label_create(pool, &normalized.name, &name_key)
+            .await
+            .map_err(map_label_write_error),
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn accounts_create(
     state: State<'_, AppState>,
     input: AccountUpsertInput,
 ) -> Result<CreatedIdDto, ApiError> {
-    let pool = &state.pool;
-    let validated = validate_account_upsert(pool, &input, None).await?;
-
-    let account_id = match &validated.institution {
-        ValidatedInstitutionRef::Existing { id } => {
-            let mutation = db::AccountMutationInput {
-                institution_id: *id,
-                name: validated.name.clone(),
-                type_id: validated.type_id,
-                currency_code: validated.currency_code.clone(),
-                account_classification: validated.account_classification.as_str().to_owned(),
-                include_in_dashboard: validated.include_in_dashboard,
-                opened_date: validated.opened_date,
-                closed_date: validated.closed_date,
-            };
-
-            db::account_create(pool, &mutation)
-                .await
-                .map_err(map_account_write_error)?
-                .id
-        }
-        ValidatedInstitutionRef::New { name } => {
-            let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
-
-            let institution_id = db::institution_create_tx(&mut tx, name)
-                .await
-                .map_err(map_institution_write_error)?;
-
-            let mutation = db::AccountMutationInput {
-                institution_id,
-                name: validated.name.clone(),
-                type_id: validated.type_id,
-                currency_code: validated.currency_code.clone(),
-                account_classification: validated.account_classification.as_str().to_owned(),
-                include_in_dashboard: validated.include_in_dashboard,
-                opened_date: validated.opened_date,
-                closed_date: validated.closed_date,
-            };
-
-            let account_id = db::account_create_tx(&mut tx, &mutation)
-                .await
-                .map_err(map_account_write_error)?;
-
-            tx.commit().await.map_err(|_| ApiError::Db)?;
-            account_id
-        }
-    };
-
-    Ok(CreatedIdDto { id: account_id })
+    let id = save_account(&state.pool, &input, None).await?;
+    Ok(CreatedIdDto { id })
 }
 
 #[tauri::command]
@@ -544,67 +600,87 @@ pub async fn accounts_update(
     account_id: i64,
     input: AccountUpsertInput,
 ) -> Result<(), ApiError> {
-    let pool = &state.pool;
+    save_account(&state.pool, &input, Some(account_id)).await?;
+    Ok(())
+}
 
-    // Keep behavior explicit before we potentially create a new institution.
-    let exists = db::account_get_full(pool, account_id)
-        .await
-        .map_err(|_| ApiError::Db)?
-        .is_some();
-    if !exists {
+async fn save_account(
+    pool: &SqlitePool,
+    input: &AccountUpsertInput,
+    account_id: Option<i64>,
+) -> Result<i64, ApiError> {
+    if let Some(id) = account_id
+        && db::account_get_full(pool, id)
+            .await
+            .map_err(|_| ApiError::Db)?
+            .is_none()
+    {
         return Err(ApiError::NotFound);
     }
-
-    let validated = validate_account_upsert(pool, &input, Some(account_id)).await?;
-
-    match &validated.institution {
-        ValidatedInstitutionRef::Existing { id } => {
-            let mutation = db::AccountMutationInput {
-                institution_id: *id,
-                name: validated.name.clone(),
-                type_id: validated.type_id,
-                currency_code: validated.currency_code.clone(),
-                account_classification: validated.account_classification.as_str().to_owned(),
-                include_in_dashboard: validated.include_in_dashboard,
-                opened_date: validated.opened_date,
-                closed_date: validated.closed_date,
-            };
-
-            let updated = db::account_update(pool, account_id, &mutation)
+    let validated = validate_account_upsert(pool, input, account_id).await?;
+    let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+    let institution_id = match &validated.institution {
+        ValidatedInstitutionRef::Existing { id } => *id,
+        ValidatedInstitutionRef::New { name } => db::institution_create_tx(&mut tx, name)
+            .await
+            .map_err(map_institution_write_error)?,
+    };
+    let mutation = db::AccountMutationInput {
+        institution_id,
+        name: validated.name,
+        type_id: validated.type_id,
+        currency_code: validated.currency_code,
+        account_classification: validated.account_classification.as_str().to_owned(),
+        include_in_dashboard: validated.include_in_dashboard,
+        opened_date: validated.opened_date,
+        closed_date: validated.closed_date,
+    };
+    let id = match account_id {
+        Some(id) => {
+            if !db::account_update_tx(&mut tx, id, &mutation)
                 .await
-                .map_err(map_account_write_error)?;
-            if updated.is_none() {
+                .map_err(map_account_write_error)?
+            {
                 return Err(ApiError::NotFound);
             }
+            id
         }
-        ValidatedInstitutionRef::New { name } => {
-            let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
-            let institution_id = db::institution_create_tx(&mut tx, name)
-                .await
-                .map_err(map_institution_write_error)?;
-            let mutation = db::AccountMutationInput {
-                institution_id,
-                name: validated.name.clone(),
-                type_id: validated.type_id,
-                currency_code: validated.currency_code.clone(),
-                account_classification: validated.account_classification.as_str().to_owned(),
-                include_in_dashboard: validated.include_in_dashboard,
-                opened_date: validated.opened_date,
-                closed_date: validated.closed_date,
-            };
+        None => db::account_create_tx(&mut tx, &mutation)
+            .await
+            .map_err(map_account_write_error)?,
+    };
 
-            let updated = db::account_update_tx(&mut tx, account_id, &mutation)
-                .await
-                .map_err(map_account_write_error)?;
-            if !updated {
-                return Err(ApiError::NotFound);
+    let mut label_ids = Vec::with_capacity(validated.labels.len());
+    let mut seen = HashSet::new();
+    for (index, label) in validated.labels.iter().enumerate() {
+        let label_id = match label {
+            LabelRef::Existing { id } => {
+                if !db::label_exists_tx(&mut tx, *id)
+                    .await
+                    .map_err(|_| ApiError::Db)?
+                {
+                    return Err(ApiError::Validation(vec![validation_issue(
+                        &format!("labels.{index}.id"),
+                        "Label does not exist",
+                    )]));
+                }
+                *id
             }
-
-            tx.commit().await.map_err(|_| ApiError::Db)?;
+            LabelRef::New { input } => {
+                db::label_get_or_create_tx(&mut tx, &input.name, &input.name.to_lowercase())
+                    .await
+                    .map_err(|_| ApiError::Db)?
+            }
+        };
+        if seen.insert(label_id) {
+            label_ids.push(label_id);
         }
     }
-
-    Ok(())
+    db::account_labels_replace_tx(&mut tx, id, &label_ids)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    tx.commit().await.map_err(|_| ApiError::Db)?;
+    Ok(id)
 }
 
 #[tauri::command]
@@ -1208,6 +1284,7 @@ struct ValidatedAccountUpsert {
     include_in_dashboard: bool,
     opened_date: Option<NaiveDate>,
     closed_date: Option<NaiveDate>,
+    labels: Vec<LabelRef>,
 }
 
 fn app_settings_dto_from_row(row: db::rows::AppSettingsRow) -> Result<AppSettingsDto, ApiError> {
@@ -1371,6 +1448,7 @@ async fn validate_account_upsert(
         include_in_dashboard: normalized.include_in_dashboard,
         opened_date: normalized.opened_date,
         closed_date: normalized.closed_date,
+        labels: normalized.labels,
     })
 }
 
@@ -1554,14 +1632,21 @@ fn garde_path_to_field(path: &garde::error::Path) -> String {
     if raw == "$" {
         return String::new();
     }
-    if let Some(stripped) = raw.strip_prefix("$.") {
-        return stripped.to_string();
-    }
-    raw
+    // Garde renders sequence indexes as brackets; IPC field paths use dots throughout.
+    raw.strip_prefix("$.")
+        .unwrap_or(&raw)
+        .replace('[', ".")
+        .replace(']', "")
 }
 
 fn normalize_institution_upsert(input: &InstitutionUpsertInput) -> InstitutionUpsertInput {
     InstitutionUpsertInput {
+        name: input.name.trim().to_string(),
+    }
+}
+
+fn normalize_label_upsert(input: &LabelUpsertInput) -> LabelUpsertInput {
+    LabelUpsertInput {
         name: input.name.trim().to_string(),
     }
 }
@@ -1581,6 +1666,16 @@ fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
         include_in_dashboard: input.include_in_dashboard,
         opened_date: input.opened_date,
         closed_date: input.closed_date,
+        labels: input
+            .labels
+            .iter()
+            .map(|label| match label {
+                LabelRef::Existing { id } => LabelRef::Existing { id: *id },
+                LabelRef::New { input } => LabelRef::New {
+                    input: normalize_label_upsert(input),
+                },
+            })
+            .collect(),
     }
 }
 
@@ -1606,6 +1701,16 @@ fn map_account_write_error(error: sqlx::Error) -> ApiError {
     ApiError::Db
 }
 
+fn map_label_write_error(error: sqlx::Error) -> ApiError {
+    if is_unique_constraint(&error, "labels.name_key") {
+        return ApiError::Validation(vec![validation_issue(
+            "name",
+            "A label with this name already exists",
+        )]);
+    }
+    ApiError::Db
+}
+
 fn map_account_snapshot_write_error(error: sqlx::Error) -> ApiError {
     if is_unique_constraint(
         &error,
@@ -1627,12 +1732,32 @@ fn is_unique_constraint(error: &sqlx::Error, needle: &str) -> bool {
     db_error.message().contains("UNIQUE constraint failed") && db_error.message().contains(needle)
 }
 
+async fn account_labels_by_id(
+    pool: &SqlitePool,
+    account_ids: &[i64],
+) -> Result<HashMap<i64, Vec<LabelDto>>, ApiError> {
+    let rows = db::labels_for_accounts(pool, account_ids)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    Ok(rows.into_iter().fold(HashMap::new(), |mut labels, row| {
+        labels
+            .entry(row.account_id)
+            .or_insert_with(Vec::new)
+            .push(LabelDto {
+                id: row.id,
+                name: row.name,
+            });
+        labels
+    }))
+}
+
 async fn build_account_dtos(
     pool: &SqlitePool,
     accounts: Vec<AccountListRow>,
 ) -> Result<Vec<AccountDto>, ApiError> {
     let today = Local::now().date_naive();
     let account_ids = accounts.iter().map(|a| a.id).collect::<Vec<_>>();
+    let mut labels = account_labels_by_id(pool, &account_ids).await?;
 
     // Longest period shown in the UI is 6M (180 points). We always build that once and slice.
     let full_points: usize = 180;
@@ -1716,6 +1841,7 @@ async fn build_account_dtos(
             name: a.name,
             institution,
             account_type,
+            labels: labels.remove(&a.id).unwrap_or_default(),
             currency_code: a.currency_code.parse().map_err(|_| ApiError::Db)?,
             account_classification: a.account_classification.parse().map_err(|_| ApiError::Db)?,
             include_in_dashboard: a.include_in_dashboard,
@@ -1829,6 +1955,10 @@ pub(crate) fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             app_updates_check,
             app_updates_install_pending_and_restart,
             accounts_list,
+            labels_list,
+            labels_create,
+            labels_update,
+            labels_delete,
             accounts_create,
             accounts_update,
             accounts_set_dashboard_inclusion,
@@ -1876,6 +2006,9 @@ pub fn export_bindings_to_app_generated() -> anyhow::Result<()> {
         )
         .map_err(|error| anyhow::anyhow!("Failed to export typescript bindings: {error}"))
 }
+
+#[cfg(test)]
+mod labels_tests;
 
 #[cfg(test)]
 mod tests {

@@ -20,5 +20,7 @@ export { currencyCodeGeneratedSchema } from "./CurrencyCode";
 export type { CurrencyCodeFromSchema } from "./CurrencyCode";
 export { institutionUpsertInputGeneratedSchema } from "./InstitutionUpsertInput";
 export type { InstitutionUpsertInputFromSchema } from "./InstitutionUpsertInput";
+export { labelUpsertInputGeneratedSchema } from "./LabelUpsertInput";
+export type { LabelUpsertInputFromSchema } from "./LabelUpsertInput";
 export { themePreferenceGeneratedSchema } from "./ThemePreference";
 export type { ThemePreferenceFromSchema } from "./ThemePreference";
