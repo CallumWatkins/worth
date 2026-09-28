@@ -128,6 +128,8 @@
         </div>
       </UPageCard>
 
+      <LabelsSettings />
+
       <UPageCard title="About">
         <div :class="settingsRowsClass">
           <p class="col-span-full text-sm text-muted">

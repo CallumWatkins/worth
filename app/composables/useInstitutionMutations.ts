@@ -8,6 +8,7 @@ export const useInstitutionMutations = () => {
 
   const invalidateInstitutionWrites = async () => {
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.labels.list() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.institutions.prefixes.root() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.prefixes.root() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.prefixes.root() }),

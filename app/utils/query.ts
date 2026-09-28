@@ -26,6 +26,9 @@ export const queryKeys = {
   settings: {
     get: () => ["settings", "get"] as const
   },
+  labels: {
+    list: () => ["labels", "list"] as const
+  },
   accounts: {
     prefixes: {
       root: () => ["accounts"] as const,

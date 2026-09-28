@@ -96,6 +96,10 @@
           />
         </UFormField>
 
+        <UFormField label="Labels" name="labels" :error-pattern="/^labels(\..*)?$/" hint="Optional">
+          <LabelsPicker v-model="state.labels" />
+        </UFormField>
+
         <div class="grid grid-cols-2 gap-3">
           <UFormField label="Currency" name="currency_code">
             <USelectMenu
