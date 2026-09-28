@@ -258,6 +258,7 @@ const ACCOUNT_NAME_REQUIRED: &str = "Enter an account name";
 const ACCOUNT_NAME_MAX_LENGTH: &str = "Account name must be 80 characters or fewer";
 const LABEL_NAME_REQUIRED: &str = "Enter a label name";
 const LABEL_NAME_MAX_LENGTH: &str = "Label name must be 20 characters or fewer";
+const LABEL_DESCRIPTION_MAX_LENGTH: &str = "Label description must be 250 characters or fewer";
 const LABEL_REQUIRED: &str = "Select a label";
 const INSTITUTION_REQUIRED: &str = "Select or create an institution";
 const ACCOUNT_TYPE_REQUIRED: &str = "Select an account type";
@@ -324,6 +325,15 @@ pub struct LabelUpsertInput {
         }))
     )]
     pub name: String,
+    #[garde(custom(validate_label_description))]
+    #[specta(optional)]
+    #[schemars(
+        length(max = 250),
+        extend("x-validation" = ::serde_json::json!({
+            "maxLength": LABEL_DESCRIPTION_MAX_LENGTH
+        }))
+    )]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
@@ -486,6 +496,16 @@ fn validate_label_name(value: &str, _ctx: &()) -> garde::Result {
     }
     if value.chars().count() > 20 {
         return Err(garde::Error::new(LABEL_NAME_MAX_LENGTH));
+    }
+    Ok(())
+}
+
+fn validate_label_description(value: &Option<String>, _ctx: &()) -> garde::Result {
+    if value
+        .as_ref()
+        .is_some_and(|description| description.chars().count() > 250)
+    {
+        return Err(garde::Error::new(LABEL_DESCRIPTION_MAX_LENGTH));
     }
     Ok(())
 }

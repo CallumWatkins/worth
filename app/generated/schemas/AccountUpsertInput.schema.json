@@ -221,6 +221,16 @@
     "LabelUpsertInput": {
       "type": "object",
       "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 250,
+          "x-validation": {
+            "maxLength": "Label description must be 250 characters or fewer"
+          }
+        },
         "name": {
           "type": "string",
           "maxLength": 20,

@@ -3,6 +3,7 @@ CREATE TABLE labels (
   name TEXT NOT NULL CHECK (LENGTH(name) BETWEEN 1 AND 20 AND name = TRIM(name)),
   -- Rust supplies the trimmed, case-normalized key; SQLite NOCASE is ASCII-only.
   name_key TEXT NOT NULL UNIQUE CHECK (LENGTH(name_key) > 0),
+  description TEXT,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );

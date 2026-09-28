@@ -18,6 +18,7 @@ async fn test_pool() -> SqlitePool {
 fn label_input(name: &str) -> LabelUpsertInput {
     LabelUpsertInput {
         name: name.to_owned(),
+        description: None,
     }
 }
 
@@ -60,6 +61,69 @@ fn assert_issue<T>(result: Result<T, ApiError>, field: &str, message: &str) {
     assert_eq!(issues.len(), 1);
     assert_eq!(issues[0].field, field);
     assert_eq!(issues[0].message, message);
+}
+
+#[tokio::test]
+async fn label_descriptions_round_trip_and_survive_inline_reuse() {
+    let pool = test_pool().await;
+    let mut input = label_input("ISA");
+    input.description =
+        Some("  Cash or investments held in an ISA.\nFor long-term savings.  ".to_owned());
+    let id = save_label(&pool, &input, None).await.unwrap();
+    let account_id = save_account(
+        &pool,
+        &account_input("Savings", new_institution(), vec![new_label("isa")]),
+        None,
+    )
+    .await
+    .unwrap();
+    let expected = "Cash or investments held in an ISA.\nFor long-term savings.";
+    assert_eq!(
+        db::labels_list(&pool).await.unwrap()[0]
+            .description
+            .as_deref(),
+        Some(expected)
+    );
+    assert_eq!(
+        account_dto_by_id(&pool, account_id).await.unwrap().labels[0]
+            .description
+            .as_deref(),
+        Some(expected)
+    );
+
+    input.description = Some("Updated description".to_owned());
+    save_label(&pool, &input, Some(id)).await.unwrap();
+    assert_eq!(
+        account_dto_by_id(&pool, account_id).await.unwrap().labels[0]
+            .description
+            .as_deref(),
+        Some("Updated description")
+    );
+    input.description = Some(" \n ".to_owned());
+    save_label(&pool, &input, Some(id)).await.unwrap();
+    assert!(
+        db::labels_list(&pool).await.unwrap()[0]
+            .description
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn label_description_limit_counts_unicode_characters_after_trimming() {
+    let pool = test_pool().await;
+    let mut input = label_input("ISA");
+    input.description = Some(format!(" {} ", "💷".repeat(250)));
+    let id = save_label(&pool, &input, None).await.unwrap();
+    input.description = Some("💷".repeat(251));
+    assert_issue(
+        save_label(&pool, &input, Some(id)).await,
+        "description",
+        "Label description must be 250 characters or fewer",
+    );
+    assert_eq!(
+        db::labels_list(&pool).await.unwrap()[0].description,
+        Some("💷".repeat(250))
+    );
 }
 
 #[tokio::test]

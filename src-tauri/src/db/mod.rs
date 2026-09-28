@@ -113,6 +113,7 @@ pub async fn app_settings_update(
 pub struct LabelSummaryRow {
     pub id: i64,
     pub name: String,
+    pub description: Option<String>,
     pub account_count: i64,
 }
 
@@ -121,11 +122,12 @@ pub struct AccountLabelNameRow {
     pub account_id: i64,
     pub id: i64,
     pub name: String,
+    pub description: Option<String>,
 }
 
 pub async fn labels_list(pool: &SqlitePool) -> Result<Vec<LabelSummaryRow>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT l.id, l.name, COUNT(al.account_id) AS account_count
+        "SELECT l.id, l.name, l.description, COUNT(al.account_id) AS account_count
          FROM labels l LEFT JOIN account_labels al ON al.label_id = l.id
          GROUP BY l.id ORDER BY l.name_key, l.id",
     )
@@ -137,12 +139,16 @@ pub async fn label_create(
     pool: &SqlitePool,
     name: &str,
     name_key: &str,
+    description: Option<&str>,
 ) -> Result<i64, sqlx::Error> {
-    sqlx::query_scalar("INSERT INTO labels (name, name_key) VALUES (?, ?) RETURNING id")
-        .bind(name)
-        .bind(name_key)
-        .fetch_one(pool)
-        .await
+    sqlx::query_scalar(
+        "INSERT INTO labels (name, name_key, description) VALUES (?, ?, ?) RETURNING id",
+    )
+    .bind(name)
+    .bind(name_key)
+    .bind(description)
+    .fetch_one(pool)
+    .await
 }
 
 pub async fn label_update(
@@ -150,13 +156,15 @@ pub async fn label_update(
     label_id: i64,
     name: &str,
     name_key: &str,
+    description: Option<&str>,
 ) -> Result<bool, sqlx::Error> {
     let result = sqlx::query(
-        "UPDATE labels SET name = ?, name_key = ?,
+        "UPDATE labels SET name = ?, name_key = ?, description = ?,
          updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
     )
     .bind(name)
     .bind(name_key)
+    .bind(description)
     .bind(label_id)
     .execute(pool)
     .await?;
@@ -185,13 +193,15 @@ pub async fn label_get_or_create_tx(
     tx: &mut sqlx::Transaction<'_, Sqlite>,
     name: &str,
     name_key: &str,
+    description: Option<&str>,
 ) -> Result<i64, sqlx::Error> {
-    // Reusing a name must preserve its chosen capitalization and modification timestamp.
+    // Reusing a name preserves its capitalization, description, and modification timestamp.
     sqlx::query(
-        "INSERT INTO labels (name, name_key) VALUES (?, ?) ON CONFLICT(name_key) DO NOTHING",
+        "INSERT INTO labels (name, name_key, description) VALUES (?, ?, ?) ON CONFLICT(name_key) DO NOTHING",
     )
     .bind(name)
     .bind(name_key)
+    .bind(description)
     .execute(&mut **tx)
     .await?;
     sqlx::query_scalar("SELECT id FROM labels WHERE name_key = ?")
@@ -238,7 +248,7 @@ pub async fn labels_for_accounts(
         return Ok(Vec::new());
     }
     let mut query = QueryBuilder::<Sqlite>::new(
-        "SELECT al.account_id, l.id, l.name FROM account_labels al
+        "SELECT al.account_id, l.id, l.name, l.description FROM account_labels al
          INNER JOIN labels l ON l.id = al.label_id WHERE al.account_id IN (",
     );
     let mut ids = query.separated(", ");

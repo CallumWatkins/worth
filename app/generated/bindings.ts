@@ -342,6 +342,7 @@ export type InstitutionUpsertInput = {
 export type LabelDto = {
 	id: number,
 	name: string,
+	description: string | null,
 };
 
 export type LabelRef = { kind: "existing"; id: number } | { kind: "new"; input: LabelUpsertInput };
@@ -349,11 +350,13 @@ export type LabelRef = { kind: "existing"; id: number } | { kind: "new"; input: 
 export type LabelSummaryDto = {
 	id: number,
 	name: string,
+	description: string | null,
 	account_count: number,
 };
 
 export type LabelUpsertInput = {
 	name: string,
+	description?: string | null,
 };
 
 export type SearchResultDto = { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string; labels: LabelDto[] } | { kind: "institution"; id: number; name: string };

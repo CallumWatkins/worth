@@ -20,6 +20,7 @@ pub struct LabelRow {
     pub id: i64,
     pub name: String,
     pub name_key: String,
+    pub description: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

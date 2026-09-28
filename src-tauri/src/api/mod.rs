@@ -123,12 +123,14 @@ pub struct AccountTypeDto {
 pub struct LabelDto {
     pub id: i64,
     pub name: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct LabelSummaryDto {
     pub id: i64,
     pub name: String,
+    pub description: Option<String>,
     pub account_count: u32,
 }
 
@@ -517,6 +519,7 @@ pub async fn labels_list(state: State<'_, AppState>) -> Result<Vec<LabelSummaryD
             Ok(LabelSummaryDto {
                 id: label.id,
                 name: label.name,
+                description: label.description,
                 account_count: u32::try_from(label.account_count).map_err(|_| ApiError::Db)?,
             })
         })
@@ -569,17 +572,28 @@ async fn save_label(
     let name_key = normalized.name.to_lowercase();
     match label_id {
         Some(id) => {
-            if !db::label_update(pool, id, &normalized.name, &name_key)
-                .await
-                .map_err(map_label_write_error)?
+            if !db::label_update(
+                pool,
+                id,
+                &normalized.name,
+                &name_key,
+                normalized.description.as_deref(),
+            )
+            .await
+            .map_err(map_label_write_error)?
             {
                 return Err(ApiError::NotFound);
             }
             Ok(id)
         }
-        None => db::label_create(pool, &normalized.name, &name_key)
-            .await
-            .map_err(map_label_write_error),
+        None => db::label_create(
+            pool,
+            &normalized.name,
+            &name_key,
+            normalized.description.as_deref(),
+        )
+        .await
+        .map_err(map_label_write_error),
     }
 }
 
@@ -666,11 +680,14 @@ async fn save_account(
                 }
                 *id
             }
-            LabelRef::New { input } => {
-                db::label_get_or_create_tx(&mut tx, &input.name, &input.name.to_lowercase())
-                    .await
-                    .map_err(|_| ApiError::Db)?
-            }
+            LabelRef::New { input } => db::label_get_or_create_tx(
+                &mut tx,
+                &input.name,
+                &input.name.to_lowercase(),
+                input.description.as_deref(),
+            )
+            .await
+            .map_err(|_| ApiError::Db)?,
         };
         if seen.insert(label_id) {
             label_ids.push(label_id);
@@ -1648,6 +1665,12 @@ fn normalize_institution_upsert(input: &InstitutionUpsertInput) -> InstitutionUp
 fn normalize_label_upsert(input: &LabelUpsertInput) -> LabelUpsertInput {
     LabelUpsertInput {
         name: input.name.trim().to_string(),
+        description: input
+            .description
+            .as_deref()
+            .map(str::trim)
+            .filter(|description| !description.is_empty())
+            .map(str::to_owned),
     }
 }
 
@@ -1746,6 +1769,7 @@ async fn account_labels_by_id(
             .push(LabelDto {
                 id: row.id,
                 name: row.name,
+                description: row.description,
             });
         labels
     }))
