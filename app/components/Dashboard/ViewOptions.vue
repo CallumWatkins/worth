@@ -110,7 +110,7 @@ const {
 // UInput's wrapper, so its automatic focus restoration cannot focus the input.
 const searchInput = shallowRef<HTMLInputElement>();
 const searchInputProps = {
-  placeholder: "Search accounts...",
+  placeholder: "Search accounts",
   onFocus: (event: FocusEvent) => {
     searchInput.value = event.target as HTMLInputElement;
   }

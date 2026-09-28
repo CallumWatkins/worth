@@ -11,7 +11,7 @@
     :trailing-icon="false"
     open-on-focus
     ignore-filter
-    placeholder="Search..."
+    placeholder="Search"
     :ui="{
       content: 'min-w-fit',
       item: 'gap-2.5 items-center'

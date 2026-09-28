@@ -116,7 +116,7 @@
           </UFormField>
         </div>
 
-        <UFormField label="Opened date (optional)" name="opened_date">
+        <UFormField label="Opened date" name="opened_date" hint="Optional">
           <UInputDate
             v-model="state.opened_date"
             :range="false"
