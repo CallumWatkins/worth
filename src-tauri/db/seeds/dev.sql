@@ -53,7 +53,7 @@ VALUES
     'GBP',
     'asset',
     NULL,
-    NULL
+    DATE('now', 'localtime')
   ),
   (
     3,
@@ -194,11 +194,11 @@ VALUES
 
 -- Keep labels sparse: most accounts have none, with one example using multiple labels.
 INSERT INTO
-  labels (id, name, name_key)
+  labels (id, name, name_key, description)
 VALUES
-  (1, 'ISA', 'isa'),
-  (2, 'House deposit', 'house deposit'),
-  (3, 'Retirement', 'retirement');
+  (1, 'ISA', 'isa', 'Tax-free Individual Savings Account.'),
+  (2, 'House deposit', 'house deposit', 'Savings set aside for a future home deposit.'),
+  (3, 'Retirement', 'retirement', NULL);
 
 INSERT INTO
   account_labels (account_id, label_id)

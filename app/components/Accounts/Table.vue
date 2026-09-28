@@ -1,5 +1,6 @@
 <template>
   <UTable
+    ref="accountsTable"
     v-model:sorting="sorting"
     v-model:expanded="expanded"
     v-model:column-visibility="columnVisibility"
@@ -49,23 +50,15 @@
         </div>
 
         <div v-else class="flex items-center gap-2 min-w-0">
-          <span class="text-highlighted truncate">
+          <span class="text-highlighted truncate max-w-64" :title="row.original.name">
             {{ row.original.name }}
           </span>
-          <UBadge
-            v-if="row.original.closed_date != null"
-            variant="subtle"
-            color="warning"
-          >
-            Closed
-          </UBadge>
-          <UBadge
-            v-else-if="row.original.latest_balance_minor === 0"
-            variant="subtle"
-            color="neutral"
-          >
-            Empty
-          </UBadge>
+          <AccountsBadges
+            :labels="row.original.labels"
+            :account-name="row.original.name"
+            :closed-date="row.original.closed_date"
+            :limit="tableWidth >= 1000 ? 2 : 1"
+          />
         </div>
       </div>
     </template>
@@ -172,6 +165,7 @@ import type { Column, ExpandedState, GroupingOptions, SortingState } from "@tans
 import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
 import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
+import { useElementSize } from "@vueuse/core";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
 type Account = AccountDto;
@@ -197,6 +191,8 @@ const sorting = defineModel<SortingState>("sorting", { required: true });
 const expanded = defineModel<ExpandedState>("expanded", { required: true });
 
 const settings = useSettings();
+const accountsTable = useTemplateRef<{ $el: HTMLElement }>("accountsTable");
+const { width: tableWidth } = useElementSize(() => accountsTable.value?.$el);
 const colorMode = useColorMode();
 
 const UButton = resolveComponent("UButton");

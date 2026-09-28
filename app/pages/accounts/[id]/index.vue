@@ -6,7 +6,6 @@
 
     <UPageHeader
       v-if="accountQuery.isSuccess"
-      :description="headerDescription"
       :ui="{
         root: 'pb-0 border-none',
         description: 'mt-1'
@@ -20,9 +19,17 @@
             variant="subtle"
             color="warning"
             class="translate-y-px"
+            :title="`Closed on ${formatShortDate(accountQuery.data.closed_date)}`"
           >
             Closed
           </UBadge>
+        </div>
+      </template>
+
+      <template #description>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span>{{ headerDescription }}</span>
+          <AccountsBadges :labels="accountQuery.data.labels" :account-name="accountQuery.data.name" />
         </div>
       </template>
 

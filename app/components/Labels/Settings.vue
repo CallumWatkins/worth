@@ -19,7 +19,7 @@
     <UTable v-else-if="visibleLabels.length" :data="visibleLabels" :columns="columns" class="max-h-80" :ui="{ base: 'table-fixed w-full', thead: 'hidden' }">
       <template #name-cell="{ row }">
         <UBadge color="neutral" variant="soft" class="max-w-full">
-          <span class="truncate" :title="row.original.name">{{ row.original.name }}</span>
+          <span class="truncate">{{ row.original.name }}</span>
         </UBadge>
       </template>
       <template #description-cell="{ row }">
