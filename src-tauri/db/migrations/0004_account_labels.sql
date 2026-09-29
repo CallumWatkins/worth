@@ -119,13 +119,26 @@ CREATE TRIGGER account_labels_au AFTER UPDATE OF account_id, label_id ON account
   WHERE kind = 'account' AND entity_id IN (old.account_id, new.account_id);
 END;
 
+-- Index labels as standalone results, including labels without any accounts.
+CREATE TRIGGER labels_ai AFTER INSERT ON labels BEGIN
+  INSERT INTO search_fts (kind, entity_id, name, institution_name, account_type, labels)
+  VALUES ('label', new.id, new.name, '', '', '');
+END;
+
 CREATE TRIGGER labels_au AFTER UPDATE OF name ON labels BEGIN
+  UPDATE search_fts SET name = new.name
+  WHERE kind = 'label' AND entity_id = new.id;
+
   UPDATE search_fts SET labels = (
     SELECT labels FROM account_search_documents WHERE entity_id = search_fts.entity_id
   )
   WHERE kind = 'account' AND entity_id IN (
     SELECT account_id FROM account_labels WHERE label_id = new.id
   );
+END;
+
+CREATE TRIGGER labels_ad AFTER DELETE ON labels BEGIN
+  DELETE FROM search_fts WHERE kind = 'label' AND entity_id = old.id;
 END;
 
 -- Rebuild existing search entries without changing accounts or their balance history.

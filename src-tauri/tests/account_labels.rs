@@ -52,7 +52,7 @@ async fn search_accounts(pool: &SqlitePool, query: &str) -> Vec<i64> {
 }
 
 #[tokio::test]
-async fn label_search_migration_backfills_existing_labels() -> anyhow::Result<()> {
+async fn migration_indexes_new_labels_as_search_results() -> anyhow::Result<()> {
     let pool = in_memory_pool().await;
     sqlx::raw_sql(concat!(
         include_str!("../db/migrations/0001_init.sql"),
@@ -65,11 +65,6 @@ async fn label_search_migration_backfills_existing_labels() -> anyhow::Result<()
     sqlx::raw_sql(
         "INSERT INTO labels (id, name, name_key) VALUES (1, 'House deposit', 'house deposit');",
     )
-    .execute(&pool)
-    .await?;
-    sqlx::raw_sql(include_str!(
-        "../db/migrations/0005_label_search_results.sql"
-    ))
     .execute(&pool)
     .await?;
     let results: Vec<i64> = sqlx::query_scalar(
