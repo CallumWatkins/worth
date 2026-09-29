@@ -72,6 +72,7 @@
           </template>
 
           <div class="flex flex-wrap items-center gap-3">
+            <FiltersMenu v-model="options.filters.labels" label="Label" :items="labelItems" />
             <FiltersMenu
               v-model="options.filters.types"
               label="Type"
@@ -152,7 +153,7 @@ const institutionQuery = proxyRefs(useQuery({
   queryFn: async () => api.institutionsGet(institutionId.value!)
 }));
 
-const { typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters } = useAccountFilters(
+const { labelItems, typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters } = useAccountFilters(
   () => institutionQuery.data?.accounts ?? [],
   computed({
     get: () => options.value.filters,

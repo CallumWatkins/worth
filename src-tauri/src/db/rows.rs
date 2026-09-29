@@ -16,6 +16,24 @@ pub struct AccountTypeRow {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct LabelRow {
+    pub id: i64,
+    pub name: String,
+    pub name_key: String,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountLabelRow {
+    pub account_id: i64,
+    pub label_id: i64,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct AccountRow {
     pub id: i64,
     pub name: String,

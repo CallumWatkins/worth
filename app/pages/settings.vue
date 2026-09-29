@@ -128,6 +128,8 @@
         </div>
       </UPageCard>
 
+      <LabelsSettings />
+
       <UPageCard title="About">
         <div :class="settingsRowsClass">
           <p class="col-span-full text-sm text-muted">
@@ -304,13 +306,6 @@ const localeItems = [
 ] satisfies { label: string, value: AppLocaleCode }[];
 
 const themeItems = [...themePreferenceItems];
-
-const settingsRowsClass = "grid grid-cols-[minmax(0,1fr)_max-content] gap-x-10 gap-y-6";
-const settingsFieldUi = {
-  root: "grid grid-cols-subgrid col-span-full items-center justify-start justify-items-stretch gap-[inherit]",
-  wrapper: "min-w-0",
-  container: "justify-self-end"
-} as const;
 
 useBlockRouteNavigationWhile(computed(() => unref(updateSettings.isPending)));
 

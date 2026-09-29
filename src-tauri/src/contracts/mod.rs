@@ -256,6 +256,10 @@ const INSTITUTION_NAME_REQUIRED: &str = "Enter an institution name";
 const INSTITUTION_NAME_MAX_LENGTH: &str = "Institution name must be 80 characters or fewer";
 const ACCOUNT_NAME_REQUIRED: &str = "Enter an account name";
 const ACCOUNT_NAME_MAX_LENGTH: &str = "Account name must be 80 characters or fewer";
+const LABEL_NAME_REQUIRED: &str = "Enter a label name";
+const LABEL_NAME_MAX_LENGTH: &str = "Label name must be 20 characters or fewer";
+const LABEL_DESCRIPTION_MAX_LENGTH: &str = "Label description must be 250 characters or fewer";
+const LABEL_REQUIRED: &str = "Select a label";
 const INSTITUTION_REQUIRED: &str = "Select or create an institution";
 const ACCOUNT_TYPE_REQUIRED: &str = "Select an account type";
 const CURRENCY_REQUIRED: &str = "Select a currency";
@@ -308,6 +312,54 @@ pub enum InstitutionRef {
 
 #[crate::export_schema]
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
+pub struct LabelUpsertInput {
+    #[garde(custom(validate_label_name))]
+    #[schemars(
+        length(min = 1, max = 20),
+        pattern(r"^[^\u0000]*[^\s\u0000][^\u0000]*$"),
+        extend("x-validation" = ::serde_json::json!({
+            "required": LABEL_NAME_REQUIRED,
+            "blank": LABEL_NAME_REQUIRED,
+            "maxLength": LABEL_NAME_MAX_LENGTH,
+            "type": LABEL_NAME_REQUIRED
+        }))
+    )]
+    pub name: String,
+    #[garde(custom(validate_label_description))]
+    #[specta(optional)]
+    #[schemars(
+        length(max = 250),
+        extend("x-validation" = ::serde_json::json!({
+            "maxLength": LABEL_DESCRIPTION_MAX_LENGTH
+        }))
+    )]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
+#[schemars(extend("discriminator" = ::serde_json::json!({"propertyName": "kind"})))]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum LabelRef {
+    Existing {
+        #[garde(custom(validate_label_id))]
+        #[schemars(
+            range(min = 1),
+            extend("x-validation" = ::serde_json::json!({
+                "required": LABEL_REQUIRED,
+                "minimum": LABEL_REQUIRED,
+                "type": LABEL_REQUIRED
+            }))
+        )]
+        id: i64,
+    },
+    New {
+        #[garde(dive)]
+        input: LabelUpsertInput,
+    },
+}
+
+#[crate::export_schema]
+#[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
 pub struct AccountUpsertInput {
     #[garde(dive)]
     #[schemars(extend("x-validation" = ::serde_json::json!({
@@ -351,6 +403,8 @@ pub struct AccountUpsertInput {
     pub account_classification: AccountClassification,
     #[garde(skip)]
     pub include_in_dashboard: bool,
+    #[garde(dive)]
+    pub labels: Vec<LabelRef>,
     #[garde(skip)]
     #[specta(optional)]
     pub opened_date: Option<NaiveDate>,
@@ -434,6 +488,33 @@ fn validate_institution_name(value: &str, _ctx: &()) -> garde::Result {
 
 fn validate_account_name(value: &str, _ctx: &()) -> garde::Result {
     validate_name(value, ACCOUNT_NAME_REQUIRED, ACCOUNT_NAME_MAX_LENGTH)
+}
+
+fn validate_label_name(value: &str, _ctx: &()) -> garde::Result {
+    if value.trim().is_empty() || value.contains('\0') {
+        return Err(garde::Error::new(LABEL_NAME_REQUIRED));
+    }
+    if value.chars().count() > 20 {
+        return Err(garde::Error::new(LABEL_NAME_MAX_LENGTH));
+    }
+    Ok(())
+}
+
+fn validate_label_description(value: &Option<String>, _ctx: &()) -> garde::Result {
+    if value
+        .as_ref()
+        .is_some_and(|description| description.chars().count() > 250)
+    {
+        return Err(garde::Error::new(LABEL_DESCRIPTION_MAX_LENGTH));
+    }
+    Ok(())
+}
+
+fn validate_label_id(value: &i64, _ctx: &()) -> garde::Result {
+    if *value < 1 {
+        return Err(garde::Error::new(LABEL_REQUIRED));
+    }
+    Ok(())
 }
 
 fn validate_name(value: &str, empty_message: &str, max_length_message: &str) -> garde::Result {

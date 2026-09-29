@@ -1,8 +1,10 @@
 import type { MaybeRefOrGetter } from "vue";
 import type { AccountDto, AccountTypeName } from "~/generated/bindings";
+import { useQuery } from "@tanstack/vue-query";
 
 export interface AccountFilters {
   institutionIds: number[]
+  labels: (number | "none")[]
   types: AccountTypeName[]
   statuses: ("open" | "closed")[]
   balances: ("active" | "empty")[]
@@ -10,6 +12,14 @@ export interface AccountFilters {
 }
 
 export function useAccountFilters(accounts: MaybeRefOrGetter<AccountDto[]>, filters: Ref<AccountFilters>) {
+  const api = useApi();
+  const labelsQuery = useQuery({ queryKey: queryKeys.labels.list(), queryFn: api.labelsList });
+  const labelItems = computed<{ label: string, value: number | "none" }[][]>(() => [
+    (labelsQuery.data.value ?? [])
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .map((label) => ({ label: label.name, value: label.id })),
+    [{ label: "No labels", value: "none" }]
+  ]);
   const institutionItems = computed(() => [...new Map(
     toValue(accounts).map((account) => [account.institution.id, {
       label: account.institution.name,
@@ -35,7 +45,7 @@ export function useAccountFilters(accounts: MaybeRefOrGetter<AccountDto[]>, filt
   ];
 
   const hasFilters = computed(() => (
-    filters.value.institutionIds.length > 0 || filters.value.types.length > 0
+    filters.value.institutionIds.length > 0 || filters.value.types.length > 0 || filters.value.labels.length > 0
     || filters.value.statuses.length > 0 || filters.value.balances.length > 0
     || filters.value.balanceRange.minimum !== null || filters.value.balanceRange.maximum !== null
   ));
@@ -44,6 +54,9 @@ export function useAccountFilters(accounts: MaybeRefOrGetter<AccountDto[]>, filt
     const balance = convertCurrencyMinorUnitsToMajorAmount(account.latest_balance_minor);
     return (
       (filters.value.institutionIds.length === 0 || filters.value.institutionIds.includes(account.institution.id))
+      && (filters.value.labels.length === 0
+        || account.labels.some((label) => filters.value.labels.includes(label.id))
+        || (filters.value.labels.includes("none") && account.labels.length === 0))
       && (filters.value.types.length === 0 || filters.value.types.includes(account.account_type.name))
       && (filters.value.statuses.length === 0 || filters.value.statuses.includes(account.closed_date == null ? "open" : "closed"))
       && (filters.value.balances.length === 0 || filters.value.balances.includes(account.latest_balance_minor === 0 ? "empty" : "active"))
@@ -52,8 +65,8 @@ export function useAccountFilters(accounts: MaybeRefOrGetter<AccountDto[]>, filt
   }));
 
   function resetFilters() {
-    filters.value = { institutionIds: [], types: [], statuses: [], balances: [], balanceRange: createBalanceRange() };
+    filters.value = { institutionIds: [], labels: [], types: [], statuses: [], balances: [], balanceRange: createBalanceRange() };
   }
 
-  return { institutionItems, typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters };
+  return { institutionItems, labelItems, typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters };
 }

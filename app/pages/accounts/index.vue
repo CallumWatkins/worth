@@ -57,6 +57,7 @@
             label="Type"
             :items="typeItems"
           />
+          <FiltersMenu v-model="options.filters.labels" label="Label" :items="labelItems" />
           <FiltersMenu
             v-model="options.filters.statuses"
             label="Status"
@@ -128,7 +129,7 @@ const accountsQuery = proxyRefs(useQuery({
   queryFn: api.accountsList
 }));
 
-const { institutionItems, typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters } = useAccountFilters(
+const { institutionItems, labelItems, typeItems, statusItems, balanceItems, hasFilters, filteredAccounts, resetFilters } = useAccountFilters(
   () => accountsQuery.data ?? [],
   computed({
     get: () => options.value.filters,
@@ -137,6 +138,19 @@ const { institutionItems, typeItems, statusItems, balanceItems, hasFilters, filt
     }
   })
 );
+
+const route = useRoute("accounts");
+const router = useRouter();
+// Label links are one-time filter requests. Consume the query so another click
+// on the same label can reset filters again; ordinary navigation keeps view state.
+watch(() => route.query.label, (value) => {
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) return;
+  const labelId = Number(value);
+  if (!Number.isSafeInteger(labelId)) return;
+  resetFilters();
+  options.value.filters.labels = [labelId];
+  void router.replace({ name: "accounts", query: {} });
+}, { immediate: true });
 
 useContextualKeyboardShortcuts([
   {

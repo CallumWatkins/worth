@@ -3,7 +3,7 @@ import type { ExpandedState, SortingState } from "@tanstack/vue-table";
 import type { MaybeRefOrGetter } from "vue";
 import type { ActivityPeriod } from "~/generated/bindings";
 
-export type AccountGroupBy = "none" | "institution" | "type";
+export type AccountGroupBy = "none" | "institution" | "type" | "label" | "status";
 export type AccountsHideColumn = "institution";
 
 interface UseAccountsTableOptionsArgs {
@@ -24,7 +24,7 @@ export function useAccountsTableOptions(args: UseAccountsTableOptionsArgs) {
 
   watch(() => toValue(args.scope), (scope) => {
     views.value[scope] ??= {
-      filters: { institutionIds: [], types: [], statuses: [], balances: [], balanceRange: createBalanceRange() },
+      filters: { institutionIds: [], labels: [], types: [], statuses: [], balances: [], balanceRange: createBalanceRange() },
       groupBy: "none",
       activityPeriod: "1M",
       sorting: [{ id: "name", desc: false }],
@@ -52,6 +52,8 @@ export function useAccountsTableOptions(args: UseAccountsTableOptionsArgs) {
     }
 
     out.push({ label: "Type", value: "type" });
+    out.push({ label: "Label", value: "label" });
+    out.push({ label: "Status", value: "status" });
     return out;
   });
 

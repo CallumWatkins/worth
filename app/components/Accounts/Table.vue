@@ -3,12 +3,12 @@
     v-model:sorting="sorting"
     v-model:expanded="expanded"
     v-model:column-visibility="columnVisibility"
-    :data="accounts"
+    :data="tableAccounts"
     :columns="columns"
     :grouping="grouping"
     :grouping-options="groupingOptions"
     :expanded-options="{ autoResetExpanded: false }"
-    :get-row-id="(account) => String(account.id)"
+    :get-row-id="(account) => resolvedGroupBy === 'label' ? `${account.id}:label:${account.labelGroup?.id ?? 'none'}` : String(account.id)"
     empty="No accounts match these filters."
     :ui="{
       td: 'empty:p-0',
@@ -49,23 +49,15 @@
         </div>
 
         <div v-else class="flex items-center gap-2 min-w-0">
-          <span class="text-highlighted truncate">
+          <span class="text-highlighted truncate max-w-64" :title="row.original.name">
             {{ row.original.name }}
           </span>
-          <UBadge
-            v-if="row.original.closed_date != null"
-            variant="subtle"
-            color="warning"
-          >
-            Closed
-          </UBadge>
-          <UBadge
-            v-else-if="row.original.latest_balance_minor === 0"
-            variant="subtle"
-            color="neutral"
-          >
-            Empty
-          </UBadge>
+          <AccountsBadges
+            :labels="resolvedGroupBy === 'label' ? row.original.labels.filter((label) => label.id !== row.original.labelGroup?.id) : row.original.labels"
+            :account-name="row.original.name"
+            :closed-date="row.original.closed_date"
+            :limit="isLargeScreen ? 2 : 1"
+          />
         </div>
       </div>
     </template>
@@ -170,18 +162,18 @@
 import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { Column, ExpandedState, GroupingOptions, SortingState } from "@tanstack/vue-table";
 import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
-import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
+import type { AccountDto, AccountTypeName, ActivityPeriod, LabelDto } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
+import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
-type Account = AccountDto;
-type GroupBy = "none" | "institution" | "type";
+type Account = AccountDto & { labelGroup?: LabelDto | null };
 type HideColumn = "institution";
 
 const props = withDefaults(defineProps<{
   accounts: Account[]
   totalCount?: number
-  groupBy: GroupBy
+  groupBy: AccountGroupBy
   activityPeriod: ActivityPeriod
   analyticsCategory: AnalyticsEventCategory
   hideColumns?: HideColumn[]
@@ -197,6 +189,7 @@ const sorting = defineModel<SortingState>("sorting", { required: true });
 const expanded = defineModel<ExpandedState>("expanded", { required: true });
 
 const settings = useSettings();
+const isLargeScreen = useBreakpoints(breakpointsTailwind).greaterOrEqual("lg");
 const colorMode = useColorMode();
 
 const UButton = resolveComponent("UButton");
@@ -206,7 +199,7 @@ const deleteOpen = ref(false);
 const deleteAccountId = ref<number | null>(null);
 
 const hasHiddenInstitution = computed(() => props.hideColumns.includes("institution"));
-const resolvedGroupBy = computed<GroupBy>(() => (
+const resolvedGroupBy = computed<AccountGroupBy>(() => (
   hasHiddenInstitution.value && props.groupBy === "institution"
     ? "none"
     : props.groupBy
@@ -214,12 +207,33 @@ const resolvedGroupBy = computed<GroupBy>(() => (
 
 const hiddenCount = computed(() => (props.totalCount ?? props.accounts.length) - props.accounts.length);
 
+const tableAccounts = computed<Account[]>(() => {
+  if (resolvedGroupBy.value === "status") {
+    return [...props.accounts].sort((a, b) => Number(a.closed_date != null) - Number(b.closed_date != null));
+  }
+  if (resolvedGroupBy.value !== "label") return props.accounts;
+  return props.accounts.flatMap<Account>((account) => (
+    account.labels.length
+      ? account.labels.map((labelGroup) => ({ ...account, labelGroup }))
+      : [{ ...account, labelGroup: null }]
+  )).sort((a, b) => {
+    if (!a.labelGroup || !b.labelGroup) return Number(!a.labelGroup) - Number(!b.labelGroup);
+    return a.labelGroup.name.localeCompare(b.labelGroup.name);
+  });
+});
+
 const grouping = computed(() => {
   if (resolvedGroupBy.value === "institution") {
     return ["institution_group"];
   }
   if (resolvedGroupBy.value === "type") {
     return ["type_group"];
+  }
+  if (resolvedGroupBy.value === "label") {
+    return ["label_group"];
+  }
+  if (resolvedGroupBy.value === "status") {
+    return ["status_group"];
   }
   return [];
 });
@@ -231,7 +245,9 @@ const groupingOptions = ref<GroupingOptions>({
 
 const columnVisibility = ref<Record<string, boolean>>({
   institution_group: false,
-  type_group: false
+  type_group: false,
+  label_group: false,
+  status_group: false
 });
 
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
@@ -385,6 +401,12 @@ function getGroupLabel(row: TableRow<Account>) {
   if (id === "type_group") {
     return ACCOUNT_TYPE_META[row.getValue<AccountTypeName>("type_group")].label;
   }
+  if (id === "label_group") {
+    return row.original.labelGroup?.name ?? "No labels";
+  }
+  if (id === "status_group") {
+    return row.getValue<string>("status_group");
+  }
   return (id != null) ? String(row.getValue(id)) : "";
 }
 
@@ -465,6 +487,16 @@ const columns = computed<TableColumn<Account>[]>(() => {
   }
 
   out.push(
+    {
+      id: "status_group",
+      accessorFn: (row) => row.closed_date == null ? "Open" : "Closed",
+      enableSorting: false
+    },
+    {
+      id: "label_group",
+      accessorFn: (row) => row.labelGroup?.id ?? "none",
+      enableSorting: false
+    },
     {
       id: "type_group",
       accessorFn: (row) => row.account_type.name,

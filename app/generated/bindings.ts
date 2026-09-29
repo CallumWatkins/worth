@@ -13,6 +13,10 @@ export const commands = {
 	appUpdatesCheck: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_check")),
 	appUpdatesInstallPendingAndRestart: () => typedError<AppUpdateStateDto, ApiError>(__TAURI_INVOKE("app_updates_install_pending_and_restart")),
 	accountsList: () => typedError<AccountDto[], ApiError>(__TAURI_INVOKE("accounts_list")),
+	labelsList: () => typedError<LabelSummaryDto[], ApiError>(__TAURI_INVOKE("labels_list")),
+	labelsCreate: (input: LabelUpsertInput) => typedError<CreatedIdDto, ApiError>(__TAURI_INVOKE("labels_create", { input })),
+	labelsUpdate: (labelId: number, input: LabelUpsertInput) => typedError<null, ApiError>(__TAURI_INVOKE("labels_update", { labelId, input })),
+	labelsDelete: (labelId: number) => typedError<null, ApiError>(__TAURI_INVOKE("labels_delete", { labelId })),
 	accountsCreate: (input: AccountUpsertInput) => typedError<CreatedIdDto, ApiError>(__TAURI_INVOKE("accounts_create", { input })),
 	accountsUpdate: (accountId: number, input: AccountUpsertInput) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_update", { accountId, input })),
 	accountsSetDashboardInclusion: (accountId: number, includeInDashboard: boolean) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_set_dashboard_inclusion", { accountId, includeInDashboard })),
@@ -60,6 +64,7 @@ export type AccountDto = {
 	name: string,
 	institution: InstitutionDto,
 	account_type: AccountTypeDto,
+	labels: LabelDto[],
 	currency_code: CurrencyCode,
 	account_classification: AccountClassification,
 	include_in_dashboard: boolean,
@@ -106,6 +111,7 @@ export type AccountUpsertInput = {
 	currency_code: CurrencyCode,
 	account_classification: AccountClassification,
 	include_in_dashboard: boolean,
+	labels: LabelRef[],
 	opened_date?: string | null,
 	closed_date?: string | null,
 };
@@ -333,7 +339,27 @@ export type InstitutionUpsertInput = {
 	name: string,
 };
 
-export type SearchResultDto = { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string } | { kind: "institution"; id: number; name: string };
+export type LabelDto = {
+	id: number,
+	name: string,
+	description: string | null,
+};
+
+export type LabelRef = { kind: "existing"; id: number } | { kind: "new"; input: LabelUpsertInput };
+
+export type LabelSummaryDto = {
+	id: number,
+	name: string,
+	description: string | null,
+	account_count: number,
+};
+
+export type LabelUpsertInput = {
+	name: string,
+	description?: string | null,
+};
+
+export type SearchResultDto = { kind: "label"; id: number; name: string; account_count: number } | { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string } | { kind: "institution"; id: number; name: string };
 
 export type SnapshotImportCommitDto = {
 	created_count: number,

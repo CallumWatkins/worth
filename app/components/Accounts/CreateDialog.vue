@@ -96,6 +96,10 @@
           />
         </UFormField>
 
+        <UFormField label="Labels" name="labels" :error-pattern="/^labels(\..*)?$/" hint="Optional">
+          <LabelsPicker v-model="state.labels" />
+        </UFormField>
+
         <div class="grid grid-cols-2 gap-3">
           <UFormField label="Currency" name="currency_code">
             <USelectMenu
@@ -116,7 +120,7 @@
           </UFormField>
         </div>
 
-        <UFormField label="Opened date (optional)" name="opened_date">
+        <UFormField label="Opened date" name="opened_date" hint="Optional">
           <UInputDate
             v-model="state.opened_date"
             :range="false"
