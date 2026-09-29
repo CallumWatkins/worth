@@ -16,10 +16,10 @@
     <p v-else-if="labelsQuery.isPending" class="text-sm text-muted" role="status">
       Loading labels…
     </p>
-    <UTable v-else-if="visibleLabels.length" :data="visibleLabels" :columns="columns" class="max-h-80" :ui="{ base: 'table-fixed w-full', thead: 'hidden' }">
+    <UTable v-else-if="visibleLabels.length" :data="visibleLabels" :columns="columns" class="max-h-80" :ui="{ base: 'table-auto w-full', thead: 'hidden' }">
       <template #name-cell="{ row }">
         <UBadge color="neutral" variant="soft" class="max-w-full">
-          <span class="truncate">{{ row.original.name }}</span>
+          {{ row.original.name }}
         </UBadge>
       </template>
       <template #description-cell="{ row }">
@@ -67,8 +67,8 @@ const deleteOpen = ref(false);
 const editingLabel = ref<LabelDto | null>(null);
 const deletingLabel = ref<LabelSummaryDto | null>(null);
 const columns: TableColumn<LabelSummaryDto>[] = [
-  { accessorKey: "name", header: "Name", meta: { class: { td: "w-36" } } },
-  { accessorKey: "description", header: "Description" },
+  { accessorKey: "name", header: "Name", meta: { class: { td: "w-px whitespace-nowrap" } } },
+  { accessorKey: "description", header: "Description", meta: { class: { td: "w-full whitespace-normal" } } },
   { accessorKey: "account_count", header: "Accounts", meta: { class: { td: "w-20 text-right" } } },
   { id: "actions", header: "", meta: { class: { td: "w-14 text-right" } } }
 ];

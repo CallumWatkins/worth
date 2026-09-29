@@ -5,10 +5,10 @@
       :key="badge.key"
       :color="badge.closed ? 'warning' : 'neutral'"
       :variant="badge.closed ? 'subtle' : 'soft'"
-      :class="limit === undefined ? 'max-w-full' : 'max-w-32'"
+      :class="limit === undefined ? 'max-w-full' : 'shrink-0'"
       :title="badge.description ?? undefined"
     >
-      <span :class="limit === undefined ? 'whitespace-normal wrap-anywhere' : 'truncate'">{{ badge.name }}</span>
+      <span :class="limit === undefined ? 'whitespace-normal wrap-anywhere' : 'whitespace-nowrap'">{{ badge.name }}</span>
     </UBadge>
     <UPopover v-if="hiddenCount > 0" :content="{ align: 'start' }">
       <UButton

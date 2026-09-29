@@ -1,6 +1,5 @@
 <template>
   <UTable
-    ref="accountsTable"
     v-model:sorting="sorting"
     v-model:expanded="expanded"
     v-model:column-visibility="columnVisibility"
@@ -57,7 +56,7 @@
             :labels="row.original.labels"
             :account-name="row.original.name"
             :closed-date="row.original.closed_date"
-            :limit="tableWidth >= 1000 ? 2 : 1"
+            :limit="isLargeScreen ? 2 : 1"
           />
         </div>
       </div>
@@ -165,7 +164,7 @@ import type { Column, ExpandedState, GroupingOptions, SortingState } from "@tans
 import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
 import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
-import { useElementSize } from "@vueuse/core";
+import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
 type Account = AccountDto;
@@ -191,8 +190,7 @@ const sorting = defineModel<SortingState>("sorting", { required: true });
 const expanded = defineModel<ExpandedState>("expanded", { required: true });
 
 const settings = useSettings();
-const accountsTable = useTemplateRef<{ $el: HTMLElement }>("accountsTable");
-const { width: tableWidth } = useElementSize(() => accountsTable.value?.$el);
+const isLargeScreen = useBreakpoints(breakpointsTailwind).greaterOrEqual("lg");
 const colorMode = useColorMode();
 
 const UButton = resolveComponent("UButton");

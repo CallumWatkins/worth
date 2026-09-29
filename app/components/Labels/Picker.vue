@@ -16,7 +16,7 @@
       :loading="labelsQuery.isPending"
       :disabled="disabled || labelsQuery.isPending || labelsQuery.isError"
       :create-item="canCreate ? 'always' : false"
-      :ui="{ base: 'flex-wrap', tagsItem: 'max-w-full', tagsItemText: 'truncate', content: 'max-h-64' }"
+      :ui="{ base: 'flex-wrap', tagsItem: 'max-w-full', tagsItemText: 'whitespace-normal wrap-anywhere overflow-visible text-clip', content: 'max-h-64' }"
       @create="onCreate"
       @blur="emitFormBlur"
       @focus="emitFormFocus"
