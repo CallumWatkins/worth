@@ -3,12 +3,12 @@
     v-model:sorting="sorting"
     v-model:expanded="expanded"
     v-model:column-visibility="columnVisibility"
-    :data="accounts"
+    :data="tableAccounts"
     :columns="columns"
     :grouping="grouping"
     :grouping-options="groupingOptions"
     :expanded-options="{ autoResetExpanded: false }"
-    :get-row-id="(account) => String(account.id)"
+    :get-row-id="(account) => resolvedGroupBy === 'label' ? `${account.id}:label:${account.labelGroup?.id ?? 'none'}` : String(account.id)"
     empty="No accounts match these filters."
     :ui="{
       td: 'empty:p-0',
@@ -53,7 +53,7 @@
             {{ row.original.name }}
           </span>
           <AccountsBadges
-            :labels="row.original.labels"
+            :labels="resolvedGroupBy === 'label' ? row.original.labels.filter((label) => label.id !== row.original.labelGroup?.id) : row.original.labels"
             :account-name="row.original.name"
             :closed-date="row.original.closed_date"
             :limit="isLargeScreen ? 2 : 1"
@@ -162,19 +162,18 @@
 import type { TableColumn, TableRow } from "@nuxt/ui";
 import type { Column, ExpandedState, GroupingOptions, SortingState } from "@tanstack/vue-table";
 import type { AnalyticsEventCategory } from "~/composables/useAnalytics";
-import type { AccountDto, AccountTypeName, ActivityPeriod } from "~/generated/bindings";
+import type { AccountDto, AccountTypeName, ActivityPeriod, LabelDto } from "~/generated/bindings";
 import { getGroupedRowModel } from "@tanstack/vue-table";
 import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
-type Account = AccountDto;
-type GroupBy = "none" | "institution" | "type";
+type Account = AccountDto & { labelGroup?: LabelDto | null };
 type HideColumn = "institution";
 
 const props = withDefaults(defineProps<{
   accounts: Account[]
   totalCount?: number
-  groupBy: GroupBy
+  groupBy: AccountGroupBy
   activityPeriod: ActivityPeriod
   analyticsCategory: AnalyticsEventCategory
   hideColumns?: HideColumn[]
@@ -200,7 +199,7 @@ const deleteOpen = ref(false);
 const deleteAccountId = ref<number | null>(null);
 
 const hasHiddenInstitution = computed(() => props.hideColumns.includes("institution"));
-const resolvedGroupBy = computed<GroupBy>(() => (
+const resolvedGroupBy = computed<AccountGroupBy>(() => (
   hasHiddenInstitution.value && props.groupBy === "institution"
     ? "none"
     : props.groupBy
@@ -208,12 +207,27 @@ const resolvedGroupBy = computed<GroupBy>(() => (
 
 const hiddenCount = computed(() => (props.totalCount ?? props.accounts.length) - props.accounts.length);
 
+const tableAccounts = computed<Account[]>(() => {
+  if (resolvedGroupBy.value !== "label") return props.accounts;
+  return props.accounts.flatMap<Account>((account) => (
+    account.labels.length
+      ? account.labels.map((labelGroup) => ({ ...account, labelGroup }))
+      : [{ ...account, labelGroup: null }]
+  )).sort((a, b) => {
+    if (!a.labelGroup || !b.labelGroup) return Number(!a.labelGroup) - Number(!b.labelGroup);
+    return a.labelGroup.name.localeCompare(b.labelGroup.name);
+  });
+});
+
 const grouping = computed(() => {
   if (resolvedGroupBy.value === "institution") {
     return ["institution_group"];
   }
   if (resolvedGroupBy.value === "type") {
     return ["type_group"];
+  }
+  if (resolvedGroupBy.value === "label") {
+    return ["label_group"];
   }
   return [];
 });
@@ -225,7 +239,8 @@ const groupingOptions = ref<GroupingOptions>({
 
 const columnVisibility = ref<Record<string, boolean>>({
   institution_group: false,
-  type_group: false
+  type_group: false,
+  label_group: false
 });
 
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
@@ -379,6 +394,9 @@ function getGroupLabel(row: TableRow<Account>) {
   if (id === "type_group") {
     return ACCOUNT_TYPE_META[row.getValue<AccountTypeName>("type_group")].label;
   }
+  if (id === "label_group") {
+    return row.original.labelGroup?.name ?? "No labels";
+  }
   return (id != null) ? String(row.getValue(id)) : "";
 }
 
@@ -459,6 +477,11 @@ const columns = computed<TableColumn<Account>[]>(() => {
   }
 
   out.push(
+    {
+      id: "label_group",
+      accessorFn: (row) => row.labelGroup?.id ?? "none",
+      enableSorting: false
+    },
     {
       id: "type_group",
       accessorFn: (row) => row.account_type.name,
