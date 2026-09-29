@@ -52,6 +52,36 @@ async fn search_accounts(pool: &SqlitePool, query: &str) -> Vec<i64> {
 }
 
 #[tokio::test]
+async fn label_search_migration_backfills_existing_labels() -> anyhow::Result<()> {
+    let pool = in_memory_pool().await;
+    sqlx::raw_sql(concat!(
+        include_str!("../db/migrations/0001_init.sql"),
+        include_str!("../db/migrations/0002_remove_isa_account_type.sql"),
+        include_str!("../db/migrations/0003_account_dashboard_inclusion.sql"),
+        include_str!("../db/migrations/0004_account_labels.sql"),
+    ))
+    .execute(&pool)
+    .await?;
+    sqlx::raw_sql(
+        "INSERT INTO labels (id, name, name_key) VALUES (1, 'House deposit', 'house deposit');",
+    )
+    .execute(&pool)
+    .await?;
+    sqlx::raw_sql(include_str!(
+        "../db/migrations/0005_label_search_results.sql"
+    ))
+    .execute(&pool)
+    .await?;
+    let results: Vec<i64> = sqlx::query_scalar(
+        "SELECT entity_id FROM search_fts WHERE search_fts MATCH 'house dep*' AND kind = 'label'",
+    )
+    .fetch_all(&pool)
+    .await?;
+    assert_eq!(results, [1]);
+    Ok(())
+}
+
+#[tokio::test]
 async fn migration_preserves_existing_accounts_balances_and_search() -> anyhow::Result<()> {
     let pool = in_memory_pool().await;
     sqlx::raw_sql(concat!(

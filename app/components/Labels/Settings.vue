@@ -27,11 +27,16 @@
       </template>
       <template #account_count-cell="{ row }">
         <UTooltip :text="`${row.original.account_count} ${row.original.account_count === 1 ? 'account' : 'accounts'}`">
-          <span v-show="row.original.account_count > 0" tabindex="0" class="inline-flex items-center gap-1.5 text-muted tabular-nums">
+          <ULink
+            v-show="row.original.account_count > 0"
+            :to="{ name: 'accounts', query: { label: row.original.id } }"
+            class="inline-flex items-center gap-1 tabular-nums"
+            :aria-label="`View accounts using ${row.original.name}`"
+          >
             <UIcon name="i-lucide-wallet" class="size-4" aria-hidden="true" />
             {{ row.original.account_count }}
             <span class="sr-only">{{ row.original.account_count === 1 ? 'account' : 'accounts' }}</span>
-          </span>
+          </ULink>
         </UTooltip>
       </template>
       <template #actions-cell="{ row }">

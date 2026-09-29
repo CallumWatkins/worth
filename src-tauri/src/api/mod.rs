@@ -220,12 +220,16 @@ pub struct DashboardDto {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum SearchResultDto {
+    Label {
+        id: i64,
+        name: String,
+        account_count: u32,
+    },
     Account {
         id: i64,
         name: String,
         account_type: AccountTypeName,
         institution_name: String,
-        labels: Vec<LabelDto>,
     },
     Institution {
         id: i64,
@@ -367,15 +371,6 @@ pub async fn search(
         .await
         .map_err(|_| ApiError::Db)?;
 
-    let account_ids = rows
-        .iter()
-        .filter_map(|row| match row {
-            db::GlobalSearchRow::Account { id, .. } => Some(*id),
-            db::GlobalSearchRow::Institution { .. } => None,
-        })
-        .collect::<Vec<_>>();
-    let mut labels = account_labels_by_id(pool, &account_ids).await?;
-
     rows.into_iter()
         .map(|row| match row {
             db::GlobalSearchRow::Account {
@@ -388,11 +383,19 @@ pub async fn search(
                 name,
                 account_type: type_name.parse().map_err(|_| ApiError::Db)?,
                 institution_name,
-                labels: labels.remove(&id).unwrap_or_default(),
             }),
             db::GlobalSearchRow::Institution { id, name } => {
                 Ok(SearchResultDto::Institution { id, name })
             }
+            db::GlobalSearchRow::Label {
+                id,
+                name,
+                account_count,
+            } => Ok(SearchResultDto::Label {
+                id,
+                name,
+                account_count: u32::try_from(account_count).map_err(|_| ApiError::Db)?,
+            }),
         })
         .collect()
 }

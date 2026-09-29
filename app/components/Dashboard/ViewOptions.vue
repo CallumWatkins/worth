@@ -31,7 +31,7 @@
           :items="accountItems"
           value-key="value"
           multiple
-          :filter-fields="['label', 'institution', 'accountType']"
+          :filter-fields="['label', 'institution', 'accountType', 'labels']"
           :reset-search-term-on-select="false"
           :search-input="searchInputProps"
           placeholder="None"
@@ -137,6 +137,7 @@ const accountItems = computed(() => (Object.keys(ACCOUNT_TYPE_META) as AccountTy
       value: account.id,
       institution: account.institution.name,
       accountType: meta.label,
+      labels: account.labels.map((label) => label.name).join(" "),
       balance: formatCurrencyMinor(account.latest_balance_minor, account.currency_code),
       onSelect: () => searchInput.value?.focus({ preventScroll: true })
     }))

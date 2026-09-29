@@ -64,6 +64,27 @@ fn assert_issue<T>(result: Result<T, ApiError>, field: &str, message: &str) {
 }
 
 #[tokio::test]
+async fn unused_labels_are_searchable_and_follow_renames_and_deletion() {
+    let pool = test_pool().await;
+    let id = save_label(&pool, &label_input("Épargne Maison"), None)
+        .await
+        .unwrap();
+    let results = db::search_global(&pool, "epar mai").await.unwrap();
+    assert!(
+        matches!(results.as_slice(), [db::GlobalSearchRow::Label { id: found, name, account_count: 0 }] if *found == id && name == "Épargne Maison")
+    );
+    save_label(&pool, &label_input("House deposit"), Some(id))
+        .await
+        .unwrap();
+    assert!(db::search_global(&pool, "epar").await.unwrap().is_empty());
+    assert!(
+        matches!(db::search_global(&pool, "house dep").await.unwrap().as_slice(), [db::GlobalSearchRow::Label { id: found, .. }] if *found == id)
+    );
+    db::label_delete(&pool, id).await.unwrap();
+    assert!(db::search_global(&pool, "house").await.unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn label_descriptions_round_trip_and_survive_inline_reuse() {
     let pool = test_pool().await;
     let mut input = label_input("ISA");
@@ -282,14 +303,21 @@ async fn accounts_share_labels_and_return_sorted_assignments_without_duplicates(
             .all(|a| a.labels.iter().any(|l| l.id == isa && l.name == "UK ISA"))
     );
     let results = db::search_global(&pool, "UK ISA").await.unwrap();
-    assert_eq!(results.len(), 2);
-    assert!(results.iter().all(
+    assert_eq!(results.len(), 3);
+    assert!(
+        matches!(&results[0], db::GlobalSearchRow::Label { id, account_count: 2, .. } if *id == isa)
+    );
+    assert!(results.iter().skip(1).all(
         |r| matches!(r, db::GlobalSearchRow::Account { id, .. } if *id == first || *id == second)
     ));
 
     let mut updated = second_input;
     updated.labels.clear();
     save_account(&pool, &updated, Some(second)).await.unwrap();
+    assert!(matches!(
+        &db::search_global(&pool, "UK ISA").await.unwrap()[0],
+        db::GlobalSearchRow::Label { id, account_count: 1, .. } if *id == isa
+    ));
     assert!(
         account_dto_by_id(&pool, second)
             .await

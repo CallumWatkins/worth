@@ -18,6 +18,8 @@ Opening a modal must not push a history entry, change the URL, or clear Forward 
 
 Some list configuration (e.g. sorting and grouping of the Accounts list) is remembered in Nuxt `useState` for the current app session. Back, Forward, breadcrumbs, and navbar links all restore the latest configuration for that list. Reloading or restarting the app restores defaults.
 
+Links to Accounts with a `label` query parameter replace all account filters with that label. The page consumes the parameter using a history replacement, so ordinary navigation continues to restore the latest list configuration and clicking the same label can reset filters again.
+
 ## Choosing a primitive
 
 | Situation | Primitive |

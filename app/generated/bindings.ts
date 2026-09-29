@@ -359,7 +359,7 @@ export type LabelUpsertInput = {
 	description?: string | null,
 };
 
-export type SearchResultDto = { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string; labels: LabelDto[] } | { kind: "institution"; id: number; name: string };
+export type SearchResultDto = { kind: "label"; id: number; name: string; account_count: number } | { kind: "account"; id: number; name: string; account_type: AccountTypeName; institution_name: string } | { kind: "institution"; id: number; name: string };
 
 export type SnapshotImportCommitDto = {
 	created_count: number,

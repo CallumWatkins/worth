@@ -3,9 +3,14 @@
     <UBadge
       v-for="badge in visibleBadges"
       :key="badge.key"
+      :as="clickable && badge.id !== null ? ULink : 'span'"
+      :to="clickable && badge.id !== null ? { name: 'accounts', query: { label: badge.id } } : undefined"
       :color="badge.closed ? 'warning' : 'neutral'"
       :variant="badge.closed ? 'subtle' : 'soft'"
-      :class="limit === undefined ? 'max-w-full' : 'shrink-0'"
+      :class="[
+        limit === undefined ? 'max-w-full' : 'shrink-0',
+        clickable && badge.id !== null ? 'cursor-pointer transition-colors hover:bg-accented focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' : undefined
+      ]"
       :title="badge.description ?? undefined"
     >
       <span :class="limit === undefined ? 'whitespace-normal wrap-anywhere' : 'whitespace-nowrap'">{{ badge.name }}</span>
@@ -49,13 +54,15 @@ const props = defineProps<{
   accountName: string
   closedDate?: string | null
   limit?: number
+  clickable?: boolean
 }>();
 
+const ULink = resolveComponent("ULink");
 const { formatShortDate } = useLocaleFormatters();
 const badges = computed(() => [
-  ...(props.closedDate != null ? [{ key: "closed", name: "Closed", closed: true, description: `Closed on ${formatShortDate(props.closedDate)}` }] : []),
+  ...(props.closedDate != null ? [{ key: "closed", id: null, name: "Closed", closed: true, description: `Closed on ${formatShortDate(props.closedDate)}` }] : []),
   ...props.labels.toSorted((a, b) => a.name.localeCompare(b.name))
-    .map((label) => ({ key: `label-${label.id}`, name: label.name, closed: false, description: label.description }))
+    .map((label) => ({ key: `label-${label.id}`, id: label.id, name: label.name, closed: false, description: label.description }))
 ]);
 const visibleBadges = computed(() => props.limit === undefined ? badges.value : badges.value.slice(0, Math.max(1, props.limit)));
 const hiddenBadges = computed(() => badges.value.slice(visibleBadges.value.length));

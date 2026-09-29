@@ -312,6 +312,11 @@ pub struct InstitutionAccountDeletePreviewRow {
 
 #[derive(Debug, Clone)]
 pub enum GlobalSearchRow {
+    Label {
+        id: i64,
+        name: String,
+        account_count: i64,
+    },
     Account {
         id: i64,
         name: String,
@@ -357,6 +362,7 @@ pub async fn search_global(
         name: String,
         type_name: Option<String>,
         institution_name: Option<String>,
+        account_count: i64,
     }
 
     let Some((phrase_query, fts_query)) = normalize_search_query(query) else {
@@ -404,6 +410,19 @@ pub async fn search_global(
                     INNER JOIN account_types AS t ON t.id = a.type_id
                     INNER JOIN institutions AS i ON i.id = a.institution_id
             ),
+            label_hits AS (
+                SELECT
+                    m.bm25_rank,
+                    m.has_phrase,
+                    m.phrase_pos,
+                    'label' AS kind,
+                    l.id,
+                    l.name,
+                    NULL AS type_name,
+                    NULL AS institution_name
+                FROM matched AS m
+                INNER JOIN labels AS l ON m.kind = 'label' AND l.id = m.entity_id
+            ),
             institution_hits AS (
                 SELECT
                     m.bm25_rank,
@@ -424,7 +443,10 @@ pub async fn search_global(
             results.id,
             results.name,
             results.type_name,
-            results.institution_name
+            results.institution_name,
+            CASE WHEN results.kind = 'label' THEN (
+                SELECT COUNT(*) FROM account_labels WHERE label_id = results.id
+            ) ELSE 0 END AS account_count
         FROM
             (
                 SELECT
@@ -436,6 +458,8 @@ pub async fn search_global(
                     *
                 FROM
                     institution_hits
+                UNION ALL
+                SELECT * FROM label_hits
             ) AS results
         ORDER BY
             results.has_phrase DESC,
@@ -478,6 +502,11 @@ pub async fn search_global(
                     institution_name,
                 })
             }
+            "label" => Ok(GlobalSearchRow::Label {
+                id: row.id,
+                name: row.name,
+                account_count: row.account_count,
+            }),
             "institution" => Ok(GlobalSearchRow::Institution {
                 id: row.id,
                 name: row.name,

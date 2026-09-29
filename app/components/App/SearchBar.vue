@@ -21,7 +21,7 @@
   >
     <template #item-leading="{ item }">
       <UIcon
-        :name="item.kind === 'account' ? 'i-lucide-wallet' : 'i-lucide-building-2'"
+        :name="item.kind === 'account' ? 'i-lucide-wallet' : item.kind === 'label' ? 'i-lucide-tag' : 'i-lucide-building-2'"
         class="size-5 text-muted"
       />
     </template>
@@ -34,6 +34,9 @@
           class="text-xs text-muted"
         >
           {{ item.institution_name }}
+        </span>
+        <span v-if="item.kind === 'label' && item.account_count > 0" class="text-xs text-muted">
+          {{ item.account_count }} {{ item.account_count === 1 ? 'account' : 'accounts' }}
         </span>
       </div>
     </template>
@@ -137,6 +140,8 @@ async function onSelect(item: SearchResultDto | null) {
     await navigateTo({ name: "accounts-id", params: { id: item.id } });
   } else if (item.kind === "institution") {
     await navigateTo({ name: "institutions-id", params: { id: item.id } });
+  } else if (item.kind === "label") {
+    await navigateTo({ name: "accounts", query: { label: item.id } });
   } else {
     assertNever(item);
   }

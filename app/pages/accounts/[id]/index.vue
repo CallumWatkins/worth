@@ -29,7 +29,7 @@
       <template #description>
         <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span>{{ headerDescription }}</span>
-          <AccountsBadges :labels="accountQuery.data.labels" :account-name="accountQuery.data.name" />
+          <AccountsBadges :labels="accountQuery.data.labels" :account-name="accountQuery.data.name" clickable />
         </div>
       </template>
 
