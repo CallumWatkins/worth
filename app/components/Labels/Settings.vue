@@ -1,6 +1,6 @@
 <template>
-  <UPageCard id="account-labels" title="Account labels" description="Create and manage labels shared across your accounts.">
-    <div class="flex items-center gap-3">
+  <UPageCard id="account-labels" title="Account labels">
+    <div v-if="labelsQuery.data?.length" class="flex items-center gap-3">
       <UInput v-model="searchTerm" icon="i-lucide-search" placeholder="Search labels" aria-label="Search labels" class="flex-1" />
       <UButton icon="i-lucide-plus" @click="editingLabel = null; editOpen = true">
         Create label
@@ -16,6 +16,21 @@
     <p v-else-if="labelsQuery.isPending" class="text-sm text-muted" role="status">
       Loading labels…
     </p>
+    <div v-else-if="!labelsQuery.data?.length" class="flex items-center gap-3">
+      <UAvatar icon="i-lucide-tag" size="lg" aria-hidden="true" />
+      <div class="flex-1 min-w-0" :class="[settingsRowsClass]">
+        <UFormField
+          label="No labels yet"
+          description="Create a label to start organizing your accounts."
+          orientation="horizontal"
+          :ui="settingsFieldUi"
+        >
+          <UButton icon="i-lucide-plus" @click="editingLabel = null; editOpen = true">
+            Create label
+          </UButton>
+        </UFormField>
+      </div>
+    </div>
     <UTable v-else-if="visibleLabels.length" :data="visibleLabels" :columns="columns" class="max-h-80" :ui="{ base: 'table-auto w-full', thead: 'hidden' }">
       <template #name-cell="{ row }">
         <UBadge color="neutral" variant="soft" class="max-w-full">
@@ -52,7 +67,7 @@
       </template>
     </UTable>
     <p v-else class="text-sm text-muted">
-      {{ labelsQuery.data?.length ? 'No labels match your search.' : 'No labels yet. Create a label to start organizing your accounts.' }}
+      No labels match your search.
     </p>
     <LabelsEditDialog v-model:open="editOpen" :label="editingLabel" />
     <LabelsDeleteDialog v-model:open="deleteOpen" :label="deletingLabel" />
@@ -67,6 +82,9 @@ import { useQuery } from "@tanstack/vue-query";
 const api = useApi();
 const labelsQuery = proxyRefs(useQuery({ queryKey: queryKeys.labels.list(), queryFn: api.labelsList }));
 const searchTerm = ref("");
+watch(() => labelsQuery.data?.length, (count) => {
+  if (count === 0) searchTerm.value = "";
+});
 const editOpen = ref(false);
 const deleteOpen = ref(false);
 const editingLabel = ref<LabelDto | null>(null);
