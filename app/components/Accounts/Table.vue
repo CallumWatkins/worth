@@ -208,6 +208,9 @@ const resolvedGroupBy = computed<AccountGroupBy>(() => (
 const hiddenCount = computed(() => (props.totalCount ?? props.accounts.length) - props.accounts.length);
 
 const tableAccounts = computed<Account[]>(() => {
+  if (resolvedGroupBy.value === "status") {
+    return [...props.accounts].sort((a, b) => Number(a.closed_date != null) - Number(b.closed_date != null));
+  }
   if (resolvedGroupBy.value !== "label") return props.accounts;
   return props.accounts.flatMap<Account>((account) => (
     account.labels.length
@@ -229,6 +232,9 @@ const grouping = computed(() => {
   if (resolvedGroupBy.value === "label") {
     return ["label_group"];
   }
+  if (resolvedGroupBy.value === "status") {
+    return ["status_group"];
+  }
   return [];
 });
 
@@ -240,7 +246,8 @@ const groupingOptions = ref<GroupingOptions>({
 const columnVisibility = ref<Record<string, boolean>>({
   institution_group: false,
   type_group: false,
-  label_group: false
+  label_group: false,
+  status_group: false
 });
 
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
@@ -397,6 +404,9 @@ function getGroupLabel(row: TableRow<Account>) {
   if (id === "label_group") {
     return row.original.labelGroup?.name ?? "No labels";
   }
+  if (id === "status_group") {
+    return row.getValue<string>("status_group");
+  }
   return (id != null) ? String(row.getValue(id)) : "";
 }
 
@@ -477,6 +487,11 @@ const columns = computed<TableColumn<Account>[]>(() => {
   }
 
   out.push(
+    {
+      id: "status_group",
+      accessorFn: (row) => row.closed_date == null ? "Open" : "Closed",
+      enableSorting: false
+    },
     {
       id: "label_group",
       accessorFn: (row) => row.labelGroup?.id ?? "none",
