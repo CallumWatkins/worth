@@ -6,6 +6,8 @@ mod db;
 mod imports;
 mod state;
 mod updates;
+#[cfg(windows)]
+mod window_snap;
 
 pub use worth_macros::export_schema;
 
@@ -19,6 +21,11 @@ pub fn run() {
         .plugin(prevent_default())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init());
+
+    #[cfg(target_os = "windows")]
+    {
+        builder = builder.plugin(window_snap::init());
+    }
 
     #[cfg(desktop)]
     {
