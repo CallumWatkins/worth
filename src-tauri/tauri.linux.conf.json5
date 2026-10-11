@@ -1,5 +1,24 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Worth",
+        "decorations": false,
+        "width": 1400,
+        "height": 900,
+        "minWidth": 850,
+        "minHeight": 300,
+        "center": true,
+        "visible": false,
+        "resizable": true,
+        "fullscreen": false,
+        "generalAutofillEnabled": false,
+        "backgroundColor": "#09090B"
+      }
+    ]
+  },
   "bundle": {
     "targets": ["appimage", "deb"]
   }

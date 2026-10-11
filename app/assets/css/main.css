@@ -1,6 +1,43 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+:root {
+	--app-titlebar-height: 32px;
+}
+
+html,
+body,
+#__nuxt {
+	height: 100%;
+	overflow: hidden;
+}
+
+#app-viewport {
+	position: fixed;
+	inset: var(--app-titlebar-height) 0 0;
+	/* Fixed-position portals share the content bounds, not the whole window. */
+	contain: layout;
+	overflow: hidden;
+}
+
+#app-scroll {
+	height: 100%;
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	/* Keep sticky page elements below the sibling overlay portals. */
+	isolation: isolate;
+	scrollbar-width: thin;
+}
+
+.app-page {
+	display: flex;
+	flex-direction: column;
+	/* Preserve header alignment when the page scrollbar appears. */
+	width: 100vw;
+	min-height: 100%;
+}
+
 @theme {
 	--font-sans: "Inter Variable", sans-serif;
 
@@ -26,21 +63,6 @@
 }
 
 @layer base {
-	html,
-	body {
-		/*
-		 * Overlay-style scrollbar behavior (no reserved gutter):
-		 * When a vertical scrollbar appears, expand the layout width by the
-		 * scrollbar width so content can sit "under" it instead of shrinking.
-		 */
-		scrollbar-gutter: auto;
-	}
-
-	body {
-		margin-right: calc(100% - 100vw);
-		overflow: unset !important;  /* Prevent Reka scroll body lock causing sticky header to disappear */
-	}
-
 	/* Background glow */
 	body::before {
 		content: "";

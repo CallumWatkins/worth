@@ -83,7 +83,7 @@
               :items="currencyItems"
               class="min-w-25"
               :ui="{ content: 'min-w-fit' }"
-              :content="{ align: 'end' }"
+              :content="endPopupContent"
               :disabled="isSettingsBusy"
               :loading="pendingField === 'currency'"
               @update:model-value="onDefaultDisplayCurrencyCodeUpdate"
@@ -101,7 +101,7 @@
               :items="localeItems"
               class="min-w-25"
               :ui="{ content: 'min-w-fit' }"
-              :content="{ align: 'end' }"
+              :content="endPopupContent"
               :disabled="isSettingsBusy"
               :loading="pendingField === 'locale'"
               @update:model-value="onDisplayLocaleUpdate"
@@ -119,7 +119,7 @@
               :items="themeItems"
               class="min-w-25"
               :ui="{ content: 'min-w-fit' }"
-              :content="{ align: 'end' }"
+              :content="endPopupContent"
               :disabled="isSettingsBusy"
               :loading="pendingField === 'theme'"
               @update:model-value="onThemeUpdate"
@@ -267,6 +267,8 @@ import { supportedCurrencyCodes } from "~/utils/currencies";
 import { APP_LOCALES } from "~/utils/i18n";
 
 type SettingsField = "analytics" | "currency" | "locale" | "theme";
+
+const endPopupContent = useAppPopupContent({ align: "end" });
 
 const {
   settings,

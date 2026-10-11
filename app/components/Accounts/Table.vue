@@ -185,6 +185,8 @@ const emit = defineEmits<{
   showAll: []
 }>();
 
+const endPopupContent = useAppPopupContent({ align: "end" });
+
 const sorting = defineModel<SortingState>("sorting", { required: true });
 const expanded = defineModel<ExpandedState>("expanded", { required: true });
 
@@ -580,7 +582,7 @@ const columns = computed<TableColumn<Account>[]>(() => {
 
         return h(UDropdownMenu, {
           items: accountRowActions(row.original),
-          content: { align: "end" },
+          content: endPopupContent.value,
           "aria-label": "Account actions"
         }, () => h(UButton, {
           icon: "i-lucide-ellipsis-vertical",

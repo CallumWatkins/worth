@@ -15,7 +15,7 @@
     >
       <span :class="limit === undefined ? 'whitespace-normal wrap-anywhere' : 'whitespace-nowrap'">{{ badge.name }}</span>
     </UBadge>
-    <UPopover v-if="hiddenCount > 0" :content="{ align: 'start' }">
+    <UPopover v-if="hiddenCount > 0" :content="startPopupContent">
       <UButton
         color="neutral"
         variant="soft"
@@ -56,6 +56,8 @@ const props = defineProps<{
   limit?: number
   clickable?: boolean
 }>();
+
+const startPopupContent = useAppPopupContent({ align: "start" });
 
 const ULink = resolveComponent("ULink");
 const { formatShortDate } = useLocaleFormatters();

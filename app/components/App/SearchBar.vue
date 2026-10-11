@@ -16,7 +16,7 @@
       content: 'min-w-fit',
       item: 'gap-2.5 items-center'
     }"
-    :content="{ align: 'end' }"
+    :content="endPopupContent"
     @update:model-value="onSelect"
   >
     <template #item-leading="{ item }">
@@ -65,6 +65,8 @@ import type { UInputMenu } from "#components";
 import type { SearchResultDto } from "~/generated/bindings";
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { watchDebounced } from "@vueuse/core";
+
+const endPopupContent = useAppPopupContent({ align: "end" });
 
 const api = useApi();
 const { captureAnalyticsEvent } = useAnalytics();

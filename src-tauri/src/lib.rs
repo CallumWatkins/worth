@@ -36,7 +36,15 @@ pub fn run() {
                     let _ = window.set_focus();
                 }
             }))
-            .plugin(tauri_plugin_window_state::Builder::default().build());
+            .plugin(
+                tauri_plugin_window_state::Builder::default()
+                    // The frame is app configuration, not restorable user window state.
+                    .with_state_flags(
+                        tauri_plugin_window_state::StateFlags::all()
+                            .difference(tauri_plugin_window_state::StateFlags::DECORATIONS),
+                    )
+                    .build(),
+            );
 
         #[cfg(all(not(debug_assertions), not(feature = "dev-build")))]
         {

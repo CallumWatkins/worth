@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-[calc(100vh-12rem)] items-center justify-center py-12">
+  <div class="flex min-h-[calc(100vh-var(--app-titlebar-height)-12rem)] items-center justify-center py-12">
     <div class="w-full max-w-5xl">
       <div class="mx-auto max-w-2xl text-center mb-8">
         <div class="text-sm font-medium uppercase tracking-[0.24em] text-primary/80">

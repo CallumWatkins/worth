@@ -1,22 +1,8 @@
 <template>
-  <Html :lang="lang" :dir="dir" class="overflow-x-hidden select-none">
-    <Body class="font-sans antialiased">
-      <UApp
-        :locale="uiLocale"
-        :scroll-body="{ padding: false, margin: false }"
-      >
-        <AppKeyboardShortcutsDialog />
-        <AppNavbar />
-        <UMain>
-          <NuxtPage />
-        </UMain>
-      </UApp>
-    </Body>
-  </Html>
+  <AppShell>
+    <AppKeyboardShortcutsDialog />
+    <UMain>
+      <NuxtPage />
+    </UMain>
+  </AppShell>
 </template>
-
-<script setup lang="ts">
-import { useAppLocale } from "~/composables/useAppLocale";
-
-const { dir, lang, uiLocale } = useAppLocale();
-</script>

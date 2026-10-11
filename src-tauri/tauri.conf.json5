@@ -11,21 +11,6 @@
     "removeUnusedCommands": true
   },
   "app": {
-    "windows": [
-      {
-        "title": "Worth",
-        "width": 1400,
-        "height": 900,
-        "minWidth": 850,
-        "minHeight": 300,
-        "center": true,
-        "visible": false,
-        "resizable": true,
-        "fullscreen": false,
-        "generalAutofillEnabled": false,
-        "backgroundColor": "#09090B"
-      }
-    ],
     "security": {
       // CSP for builds. For dev server, CSP is configured in nuxt.config.ts.
       "csp": {

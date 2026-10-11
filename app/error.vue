@@ -1,52 +1,43 @@
 <template>
-  <Html :lang="lang" :dir="dir" class="overflow-x-hidden select-none">
-    <Body class="font-sans antialiased">
-      <UApp
-        :locale="uiLocale"
-        :scroll-body="{ padding: false, margin: false }"
+  <AppShell>
+    <UMain class="error-page-enter flex flex-col">
+      <UError
+        :key="`${error.status}:${error.statusText}`"
+        :error="error"
+        :clear="false"
+        :ui="{ root: 'min-h-0 flex-1 py-8' }"
       >
-        <AppNavbar />
-        <UMain class="error-page-enter">
-          <UError
-            :key="`${error.status}:${error.statusText}`"
-            :error="error"
-            :clear="false"
+        <template #links>
+          <UButton
+            size="lg"
+            @click="clearError({ redirect: '/' })"
           >
-            <template #links>
-              <UButton
-                size="lg"
-                @click="clearError({ redirect: '/' })"
-              >
-                Back to Dashboard
-              </UButton>
-              <UButton
-                v-if="hasErrorDetailsSurvey"
-                size="lg"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-message-circle-warning"
-                @click="openErrorDetailsSurvey"
-              >
-                Send details
-              </UButton>
-            </template>
-          </UError>
-        </UMain>
-      </UApp>
-    </Body>
-  </Html>
+            Back to Dashboard
+          </UButton>
+          <UButton
+            v-if="hasErrorDetailsSurvey"
+            size="lg"
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-message-circle-warning"
+            @click="openErrorDetailsSurvey"
+          >
+            Send details
+          </UButton>
+        </template>
+      </UError>
+    </UMain>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
 import type { NuxtError } from "#app";
-import { useAppLocale } from "~/composables/useAppLocale";
 import { reportHandledError } from "~/utils/error-reporting";
 
 const props = defineProps<{
   error: NuxtError
 }>();
 
-const { dir, lang, uiLocale } = useAppLocale();
 const { hasErrorDetailsSurvey, openErrorDetailsSurvey } = useErrorDetailsSurvey();
 
 onMounted(() => {

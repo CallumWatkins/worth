@@ -1,7 +1,7 @@
 <template>
   <UPopover
     arrow
-    :content="{ align: 'end', side: 'bottom', sideOffset: 8 }"
+    :content="endPopupContent"
     :ui="{ content: 'p-4 w-80' }"
   >
     <UButton
@@ -40,7 +40,7 @@
           class="w-full"
           :loading="accountsQuery.isPending"
           :disabled="!accountsQuery.isSuccess"
-          :content="{ align: 'end' }"
+          :content="endPopupContent"
           :ui="{
             content: 'min-w-96 max-w-[calc(100vw-2rem)] max-h-[min(28rem,var(--reka-combobox-content-available-height,28rem))]',
             item: 'gap-2.5 items-center',
@@ -95,6 +95,8 @@
 
 <script lang="ts" setup>
 import type { AccountTypeName } from "~/generated/bindings";
+
+const endPopupContent = useAppPopupContent({ align: "end" });
 
 const { formatCurrencyMinor } = useLocaleFormatters();
 const {
