@@ -1,6 +1,6 @@
 # History navigation safety
 
-Worth supports browser-style Back and Forward inputs in its Tauri WebView, including `Alt+Left`, `Alt+Right`, and mouse side buttons. Navigation handling must protect in-progress UI without turning modal state into route history.
+Worth supports browser-style Back and Forward inputs in its Tauri WebView, including title-bar buttons, `Alt+Left`, `Alt+Right`, and mouse side buttons. Navigation handling must protect in-progress UI without turning modal state into route history.
 
 ## Expected behavior
 

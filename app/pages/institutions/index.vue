@@ -147,6 +147,8 @@ import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
 type Institution = InstitutionSummaryDto;
 
+const endPopupContent = useAppPopupContent({ align: "end" });
+
 const UButton = resolveComponent("UButton");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
 
@@ -307,7 +309,7 @@ const columns = computed<TableColumn<Institution>[]>(() => [
     header: "",
     cell: ({ row }) => h(UDropdownMenu, {
       items: institutionRowActions(row.original),
-      content: { align: "end" },
+      content: endPopupContent.value,
       "aria-label": "Institution actions"
     }, () => h(UButton, {
       icon: "i-lucide-ellipsis-vertical",

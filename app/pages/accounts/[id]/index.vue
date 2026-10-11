@@ -291,7 +291,7 @@
                       >
                         Add snapshots
                       </UButton>
-                      <UDropdownMenu :items="addSnapshotsMenuItems" :content="{ align: 'end' }">
+                      <UDropdownMenu :items="addSnapshotsMenuItems" :content="endPopupContent">
                         <UButton
                           icon="i-lucide-chevron-down"
                           :disabled="!accountQuery.data"
@@ -468,6 +468,8 @@ interface DailyBalanceRow extends BalanceRowBase {
 type BalanceRow = SnapshotBalanceRow | DailyBalanceRow;
 
 type BalanceGroupBy = "none" | "month" | "year";
+
+const endPopupContent = useAppPopupContent({ align: "end" });
 
 const darkTooltipBase = {
   backgroundColor: "rgba(10, 10, 10, 0.95)",
@@ -1174,7 +1176,7 @@ const balanceTableColumns = computed<TableColumn<BalanceRow>[]>(() => [
 
         return h(UDropdownMenu, {
           items: snapshotRowActions(originalRow),
-          content: { align: "end" },
+          content: endPopupContent.value,
           "aria-label": "Snapshot actions"
         }, () => h(UButton, {
           icon: "i-lucide-ellipsis-vertical",

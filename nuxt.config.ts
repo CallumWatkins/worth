@@ -45,6 +45,7 @@ export default defineNuxtConfig({
   },
   i18n: APP_I18N_CONFIG,
   ssr: false,
+  spaLoadingTemplate: "spa-loading-template.html",
   typescript: {
     tsConfig: {
       compilerOptions: {

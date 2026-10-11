@@ -1,7 +1,7 @@
 <template>
   <UPopover
     arrow
-    :content="{ align: 'end', side: 'bottom', sideOffset: 8 }"
+    :content="endPopupContent"
     :ui="{ content: 'p-4 w-80' }"
   >
     <UButton
@@ -57,6 +57,8 @@ defineProps<{
   groupByItems: SelectItem[]
   activityPeriodItems: SelectItem[]
 }>();
+
+const endPopupContent = useAppPopupContent({ align: "end" });
 
 const groupBy = defineModel<AccountGroupBy>("groupBy", { required: true });
 const activityPeriod = defineModel<ActivityPeriod>("activityPeriod", { required: true });

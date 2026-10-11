@@ -7,7 +7,7 @@
       multiple
       :aria-label="label"
       :search-input="false"
-      :content="{ align: 'start' }"
+      :content="startPopupContent"
       color="neutral"
       variant="soft"
       :ui="{
@@ -61,6 +61,8 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{ clear: [] }>();
+
+const startPopupContent = useAppPopupContent({ align: "start" });
 
 const model = defineModel<T[]>({ default: () => [] });
 </script>

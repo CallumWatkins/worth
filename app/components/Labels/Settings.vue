@@ -60,7 +60,7 @@
             { label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => { editingLabel = row.original; editOpen = true; } },
             { label: 'Delete', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => { deletingLabel = row.original; deleteOpen = true; } }
           ]"
-          :content="{ align: 'end' }"
+          :content="endPopupContent"
         >
           <UButton icon="i-lucide-ellipsis-vertical" color="neutral" variant="ghost" :aria-label="`Actions for ${row.original.name}`" />
         </UDropdownMenu>
@@ -78,6 +78,8 @@
 import type { TableColumn } from "@nuxt/ui";
 import type { LabelDto, LabelSummaryDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
+
+const endPopupContent = useAppPopupContent({ align: "end" });
 
 const api = useApi();
 const labelsQuery = proxyRefs(useQuery({ queryKey: queryKeys.labels.list(), queryFn: api.labelsList }));

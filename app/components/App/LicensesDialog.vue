@@ -4,7 +4,7 @@
     title="Licenses"
     description="License notices for Worth and the third-party software included in this app."
     :ui="{
-      content: 'max-w-3xl h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)]',
+      content: 'max-w-3xl h-full',
       body: 'flex min-h-0 sm:p-0 p-0'
     }"
   >

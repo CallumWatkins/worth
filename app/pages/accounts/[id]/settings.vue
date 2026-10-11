@@ -132,7 +132,7 @@
 
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <UFormField label="Opened date" name="opened_date" hint="Optional">
-                <UPopover v-model:open="openedDatePickerOpen" :content="{ align: 'end' }">
+                <UPopover v-model:open="openedDatePickerOpen" :content="endPopupContent">
                   <template #anchor>
                     <UInputDate
                       v-model="state.opened_date"
@@ -167,7 +167,7 @@
               </UFormField>
 
               <UFormField label="Closed date" name="closed_date" hint="Optional">
-                <UPopover v-model:open="closedDatePickerOpen" :content="{ align: 'end' }">
+                <UPopover v-model:open="closedDatePickerOpen" :content="endPopupContent">
                   <template #anchor>
                     <UInputDate
                       v-model="state.closed_date"
@@ -265,6 +265,8 @@ import type { AccountBreadcrumbContext } from "~/middleware/accountBreadcrumbCon
 import { useQuery } from "@tanstack/vue-query";
 import { UForm } from "#components";
 import { supportedCurrencyCodes } from "~/utils/currencies";
+
+const endPopupContent = useAppPopupContent({ align: "end" });
 
 const openedDatePickerOpen = ref(false);
 const closedDatePickerOpen = ref(false);

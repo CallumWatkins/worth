@@ -6,6 +6,8 @@ mod db;
 mod imports;
 mod state;
 mod updates;
+#[cfg(windows)]
+mod window_snap;
 
 pub use worth_macros::export_schema;
 
@@ -20,6 +22,11 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init());
 
+    #[cfg(target_os = "windows")]
+    {
+        builder = builder.plugin(window_snap::init());
+    }
+
     #[cfg(desktop)]
     {
         builder = builder
@@ -29,7 +36,15 @@ pub fn run() {
                     let _ = window.set_focus();
                 }
             }))
-            .plugin(tauri_plugin_window_state::Builder::default().build());
+            .plugin(
+                tauri_plugin_window_state::Builder::default()
+                    // The frame is app configuration, not restorable user window state.
+                    .with_state_flags(
+                        tauri_plugin_window_state::StateFlags::all()
+                            .difference(tauri_plugin_window_state::StateFlags::DECORATIONS),
+                    )
+                    .build(),
+            );
 
         #[cfg(all(not(debug_assertions), not(feature = "dev-build")))]
         {
