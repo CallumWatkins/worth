@@ -192,6 +192,17 @@ VALUES
     NULL
   );
 
+-- Synthetic account details for UI/search examples; these are not payment instructions.
+INSERT INTO
+  account_identifiers (account_id, position, label, value, search_value)
+VALUES
+  (1, 0, 'Sort code', '00-00-00', '000000'),
+  (1, 1, 'Account number', '0012 3456', '00123456'),
+  (1, 2, 'IBAN', 'GB00 DEMO 0000 0000 1234 56', 'gb00demo00000000123456'),
+  (1, 3, 'SWIFT/BIC', '', ''),
+  (5, 0, 'Customer number', 'DEMO/INV-001', 'demo/inv001'),
+  (7, 0, 'Plan number', 'DEMO-PENSION-007', 'demopension007');
+
 -- Keep labels sparse: most accounts have none, with one example using multiple labels.
 INSERT INTO
   labels (id, name, name_key, description)

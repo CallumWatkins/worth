@@ -9,10 +9,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use tauri::{AppHandle, State};
 
 use crate::contracts::{
-    AccountClassification, AccountSnapshotUpdateInput, AccountSnapshotsCreateInput,
-    AccountSnapshotsDeleteInput, AccountTypeName, AccountUpsertInput, AppLocaleCode,
-    AppSettingsUpdateInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput, LabelRef,
-    LabelUpsertInput, ThemePreference,
+    AccountClassification, AccountIdentifierInput, AccountSnapshotUpdateInput,
+    AccountSnapshotsCreateInput, AccountSnapshotsDeleteInput, AccountTypeName, AccountUpsertInput,
+    AppLocaleCode, AppSettingsUpdateInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput,
+    LabelRef, LabelUpsertInput, ThemePreference,
 };
 use crate::imports::snapshots::{
     SnapshotImportCommitDto, SnapshotImportInspectionDto, SnapshotImportOptionsInput,
@@ -151,6 +151,13 @@ pub struct AccountDto {
     pub latest_balance_minor: i64,
     pub monthly_change_minor: i64,
     pub activity_by_period: BTreeMap<ActivityPeriod, ActivityDataDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct AccountDetailDto {
+    #[serde(flatten)]
+    pub account: AccountDto,
+    pub identifiers: Vec<AccountIdentifierInput>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -452,9 +459,9 @@ pub async fn institutions_update(
 pub async fn accounts_get(
     state: State<'_, AppState>,
     account_id: i64,
-) -> Result<AccountDto, ApiError> {
+) -> Result<AccountDetailDto, ApiError> {
     let pool = &state.pool;
-    account_dto_by_id(pool, account_id).await
+    account_detail_by_id(pool, account_id).await
 }
 
 #[tauri::command]
@@ -697,6 +704,9 @@ async fn save_account(
         }
     }
     db::account_labels_replace_tx(&mut tx, id, &label_ids)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    db::account_identifiers::replace_tx(&mut tx, id, &validated.identifiers)
         .await
         .map_err(|_| ApiError::Db)?;
     tx.commit().await.map_err(|_| ApiError::Db)?;
@@ -1305,6 +1315,7 @@ struct ValidatedAccountUpsert {
     opened_date: Option<NaiveDate>,
     closed_date: Option<NaiveDate>,
     labels: Vec<LabelRef>,
+    identifiers: Vec<AccountIdentifierInput>,
 }
 
 fn app_settings_dto_from_row(row: db::rows::AppSettingsRow) -> Result<AppSettingsDto, ApiError> {
@@ -1339,6 +1350,26 @@ async fn institution_detail_by_id(
         id: institution.id,
         name: institution.name,
         accounts: account_dtos,
+    })
+}
+
+async fn account_detail_by_id(
+    pool: &SqlitePool,
+    account_id: i64,
+) -> Result<AccountDetailDto, ApiError> {
+    let account = account_dto_by_id(pool, account_id).await?;
+    let identifiers = db::account_identifiers::list(pool, account_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .map(|row| AccountIdentifierInput {
+            label: row.label,
+            value: row.value,
+        })
+        .collect();
+    Ok(AccountDetailDto {
+        account,
+        identifiers,
     })
 }
 
@@ -1469,6 +1500,7 @@ async fn validate_account_upsert(
         opened_date: normalized.opened_date,
         closed_date: normalized.closed_date,
         labels: normalized.labels,
+        identifiers: normalized.identifiers,
     })
 }
 
@@ -1679,6 +1711,15 @@ fn normalize_label_upsert(input: &LabelUpsertInput) -> LabelUpsertInput {
 
 fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
     AccountUpsertInput {
+        identifiers: input
+            .identifiers
+            .iter()
+            .map(|identifier| AccountIdentifierInput {
+                label: identifier.label.trim().to_owned(),
+                value: identifier.value.trim().to_owned(),
+            })
+            .filter(|identifier| !identifier.label.is_empty() || !identifier.value.is_empty())
+            .collect(),
         institution: match &input.institution {
             InstitutionRef::Existing { id } => InstitutionRef::Existing { id: *id },
             InstitutionRef::New { input } => InstitutionRef::New {
@@ -2036,6 +2077,9 @@ pub fn export_bindings_to_app_generated() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod labels_tests;
+
+#[cfg(test)]
+mod account_identifiers_tests;
 
 #[cfg(test)]
 mod tests {

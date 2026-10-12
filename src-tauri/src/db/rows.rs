@@ -34,6 +34,16 @@ pub struct AccountLabelRow {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountIdentifierRow {
+    pub account_id: i64,
+    pub position: i64,
+    pub label: String,
+    pub value: String,
+    pub search_value: String,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct AccountRow {
     pub id: i64,
     pub name: String,

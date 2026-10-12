@@ -128,7 +128,10 @@ function applyValidationMessages(expression, schemaNode) {
   }
 
   if (messages.blank || messages.pattern) {
-    out = out.replace(/\.regex\((new RegExp\([^)]*\))\)/g, `.regex($1, ${zodErrorObject(messages.blank ?? messages.pattern)})`);
+    const patternError = messages.blank && messages.pattern
+      ? `{ error: (issue) => typeof issue.input === "string" && issue.input.trim() === "" ? ${JSON.stringify(messages.blank)} : ${JSON.stringify(messages.pattern)} }`
+      : zodErrorObject(messages.blank ?? messages.pattern);
+    out = out.replace(/\.regex\((new RegExp\([^)]*\))\)/g, `.regex($1, ${patternError})`);
   }
 
   if (isStringSchema && (messages.minLength || messages.blank || messages.required)) {
