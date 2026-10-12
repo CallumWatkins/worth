@@ -14,7 +14,7 @@
 
     <template #content>
       <div class="@container space-y-3">
-        <div class="grid gap-2" :class="columnsClass">
+        <div v-show="model.length" class="grid gap-2" :class="columnsClass">
           <div v-if="model.length" class="col-span-full grid grid-cols-subgrid text-sm font-medium" aria-hidden="true">
             <span :class="{ 'col-start-2': model.length > 1 }">Identifier</span>
             <span>Value</span>
