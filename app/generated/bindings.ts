@@ -28,7 +28,7 @@ export const commands = {
 	institutionsDeletePreview: (institutionId: number) => typedError<InstitutionDeletePreviewDto, ApiError>(__TAURI_INVOKE("institutions_delete_preview", { institutionId })),
 	institutionsDelete: (institutionId: number) => typedError<null, ApiError>(__TAURI_INVOKE("institutions_delete", { institutionId })),
 	institutionsGet: (institutionId: number) => typedError<InstitutionDetailDto, ApiError>(__TAURI_INVOKE("institutions_get", { institutionId })),
-	accountsGet: (accountId: number) => typedError<AccountDto, ApiError>(__TAURI_INVOKE("accounts_get", { accountId })),
+	accountsGet: (accountId: number) => typedError<AccountDetailDto, ApiError>(__TAURI_INVOKE("accounts_get", { accountId })),
 	accountSnapshotsList: (accountId: number) => typedError<AccountBalanceSnapshotDto[], ApiError>(__TAURI_INVOKE("account_snapshots_list", { accountId })).then((v) => ((v.status === "ok" ? { ...v, data: v.data.map(i=>({...i,created_at:new Date(i.created_at)})) } : v) as typeof v)),
 	accountSnapshotsCreate: (accountId: number, input: AccountSnapshotsCreateInput) => typedError<null, ApiError>(__TAURI_INVOKE("account_snapshots_create", { accountId, input })),
 	accountSnapshotUpdate: (accountId: number, snapshotId: number, input: AccountSnapshotUpdateInput) => typedError<null, ApiError>(__TAURI_INVOKE("account_snapshot_update", { accountId, snapshotId, input })),
@@ -59,6 +59,10 @@ export type AccountDeletePreviewDto = {
 	snapshot_count: number,
 };
 
+export type AccountDetailDto = {
+	identifiers: AccountIdentifierInput[],
+} & AccountDto;
+
 export type AccountDto = {
 	id: number,
 	name: string,
@@ -75,6 +79,11 @@ export type AccountDto = {
 	latest_balance_minor: number,
 	monthly_change_minor: number,
 	activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }>,
+};
+
+export type AccountIdentifierInput = {
+	label: string,
+	value: string,
 };
 
 export type AccountSnapshotUpdateInput = {
@@ -112,6 +121,7 @@ export type AccountUpsertInput = {
 	account_classification: AccountClassification,
 	include_in_dashboard: boolean,
 	labels: LabelRef[],
+	identifiers: AccountIdentifierInput[],
 	opened_date?: string | null,
 	closed_date?: string | null,
 };

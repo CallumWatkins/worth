@@ -1,3 +1,4 @@
+pub mod account_identifiers;
 pub mod rows;
 
 use chrono::NaiveDate;
@@ -347,7 +348,10 @@ fn normalize_search_query(query: &str) -> Option<(String, String)> {
     }
 
     let phrase = terms.join(" ");
-    let fts_query = terms.into_iter().map(|term| format!("{term}*")).join(" ");
+    let fts_query = terms
+        .into_iter()
+        .map(|term| format!("\"{term}\"*"))
+        .join(" ");
     Some((phrase, fts_query))
 }
 
@@ -365,78 +369,101 @@ pub async fn search_global(
         account_count: i64,
     }
 
-    let Some((phrase_query, fts_query)) = normalize_search_query(query) else {
+    let text_query = normalize_search_query(query);
+    let identifier_query = crate::contracts::canonicalize_account_identifier(query);
+    if text_query.is_none() && identifier_query.is_empty() {
         return Ok(Vec::new());
-    };
+    }
+    // An empty quoted FTS phrase matches nothing while punctuation-only
+    // identifiers can still use the independent, literal identifier search.
+    let (phrase_query, fts_query) =
+        text_query.unwrap_or_else(|| (String::new(), "\"\"".to_owned()));
+    let partial_identifier_match = identifier_query.chars().count() >= 4;
 
-    // Ranking favors phrase matches in the entity name before weighted FTS
-    // relevance so exact-looking name hits are ordered ahead of broader matches.
+    // Exact identifiers precede text hits, which retain their existing ranking.
+    // Partial identifiers follow text hits. Merging candidates retains text
+    // relevance when an identifier match promotes the same entity's priority.
     let rows = sqlx::query_as::<_, GlobalSearchRawRow>(
         r"
         WITH
+            text_candidates AS MATERIALIZED (
+                SELECT
+                    kind,
+                    entity_id,
+                    1 AS match_priority,
+                    NULLIF(INSTR(LOWER(name), LOWER(?1)), 0) AS phrase_pos,
+                    rank AS bm25_rank
+                FROM
+                    search_fts
+                WHERE
+                    search_fts MATCH ?2
+                    AND rank MATCH 'bm25(0.0, 0.0, 10.0, 2.0, 1.0, 1.0)'
+            ),
+            identifier_candidates AS (
+                SELECT
+                    'account' AS kind,
+                    account_id AS entity_id,
+                    CASE WHEN search_value = ?3 THEN 0 ELSE 2 END AS match_priority,
+                    NULL AS phrase_pos,
+                    NULL AS bm25_rank
+                FROM account_identifiers
+                WHERE ?3 != '' AND (search_value = ?3 OR (?4 AND INSTR(search_value, ?3) > 0))
+            ),
+            candidates AS (
+                SELECT kind, entity_id, match_priority, phrase_pos, bm25_rank
+                FROM text_candidates
+                UNION ALL
+                SELECT kind, entity_id, match_priority, phrase_pos, bm25_rank
+                FROM identifier_candidates
+            ),
             matched AS (
                 SELECT
                     kind,
                     entity_id,
-                    rank AS bm25_rank,
-                    CASE
-                        WHEN INSTR(LOWER(name), LOWER(?)) > 0 THEN 1
-                        ELSE 0
-                    END AS has_phrase,
-                    CASE
-                        WHEN INSTR(LOWER(name), LOWER(?)) > 0 THEN INSTR(LOWER(name), LOWER(?))
-                        ELSE 2147483647
-                    END AS phrase_pos
-                FROM
-                    search_fts
-                WHERE
-                    search_fts MATCH ?
-                    AND rank MATCH 'bm25(0.0, 0.0, 10.0, 2.0, 1.0, 1.0)'
+                    MIN(match_priority) AS match_priority,
+                    MIN(phrase_pos) AS phrase_pos,
+                    COALESCE(MIN(bm25_rank), 0) AS bm25_rank
+                FROM candidates
+                GROUP BY kind, entity_id
             ),
-            account_hits AS (
+            results AS (
                 SELECT
-                    m.bm25_rank,
-                    m.has_phrase,
+                    m.match_priority,
                     m.phrase_pos,
-                    'account' AS kind,
+                    m.bm25_rank,
+                    m.kind,
                     a.id,
                     a.name,
                     t.name AS type_name,
                     i.name AS institution_name
-                FROM
-                    matched AS m
-                    INNER JOIN accounts AS a ON m.kind = 'account'
-                    AND a.id = m.entity_id
-                    INNER JOIN account_types AS t ON t.id = a.type_id
-                    INNER JOIN institutions AS i ON i.id = a.institution_id
-            ),
-            label_hits AS (
+                FROM matched AS m
+                INNER JOIN accounts AS a ON m.kind = 'account' AND a.id = m.entity_id
+                INNER JOIN account_types AS t ON t.id = a.type_id
+                INNER JOIN institutions AS i ON i.id = a.institution_id
+                UNION ALL
                 SELECT
-                    m.bm25_rank,
-                    m.has_phrase,
+                    m.match_priority,
                     m.phrase_pos,
-                    'label' AS kind,
+                    m.bm25_rank,
+                    m.kind,
                     l.id,
                     l.name,
                     NULL AS type_name,
                     NULL AS institution_name
                 FROM matched AS m
                 INNER JOIN labels AS l ON m.kind = 'label' AND l.id = m.entity_id
-            ),
-            institution_hits AS (
+                UNION ALL
                 SELECT
-                    m.bm25_rank,
-                    m.has_phrase,
+                    m.match_priority,
                     m.phrase_pos,
-                    'institution' AS kind,
+                    m.bm25_rank,
+                    m.kind,
                     i.id,
                     i.name,
                     NULL AS type_name,
                     NULL AS institution_name
-                FROM
-                    matched AS m
-                    INNER JOIN institutions AS i ON m.kind = 'institution'
-                    AND i.id = m.entity_id
+                FROM matched AS m
+                INNER JOIN institutions AS i ON m.kind = 'institution' AND i.id = m.entity_id
             )
         SELECT
             results.kind,
@@ -447,37 +474,27 @@ pub async fn search_global(
             CASE WHEN results.kind = 'label' THEN (
                 SELECT COUNT(*) FROM account_labels WHERE label_id = results.id
             ) ELSE 0 END AS account_count
-        FROM
-            (
-                SELECT
-                    *
-                FROM
-                    account_hits
-                UNION ALL
-                SELECT
-                    *
-                FROM
-                    institution_hits
-                UNION ALL
-                SELECT * FROM label_hits
-            ) AS results
+        FROM results
         ORDER BY
-            results.has_phrase DESC,
+            results.match_priority ASC,
+            (results.phrase_pos IS NOT NULL) DESC,
             results.phrase_pos ASC,
             results.bm25_rank ASC,
             CASE
                 WHEN results.kind = 'institution' THEN 0
                 ELSE 1
             END ASC,
-            results.name COLLATE nocase ASC
+            results.name COLLATE nocase ASC,
+            results.kind ASC,
+            results.id ASC
         LIMIT
             10
         ",
     )
     .bind(&phrase_query)
-    .bind(&phrase_query)
-    .bind(&phrase_query)
     .bind(fts_query)
+    .bind(&identifier_query)
+    .bind(partial_identifier_match)
     .fetch_all(pool)
     .await?;
 
@@ -1471,6 +1488,82 @@ pub async fn institution_delete(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn search_global_preserves_text_tiebreakers_for_exact_identifier_matches() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(":memory:")
+            .await
+            .unwrap();
+        sqlx::migrate!("./db/migrations").run(&pool).await.unwrap();
+        sqlx::raw_sql(
+            "INSERT INTO institutions (id, name) VALUES (1, 'Test Bank');
+             INSERT INTO accounts (id, name, institution_id, type_id, currency_code, account_classification)
+             SELECT 1, '1234 1234 1234 Z', 1, id, 'GBP', 'asset' FROM account_types WHERE name = 'current';
+             INSERT INTO accounts (id, name, institution_id, type_id, currency_code, account_classification)
+             SELECT 2, '1234 A longer account name', 1, id, 'GBP', 'asset' FROM account_types WHERE name = 'current';
+             INSERT INTO accounts (id, name, institution_id, type_id, currency_code, account_classification)
+             SELECT 3, 'A 1234', 1, id, 'GBP', 'asset' FROM account_types WHERE name = 'current';
+             INSERT INTO accounts (id, name, institution_id, type_id, currency_code, account_classification)
+             SELECT 4, 'Alphabetically first', 1, id, 'GBP', 'asset' FROM account_types WHERE name = 'current';
+             INSERT INTO account_identifiers (account_id, position, label, value, search_value)
+             SELECT id, 0, 'Reference', '1234', '1234' FROM accounts;
+             INSERT INTO account_identifiers (account_id, position, label, value, search_value)
+             VALUES (1, 1, 'Duplicate', '1234', '1234'), (2, 1, 'Partial', 'XX1234', 'xx1234');",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let ids: Vec<_> = search_global(&pool, "1234")
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|row| match row {
+                GlobalSearchRow::Account { id, .. } => id,
+                other => panic!("unexpected result: {other:?}"),
+            })
+            .collect();
+        // Phrase presence, position, then FTS relevance beat alphabetical order.
+        assert_eq!(ids, [1, 2, 3, 4]);
+    }
+
+    #[tokio::test]
+    async fn search_global_keeps_distinct_entity_kinds_with_the_same_id() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(":memory:")
+            .await
+            .unwrap();
+        sqlx::migrate!("./db/migrations").run(&pool).await.unwrap();
+        sqlx::raw_sql(
+            "INSERT INTO institutions (id, name) VALUES (1, 'Shared');
+             INSERT INTO accounts (id, name, institution_id, type_id, currency_code, account_classification)
+             SELECT 1, 'Shared', 1, id, 'GBP', 'asset' FROM account_types WHERE name = 'current';
+             INSERT INTO labels (id, name, name_key) VALUES (1, 'Shared', 'shared');
+             INSERT INTO account_labels (account_id, label_id) VALUES (1, 1);
+             INSERT INTO account_identifiers (account_id, position, label, value, search_value)
+             VALUES (1, 0, 'Reference', 'Shared', 'shared');",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let results = search_global(&pool, "Shared").await.unwrap();
+        assert!(matches!(
+            results.as_slice(),
+            [
+                GlobalSearchRow::Account { id: 1, .. },
+                GlobalSearchRow::Institution { id: 1, .. },
+                GlobalSearchRow::Label {
+                    id: 1,
+                    account_count: 1,
+                    ..
+                }
+            ]
+        ));
+    }
 
     #[tokio::test]
     async fn app_settings_update_patches_analytics_enabled() {

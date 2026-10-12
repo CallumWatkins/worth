@@ -25,6 +25,7 @@
             :validate-on-input-delay="0"
             class="space-y-4"
             @submit="onSubmit"
+            @submit.capture="discardEmptyIdentifiers"
           >
             <UAlert
               v-if="submitError"
@@ -212,6 +213,16 @@
               <UCheckbox v-model="state.include_in_dashboard" label="Include in dashboard" />
             </UFormField>
 
+            <UFormField id="account-details" name="identifiers" class="scroll-mt-6">
+              <AccountsIdentifierEditor
+                :key="accountQuery.data.id"
+                v-model="state.identifiers"
+                :expanded="!!state.identifiers?.length || route.hash === '#account-details'"
+                @remove="form?.clear(/^identifiers(\.|$)/)"
+                @reorder="form?.clear(/^identifiers(\.|$)/)"
+              />
+            </UFormField>
+
             <div class="flex items-center justify-end gap-3">
               <Transition name="save-status-fade">
                 <span v-if="didSave && !form?.dirty" class="text-sm text-success">
@@ -326,7 +337,8 @@ const {
   onInstitutionCreate,
   accountTypeItems,
   accountClassificationItems,
-  hydrateFromAccount
+  hydrateFromAccount,
+  discardEmptyIdentifiers
 } = useAccountUpsertForm({
   institutions: computed(() => institutionsQuery.data)
 });

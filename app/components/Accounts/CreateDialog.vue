@@ -14,6 +14,7 @@
         :validate-on-input-delay="0"
         class="space-y-4"
         @submit="onSubmit"
+        @submit.capture="discardEmptyIdentifiers"
       >
         <UAlert
           v-if="submitError"
@@ -128,6 +129,14 @@
           />
         </UFormField>
 
+        <UFormField name="identifiers">
+          <AccountsIdentifierEditor
+            v-model="state.identifiers"
+            @remove="form?.clear(/^identifiers(\.|$)/)"
+            @reorder="form?.clear(/^identifiers(\.|$)/)"
+          />
+        </UFormField>
+
         <div class="flex justify-end gap-2">
           <UButton
             color="neutral"
@@ -202,7 +211,8 @@ const {
   onInstitutionCreate,
   accountTypeItems,
   accountClassificationItems,
-  reset
+  reset,
+  discardEmptyIdentifiers
 } = useAccountUpsertForm({
   institutions: computed(() => institutionsQuery.data),
   getDefaultInstitutionId: () => props.defaultInstitutionId
@@ -251,6 +261,7 @@ async function onSubmit(event: FormSubmitEvent<AccountFormValues>) {
     if (!setBackendValidationErrors(error)) {
       submitError.value = error instanceof Error ? error.message : "Failed to create account";
     }
+    throw error;
   }
 }
 </script>

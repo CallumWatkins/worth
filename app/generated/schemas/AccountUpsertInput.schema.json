@@ -34,6 +34,12 @@
         "type": "Select a currency"
       }
     },
+    "identifiers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AccountIdentifierInput"
+      }
+    },
     "include_in_dashboard": {
       "type": "boolean"
     },
@@ -78,7 +84,8 @@
     "currency_code",
     "account_classification",
     "include_in_dashboard",
-    "labels"
+    "labels",
+    "identifiers"
   ],
   "$defs": {
     "AccountClassification": {
@@ -86,6 +93,37 @@
       "enum": [
         "asset",
         "liability"
+      ]
+    },
+    "AccountIdentifierInput": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*[^\\s\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029][^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$",
+          "x-validation": {
+            "blank": "Enter an identifier",
+            "maxLength": "Identifier must be 80 characters or fewer",
+            "pattern": "Identifier must be on one line without control characters",
+            "required": "Enter an identifier"
+          }
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 250,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$",
+          "x-validation": {
+            "maxLength": "Value must be 250 characters or fewer",
+            "pattern": "Value must be on one line without control characters",
+            "type": "Value must be text"
+          }
+        }
+      },
+      "required": [
+        "label",
+        "value"
       ]
     },
     "AccountTypeName": {

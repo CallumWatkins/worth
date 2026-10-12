@@ -1,4 +1,4 @@
-import type { AccountDto, AccountTypeName, InstitutionSummaryDto } from "~/generated/bindings";
+import type { AccountDetailDto, AccountTypeName, InstitutionSummaryDto } from "~/generated/bindings";
 import { parseDate } from "@internationalized/date";
 
 interface UseAccountUpsertFormParams {
@@ -38,6 +38,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
       account_classification: "asset",
       include_in_dashboard: true,
       labels: [],
+      identifiers: [],
       opened_date: undefined,
       closed_date: undefined
     };
@@ -167,7 +168,11 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     institutionSearchTerm.value = "";
   }
 
-  function hydrateFromAccount(account: AccountDto) {
+  function discardEmptyIdentifiers() {
+    state.identifiers = state.identifiers?.filter(({ label, value }) => label.trim() !== "" || value.trim() !== "");
+  }
+
+  function hydrateFromAccount(account: AccountDetailDto) {
     state.institution = { kind: "existing", id: account.institution.id };
     state.name = account.name;
     state.account_type = account.account_type.name;
@@ -175,6 +180,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.account_classification = account.account_classification;
     state.include_in_dashboard = account.include_in_dashboard;
     state.labels = account.labels.map((label) => ({ kind: "existing", id: label.id }));
+    state.identifiers = account.identifiers.map((identifier) => ({ ...identifier }));
     state.opened_date = account.opened_date == null ? undefined : parseDate(account.opened_date);
     state.closed_date = account.closed_date == null ? undefined : parseDate(account.closed_date);
     institutionSearchTerm.value = "";
@@ -211,6 +217,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     accountTypeItems,
     accountClassificationItems,
     reset,
+    discardEmptyIdentifiers,
     hydrateFromAccount
   };
 }

@@ -7,6 +7,7 @@ The data model and rules behind accounts, snapshots, balances, dates, currencies
 - An **institution** groups accounts. Institution names are unique.
 - An **account** belongs to one institution and has a type, currency, asset/liability classification, and optional opened/closed dates. Account names are unique within an institution.
 - A **snapshot** is an account balance on one calendar date. Only one snapshot may exist per account and date.
+- An **account identifier** is an arbitrary label/value pair. Accounts can have any number of identifiers.
 - **App settings** use a singleton row with `id = 1`.
 
 Deleting an institution cascades to its accounts and snapshots. Deleting an account cascades to its snapshots. Deletion UI must preview that impact and follow the redirect rules in `history-navigation.md` when the deleted resource is the current route.
@@ -32,5 +33,7 @@ Worth does not perform foreign-exchange conversion. Account views format values 
 The schema lives in `src-tauri/db/migrations`; matching `sqlx::FromRow` table models live in `src-tauri/src/db/rows.rs`. Migrations run on app startup. A migration remains editable until it is included in a stable release tag; after that, it is immutable and schema changes require a new numbered migration. SQLx hashes exact migration bytes, so migration files must retain the repository's LF line endings.
 
 Global search uses the denormalized `search_fts` table. SQLite triggers keep institution, account, account-type, and assigned-label text synchronized. The `account_search_documents` view supplies the joined account text, including labels. A schema or write-path change that affects searchable text must preserve those triggers, including assignment changes, shared label renames, and cascading deletions.
+
+Account identifier search matches `account_identifiers.search_value` separately from FTS, then merges the results. Rust maintains this column on writes using the same canonicalizer as search queries. Changes to canonicalization must also regenerate existing stored search values.
 
 When changing these rules, update SQL constraints, Rust validation and calculations, generated contracts, frontend formatting, seed data, and focused Rust tests together.

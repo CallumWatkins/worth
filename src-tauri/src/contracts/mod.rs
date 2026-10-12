@@ -2,7 +2,10 @@
 //! and frontend Zod form schemas; keep validation rules and user-facing copy
 //! here so generated frontend types and forms stay aligned.
 
+mod account_identifiers;
 pub mod schema_export;
+
+pub use account_identifiers::{AccountIdentifierInput, canonicalize_account_identifier};
 
 use std::str::FromStr;
 
@@ -405,6 +408,8 @@ pub struct AccountUpsertInput {
     pub include_in_dashboard: bool,
     #[garde(dive)]
     pub labels: Vec<LabelRef>,
+    #[garde(dive)]
+    pub identifiers: Vec<AccountIdentifierInput>,
     #[garde(skip)]
     #[specta(optional)]
     pub opened_date: Option<NaiveDate>,

@@ -43,6 +43,7 @@ fn account_input(
         opened_date: None,
         closed_date: None,
         labels,
+        identifiers: Vec::new(),
     }
 }
 

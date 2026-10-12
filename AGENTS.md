@@ -77,6 +77,7 @@ Problems running `cargo` commands ("rustup could not choose a version of cargo t
 - **Engine**: SQLite via `sqlx`.
 - **DB file location (runtime)**: `AppLocalData/db/worth.sqlite` (on Windows this is under `%LOCALAPPDATA%/<bundle id>/db/`).
 - **Migrations**: `src-tauri/db/migrations` (run on app startup in `src-tauri/src/lib.rs`).
+- **Migration compatibility**: Only released migrations are immutable, enforced by CI's `Released migrations` check. Before release (e.g. within a PR), prefer a single consolidated migration instead of adding follow-up migrations when iterating.
 - **Seed/backup/restore CLI** (operates on the same app-local DB, `bun run db --help`)
 
 #### DB operations + models
