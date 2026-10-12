@@ -6,7 +6,7 @@ Worth is local-first. Financial records and imported data belong on the user's d
 
 ## Data boundary
 
-Never send account or institution names, balances, snapshot values or dates, currencies tied to an account, search text, resource IDs, filenames, imported file contents, or raw database/validation errors.
+Never send account or institution names, account identifiers, balances, snapshot values or dates, currencies tied to an account, search text, resource IDs, filenames, imported file contents, or raw database/validation errors.
 
 Safe analytics properties are generally counts, booleans, selected option indexes, operation durations, app versions, and coarse error categories. Backend validation issues may include a curated `telemetry_message`; use that value rather than the user-facing message, and omit it when no safe generalization exists.
 
