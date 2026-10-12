@@ -141,6 +141,12 @@
           </UPageCard>
         </div>
 
+        <AccountsDetails
+          :key="accountQuery.data.id"
+          :account-id="accountQuery.data.id"
+          :identifiers="accountQuery.data.identifiers"
+        />
+
         <EmptyPageState
           v-if="snapshotsQuery.isSuccess && snapshotsQuery.data.length === 0"
           icon="i-lucide-chart-line"
