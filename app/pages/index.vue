@@ -271,12 +271,10 @@
                 <span v-else>No data</span>
               </div>
             </div>
-            <VChart
+            <DashboardBalanceOverTimeChart
               v-else
               :key="`${balanceOverTimePeriod}:${balanceOverTimeQuery.data?.length ?? 0}`"
-              :option="balanceOverTimeOption"
-              autoresize
-              style="height: 300px; width: 100%"
+              :points="balanceOverTimeQuery.data ?? []"
             />
           </UPageCard>
         </UPageGrid>
@@ -291,18 +289,10 @@ import NumberFlow, { continuous } from "@number-flow/vue";
 import { useQuery } from "@tanstack/vue-query";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
 
-const { formatCurrency, formatShortDate } = useLocaleFormatters();
+const { formatCurrency } = useLocaleFormatters();
 const settings = useSettings();
 const { code: appLocaleCode } = useAppLocale();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
-
-const darkTooltipBase = {
-  backgroundColor: "rgba(10, 10, 10, 0.95)",
-  borderColor: "rgba(82, 82, 91, 0.6)",
-  borderWidth: 1,
-  textStyle: { color: "#f5f5f5" },
-  extraCssText: "border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); padding: 10px 12px;"
-} as const;
 
 const api = useApi();
 
@@ -363,76 +353,6 @@ const changeClass = computed(() => {
 const monthlyYieldDescriptionClass = computed(() => {
   if (dashboardQuery.data?.monthly_yield_minor == null) return "text-xl font-bold text-muted whitespace-nowrap";
   return `text-xl font-bold ${dashboardQuery.data?.monthly_yield_minor >= 0 ? "text-success" : "text-error"} whitespace-nowrap`;
-});
-
-const balanceOverTimeOption = computed<ECOption>(() => {
-  const points = balanceOverTimeQuery.data ?? [];
-  const values = points.map((p) => [p.date, convertCurrencyMinorUnitsToMajorAmount(p.balance_minor)]);
-
-  return {
-    backgroundColor: "transparent",
-    tooltip: {
-      ...darkTooltipBase,
-      trigger: "axis",
-      axisPointer: {
-        type: "line",
-        lineStyle: { color: "rgba(244, 244, 245, 0.25)" },
-        label: {
-          formatter: ({ value }) => formatShortDate(new Date(value))
-        }
-      },
-      valueFormatter: (value) => formatCurrency(value as number, settings.value.default_display_currency_code)
-    },
-    grid: {
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0
-    },
-    xAxis: {
-      type: "time",
-      axisTick: { show: false },
-      axisLine: { show: false },
-      splitLine: { show: false }
-    },
-    yAxis: {
-      show: false,
-      scale: true,
-      splitLine: { show: false }
-    },
-    series: [
-      {
-        name: "Balance",
-        type: "line",
-        silent: true,
-        data: values,
-        smooth: true,
-        showSymbol: false,
-        lineStyle: {
-          width: 5,
-          color: "#22c55e",
-          shadowBlur: 10,
-          shadowColor: "rgba(34, 197, 94, 0.6)",
-          shadowOffsetX: 0,
-          shadowOffsetY: 0
-        },
-        itemStyle: { color: "#22c55e" },
-        areaStyle: {
-          color: {
-            type: "linear",
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: "rgba(34, 197, 94, 0.5)" },
-              { offset: 1, color: "rgba(34, 197, 94, 0)" }
-            ]
-          }
-        }
-      }
-    ]
-  };
 });
 
 interface AllocationDatum {
@@ -535,7 +455,7 @@ const buildBalanceAllocationOption = (selected: Record<string, boolean>, data: A
   return {
     backgroundColor: "transparent",
     tooltip: {
-      ...darkTooltipBase,
+      ...DARK_CHART_TOOLTIP,
       trigger: "item",
       valueFormatter: (value: unknown) => {
         const n = typeof value === "number" ? value : Number(value);

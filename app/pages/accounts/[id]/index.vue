@@ -477,14 +477,6 @@ type BalanceGroupBy = "none" | "month" | "year";
 
 const endPopupContent = useAppPopupContent({ align: "end" });
 
-const darkTooltipBase = {
-  backgroundColor: "rgba(10, 10, 10, 0.95)",
-  borderColor: "rgba(82, 82, 91, 0.6)",
-  borderWidth: 1,
-  textStyle: { color: "#f5f5f5" },
-  extraCssText: "border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); padding: 10px 12px;"
-} as const;
-
 const route = useRoute("accounts-id");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
@@ -626,7 +618,7 @@ const balanceOverTimeOption = computed<ECOption>(() => {
   return {
     backgroundColor: "transparent",
     tooltip: {
-      ...darkTooltipBase,
+      ...DARK_CHART_TOOLTIP,
       trigger: "axis",
       axisPointer: {
         type: "line",
@@ -679,6 +671,18 @@ const balanceOverTimeOption = computed<ECOption>(() => {
         data: values,
         smooth: true,
         showSymbol: false,
+        markLine: {
+          z: 1,
+          silent: true,
+          symbol: "none",
+          label: { show: false },
+          lineStyle: {
+            color: "rgba(244, 244, 245, 0.15)",
+            width: 1,
+            type: "solid"
+          },
+          data: [{ yAxis: 0 }]
+        },
         lineStyle: {
           width: 5,
           color: chartMeta.value.color,
@@ -689,6 +693,8 @@ const balanceOverTimeOption = computed<ECOption>(() => {
         },
         itemStyle: { color: chartMeta.value.color },
         areaStyle: {
+          // Keep the fill on its intended side even when balances cross zero.
+          origin: accountQuery.data?.account_classification === "liability" ? "end" : "start",
           color: {
             type: "linear",
             x: 0,
