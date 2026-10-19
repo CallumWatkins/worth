@@ -671,6 +671,18 @@ const balanceOverTimeOption = computed<ECOption>(() => {
         data: values,
         smooth: true,
         showSymbol: false,
+        markLine: {
+          z: 1,
+          silent: true,
+          symbol: "none",
+          label: { show: false },
+          lineStyle: {
+            color: "rgba(244, 244, 245, 0.15)",
+            width: 1,
+            type: "solid"
+          },
+          data: [{ yAxis: 0 }]
+        },
         lineStyle: {
           width: 5,
           color: chartMeta.value.color,
@@ -681,6 +693,8 @@ const balanceOverTimeOption = computed<ECOption>(() => {
         },
         itemStyle: { color: chartMeta.value.color },
         areaStyle: {
+          // Keep the fill on its intended side even when balances cross zero.
+          origin: accountQuery.data?.account_classification === "liability" ? "end" : "start",
           color: {
             type: "linear",
             x: 0,
