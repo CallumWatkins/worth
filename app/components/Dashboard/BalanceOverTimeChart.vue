@@ -103,7 +103,8 @@ const option = computed<ECOption>(() => {
           shadowOffsetY: 0
         },
         areaStyle: {
-          origin: 0,
+          // Keep the fade visible when zero is outside the chart's range.
+          origin: "auto",
           color: {
             type: "linear",
             x: 0,
