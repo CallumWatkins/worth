@@ -25,6 +25,7 @@
             :validate-on-input-delay="0"
             class="space-y-4"
             @submit="onSubmit"
+            @submit.capture="discardEmptyIdentifiers"
           >
             <UAlert
               v-if="submitError"
@@ -39,6 +40,19 @@
               <UInput
                 v-model="state.name"
                 class="w-full"
+              />
+            </UFormField>
+
+            <UFormField id="institution-details" name="identifiers" class="scroll-mt-6">
+              <IdentifiersEditor
+                :key="institutionQuery.data.id"
+                v-model="state.identifiers"
+                title="Institution details"
+                :suggestions="INSTITUTION_IDENTIFIER_SUGGESTIONS"
+                placeholder="e.g. customer number"
+                :expanded="!!state.identifiers?.length || route.hash === '#institution-details'"
+                @remove="form?.clear(/^identifiers(\.|$)/)"
+                @reorder="form?.clear(/^identifiers(\.|$)/)"
               />
             </UFormField>
 
@@ -122,7 +136,7 @@ const didSave = ref(false);
 const hasHydrated = ref(false);
 const deleteOpen = ref(false);
 const institutionDeleted = ref(false);
-const { state, hydrateFromInstitution } = useInstitutionUpsertForm();
+const { state, hydrateFromInstitution, discardEmptyIdentifiers } = useInstitutionUpsertForm();
 
 watch(institutionId, () => {
   hasHydrated.value = false;
@@ -165,7 +179,8 @@ async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
     await updateInstitution.mutateAsync({
       institutionId: institutionId.value,
       input: {
-        name: event.data.name
+        name: event.data.name,
+        identifiers: event.data.identifiers
       }
     });
     captureAnalyticsEvent("institution_settings:institution_update", {}, {

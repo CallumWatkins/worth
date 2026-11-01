@@ -130,8 +130,11 @@
         </UFormField>
 
         <UFormField name="identifiers">
-          <AccountsIdentifierEditor
+          <IdentifiersEditor
             v-model="state.identifiers"
+            title="Account details"
+            :suggestions="ACCOUNT_IDENTIFIER_SUGGESTIONS"
+            placeholder="e.g. account number"
             @remove="form?.clear(/^identifiers(\.|$)/)"
             @reorder="form?.clear(/^identifiers(\.|$)/)"
           />

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate, PartialEq, Eq)]
-pub struct AccountIdentifierInput {
+pub struct IdentifierInput {
     #[garde(custom(validate_label))]
     #[schemars(
         length(min = 1, max = 80),
@@ -72,9 +72,20 @@ fn validate_text(
     Ok(())
 }
 
+pub fn normalize_identifiers(identifiers: &[IdentifierInput]) -> Vec<IdentifierInput> {
+    identifiers
+        .iter()
+        .map(|identifier| IdentifierInput {
+            label: identifier.label.trim().to_owned(),
+            value: identifier.value.trim().to_owned(),
+        })
+        .filter(|identifier| !identifier.label.is_empty() || !identifier.value.is_empty())
+        .collect()
+}
+
 /// Search-only normalization, shared by stored values and queries for every label.
 /// Keep other punctuation literal (for example slashes in provider references).
-pub fn canonicalize_account_identifier(value: &str) -> String {
+pub fn canonicalize_identifier(value: &str) -> String {
     value
         .chars()
         .filter(|ch| !ch.is_whitespace() && !matches!(ch, '-' | '.' | '\u{2010}'..='\u{2014}'))
@@ -146,14 +157,8 @@ mod tests {
 
     #[test]
     fn canonicalization_is_shared_unicode_aware_and_preserves_significant_characters() {
-        assert_eq!(
-            canonicalize_account_identifier(" 00-12\u{00a0}34.56 "),
-            "00123456"
-        );
-        assert_eq!(
-            canonicalize_account_identifier("ÄBC—００１/_%"),
-            "äbc００１/_%"
-        );
-        assert_eq!(canonicalize_account_identifier(" - .\t"), "");
+        assert_eq!(canonicalize_identifier(" 00-12\u{00a0}34.56 "), "00123456");
+        assert_eq!(canonicalize_identifier("ÄBC—００１/_%"), "äbc００１/_%");
+        assert_eq!(canonicalize_identifier(" - .\t"), "");
     }
 }

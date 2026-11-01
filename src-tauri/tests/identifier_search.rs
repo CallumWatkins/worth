@@ -233,3 +233,155 @@ async fn edits_clears_and_cascading_deletion_remove_old_matches() {
         .unwrap();
     assert!(account_hits(&pool, "001122").await.is_empty());
 }
+
+#[tokio::test]
+async fn institution_identifiers_match_without_expanding_to_accounts_or_exposing_values() {
+    let pool = seeded_pool().await;
+    let mut tx = pool.begin().await.unwrap();
+    db::institution_identifiers::replace_tx(
+        &mut tx,
+        1,
+        &[
+            contracts::IdentifierInput {
+                label: "Customer number".to_owned(),
+                value: "00-12 3456".to_owned(),
+            },
+            contracts::IdentifierInput {
+                label: "Duplicate".to_owned(),
+                value: "00123456".to_owned(),
+            },
+            contracts::IdentifierInput {
+                label: "Reference".to_owned(),
+                value: "CAFÉ/東京%_".to_owned(),
+            },
+            contracts::IdentifierInput {
+                label: "Short".to_owned(),
+                value: "007".to_owned(),
+            },
+            contracts::IdentifierInput {
+                label: "Literal".to_owned(),
+                value: "////".to_owned(),
+            },
+        ],
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    for query in [
+        "00123456",
+        "00.12.34.56",
+        "1234",
+        "café/東京%_",
+        "007",
+        "////",
+    ] {
+        let results = db::search_global(&pool, query).await.unwrap();
+        assert!(
+            matches!(
+                results.as_slice(),
+                [db::GlobalSearchRow::Institution { id: 1, .. }]
+            ),
+            "{query}"
+        );
+    }
+    for query in ["123", "07", "café東京%_", "ref%_", "", " - . "] {
+        assert!(
+            db::search_global(&pool, query).await.unwrap().is_empty(),
+            "{query}"
+        );
+    }
+    // Same numeric id and value on different entity kinds must not be merged.
+    identifier(&pool, 1, 0, "00123456", "00123456").await;
+    let results = db::search_global(&pool, "00123456").await.unwrap();
+    assert!(matches!(
+        results.as_slice(),
+        [
+            db::GlobalSearchRow::Institution { id: 1, .. },
+            db::GlobalSearchRow::Account { id: 1, .. }
+        ]
+    ));
+}
+
+#[tokio::test]
+async fn institution_and_account_matches_share_ranking_deduplication_and_final_limit() {
+    let pool = seeded_pool().await;
+    sqlx::raw_sql(
+        "WITH RECURSIVE numbers(id) AS (VALUES(2) UNION ALL SELECT id + 1 FROM numbers WHERE id < 15)
+         INSERT INTO institutions (id, name) SELECT id, 'Provider ' || id FROM numbers;
+         INSERT INTO institution_identifiers (institution_id, position, label, value, search_value)
+         SELECT id, 0, 'Reference', 'XX1234YY', 'xx1234yy' FROM institutions;
+         INSERT INTO institution_identifiers (institution_id, position, label, value, search_value)
+         VALUES (15, 1, 'Number', '1234', '1234'), (15, 2, 'Duplicate', '1234', '1234');
+         UPDATE institutions SET name = '1234 Provider' WHERE id = 14;
+         INSERT INTO account_identifiers (account_id, position, label, value, search_value)
+         VALUES (1, 0, 'Number', '1234', '1234');"
+    ).execute(&pool).await.unwrap();
+    let results = db::search_global(&pool, "1234").await.unwrap();
+    assert_eq!(results.len(), 10);
+    assert!(matches!(
+        results[0],
+        db::GlobalSearchRow::Institution { id: 15, .. }
+    ));
+    assert!(matches!(
+        results[1],
+        db::GlobalSearchRow::Account { id: 1, .. }
+    ));
+    assert!(matches!(
+        results[2],
+        db::GlobalSearchRow::Institution { id: 14, .. }
+    ));
+    assert_eq!(
+        results
+            .iter()
+            .filter(|row| matches!(row, db::GlobalSearchRow::Institution { id: 15, .. }))
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn institution_identifier_schema_enforces_constraints_and_cascades_with_accounts() {
+    let pool = seeded_pool().await;
+    sqlx::query("INSERT INTO institution_identifiers (institution_id, position, label, value, search_value) VALUES (1, 0, 'Customer', '', '')")
+        .execute(&pool).await.unwrap();
+    for statement in [
+        "UPDATE institution_identifiers SET position = -1",
+        "UPDATE institution_identifiers SET label = ''",
+        "UPDATE institution_identifiers SET institution_id = 999",
+        "INSERT INTO institution_identifiers SELECT * FROM institution_identifiers",
+    ] {
+        assert!(sqlx::query(statement).execute(&pool).await.is_err());
+    }
+    assert!(
+        sqlx::query("UPDATE institution_identifiers SET value = ?")
+            .bind("x".repeat(251))
+            .execute(&pool)
+            .await
+            .is_err()
+    );
+    assert!(
+        sqlx::query("UPDATE institution_identifiers SET label = ?")
+            .bind("x".repeat(81))
+            .execute(&pool)
+            .await
+            .is_err()
+    );
+    identifier(&pool, 1, 0, "001122", "001122").await;
+    sqlx::query("DELETE FROM institutions WHERE id = 1")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        db::institution_identifiers::list(&pool, 1)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        db::account_identifiers::list(&pool, 1)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert!(db::search_global(&pool, "001122").await.unwrap().is_empty());
+}

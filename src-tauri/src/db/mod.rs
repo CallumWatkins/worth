@@ -1,4 +1,5 @@
 pub mod account_identifiers;
+pub mod institution_identifiers;
 pub mod rows;
 
 use chrono::NaiveDate;
@@ -370,7 +371,7 @@ pub async fn search_global(
     }
 
     let text_query = normalize_search_query(query);
-    let identifier_query = crate::contracts::canonicalize_account_identifier(query);
+    let identifier_query = crate::contracts::canonicalize_identifier(query);
     if text_query.is_none() && identifier_query.is_empty() {
         return Ok(Vec::new());
     }
@@ -407,6 +408,15 @@ pub async fn search_global(
                     NULL AS phrase_pos,
                     NULL AS bm25_rank
                 FROM account_identifiers
+                WHERE ?3 != '' AND (search_value = ?3 OR (?4 AND INSTR(search_value, ?3) > 0))
+                UNION ALL
+                SELECT
+                    'institution' AS kind,
+                    institution_id AS entity_id,
+                    CASE WHEN search_value = ?3 THEN 0 ELSE 2 END AS match_priority,
+                    NULL AS phrase_pos,
+                    NULL AS bm25_rank
+                FROM institution_identifiers
                 WHERE ?3 != '' AND (search_value = ?3 OR (?4 AND INSTR(search_value, ?3) > 0))
             ),
             candidates AS (
@@ -1154,41 +1164,6 @@ pub async fn institution_name_exists(
     Ok(exists.is_some())
 }
 
-pub async fn institution_create(
-    pool: &SqlitePool,
-    name: &str,
-) -> Result<rows::InstitutionRow, sqlx::Error> {
-    let result = sqlx::query(
-        r"
-        INSERT INTO
-            institutions (name)
-        VALUES
-            (?)
-        ",
-    )
-    .bind(name)
-    .execute(pool)
-    .await?;
-    let id = result.last_insert_rowid();
-
-    let created = sqlx::query_as::<_, rows::InstitutionRow>(
-        r"
-        SELECT
-            id,
-            name
-        FROM
-            institutions
-        WHERE
-            id = ?
-        ",
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(created)
-}
-
 pub async fn institution_create_tx(
     tx: &mut sqlx::Transaction<'_, Sqlite>,
     name: &str,
@@ -1207,45 +1182,17 @@ pub async fn institution_create_tx(
     Ok(result.last_insert_rowid())
 }
 
-pub async fn institution_update(
-    pool: &SqlitePool,
+pub async fn institution_update_tx(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
     institution_id: i64,
     name: &str,
-) -> Result<Option<rows::InstitutionRow>, sqlx::Error> {
-    let result = sqlx::query(
-        r"
-        UPDATE institutions
-        SET
-            name = ?
-        WHERE
-            id = ?
-        ",
-    )
-    .bind(name)
-    .bind(institution_id)
-    .execute(pool)
-    .await?;
-
-    if result.rows_affected() == 0 {
-        return Ok(None);
-    }
-
-    let updated = sqlx::query_as::<_, rows::InstitutionRow>(
-        r"
-        SELECT
-            id,
-            name
-        FROM
-            institutions
-        WHERE
-            id = ?
-        ",
-    )
-    .bind(institution_id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(updated)
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("UPDATE institutions SET name = ? WHERE id = ?")
+        .bind(name)
+        .bind(institution_id)
+        .execute(&mut **tx)
+        .await?;
+    Ok(result.rows_affected() > 0)
 }
 
 pub async fn account_type_id_by_name(

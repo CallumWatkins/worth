@@ -60,7 +60,7 @@ export type AccountDeletePreviewDto = {
 };
 
 export type AccountDetailDto = {
-	identifiers: AccountIdentifierInput[],
+	identifiers: IdentifierInput[],
 } & AccountDto;
 
 export type AccountDto = {
@@ -79,11 +79,6 @@ export type AccountDto = {
 	latest_balance_minor: number,
 	monthly_change_minor: number,
 	activity_by_period: Partial<{ [key in ActivityPeriod]: ActivityDataDto }>,
-};
-
-export type AccountIdentifierInput = {
-	label: string,
-	value: string,
 };
 
 export type AccountSnapshotUpdateInput = {
@@ -121,7 +116,7 @@ export type AccountUpsertInput = {
 	account_classification: AccountClassification,
 	include_in_dashboard: boolean,
 	labels: LabelRef[],
-	identifiers: AccountIdentifierInput[],
+	identifiers: IdentifierInput[],
 	opened_date?: string | null,
 	closed_date?: string | null,
 };
@@ -311,6 +306,11 @@ export type DashboardDto = {
 	allocation_by_type: DashboardAllocationDto[],
 };
 
+export type IdentifierInput = {
+	label: string,
+	value: string,
+};
+
 export type InstitutionDeletePreviewAccountDto = {
 	id: number,
 	name: string,
@@ -326,6 +326,7 @@ export type InstitutionDeletePreviewDto = {
 export type InstitutionDetailDto = {
 	id: number,
 	name: string,
+	identifiers: IdentifierInput[],
 	accounts: AccountDto[],
 };
 
@@ -347,6 +348,7 @@ export type InstitutionSummaryDto = {
 
 export type InstitutionUpsertInput = {
 	name: string,
+	identifiers: IdentifierInput[],
 };
 
 export type LabelDto = {

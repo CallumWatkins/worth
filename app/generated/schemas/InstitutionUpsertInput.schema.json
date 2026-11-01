@@ -3,6 +3,12 @@
   "title": "InstitutionUpsertInput",
   "type": "object",
   "properties": {
+    "identifiers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/IdentifierInput"
+      }
+    },
     "name": {
       "type": "string",
       "maxLength": 80,
@@ -17,6 +23,40 @@
     }
   },
   "required": [
-    "name"
-  ]
+    "name",
+    "identifiers"
+  ],
+  "$defs": {
+    "IdentifierInput": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*[^\\s\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029][^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$",
+          "x-validation": {
+            "blank": "Enter an identifier",
+            "maxLength": "Identifier must be 80 characters or fewer",
+            "pattern": "Identifier must be on one line without control characters",
+            "required": "Enter an identifier"
+          }
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 250,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]*$",
+          "x-validation": {
+            "maxLength": "Value must be 250 characters or fewer",
+            "pattern": "Value must be on one line without control characters",
+            "type": "Value must be text"
+          }
+        }
+      },
+      "required": [
+        "label",
+        "value"
+      ]
+    }
+  }
 }

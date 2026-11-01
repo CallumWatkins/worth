@@ -2,10 +2,10 @@
 //! and frontend Zod form schemas; keep validation rules and user-facing copy
 //! here so generated frontend types and forms stay aligned.
 
-mod account_identifiers;
+mod identifiers;
 pub mod schema_export;
 
-pub use account_identifiers::{AccountIdentifierInput, canonicalize_account_identifier};
+pub use identifiers::{IdentifierInput, canonicalize_identifier, normalize_identifiers};
 
 use std::str::FromStr;
 
@@ -289,6 +289,8 @@ pub struct InstitutionUpsertInput {
         }))
     )]
     pub name: String,
+    #[garde(dive)]
+    pub identifiers: Vec<IdentifierInput>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, JsonSchema, Validate)]
@@ -409,7 +411,7 @@ pub struct AccountUpsertInput {
     #[garde(dive)]
     pub labels: Vec<LabelRef>,
     #[garde(dive)]
-    pub identifiers: Vec<AccountIdentifierInput>,
+    pub identifiers: Vec<IdentifierInput>,
     #[garde(skip)]
     #[specta(optional)]
     pub opened_date: Option<NaiveDate>,
@@ -601,12 +603,14 @@ mod tests {
     #[test]
     fn name_lengths_are_counted_as_unicode_scalar_values() {
         let input = InstitutionUpsertInput {
+            identifiers: Vec::new(),
             name: "💷".repeat(80),
         };
 
         assert!(input.validate().is_ok());
 
         let input = InstitutionUpsertInput {
+            identifiers: Vec::new(),
             name: "💷".repeat(81),
         };
 
