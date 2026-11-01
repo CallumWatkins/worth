@@ -9,10 +9,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use tauri::{AppHandle, State};
 
 use crate::contracts::{
-    AccountClassification, AccountIdentifierInput, AccountSnapshotUpdateInput,
-    AccountSnapshotsCreateInput, AccountSnapshotsDeleteInput, AccountTypeName, AccountUpsertInput,
-    AppLocaleCode, AppSettingsUpdateInput, CurrencyCode, InstitutionRef, InstitutionUpsertInput,
-    LabelRef, LabelUpsertInput, ThemePreference,
+    AccountClassification, AccountSnapshotUpdateInput, AccountSnapshotsCreateInput,
+    AccountSnapshotsDeleteInput, AccountTypeName, AccountUpsertInput, AppLocaleCode,
+    AppSettingsUpdateInput, CurrencyCode, IdentifierInput, InstitutionRef, InstitutionUpsertInput,
+    LabelRef, LabelUpsertInput, ThemePreference, normalize_identifiers,
 };
 use crate::imports::snapshots::{
     SnapshotImportCommitDto, SnapshotImportInspectionDto, SnapshotImportOptionsInput,
@@ -100,6 +100,7 @@ pub struct InstitutionDto {
 pub struct InstitutionDetailDto {
     pub id: i64,
     pub name: String,
+    pub identifiers: Vec<IdentifierInput>,
     pub accounts: Vec<AccountDto>,
 }
 
@@ -157,7 +158,7 @@ pub struct AccountDto {
 pub struct AccountDetailDto {
     #[serde(flatten)]
     pub account: AccountDto,
-    pub identifiers: Vec<AccountIdentifierInput>,
+    pub identifiers: Vec<IdentifierInput>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -326,8 +327,10 @@ pub async fn accounts_list(state: State<'_, AppState>) -> Result<Vec<AccountDto>
 pub async fn institutions_list(
     state: State<'_, AppState>,
 ) -> Result<Vec<InstitutionSummaryDto>, ApiError> {
-    let pool = &state.pool;
+    institution_summaries(&state.pool).await
+}
 
+async fn institution_summaries(pool: &SqlitePool) -> Result<Vec<InstitutionSummaryDto>, ApiError> {
     let summary_rows = db::institutions_list_summary(pool)
         .await
         .map_err(|_| ApiError::Db)?;
@@ -368,12 +371,15 @@ pub async fn search(
     state: State<'_, AppState>,
     query: String,
 ) -> Result<Vec<SearchResultDto>, ApiError> {
+    search_results(&state.pool, &query).await
+}
+
+async fn search_results(pool: &SqlitePool, query: &str) -> Result<Vec<SearchResultDto>, ApiError> {
     let query = query.trim();
     if query.is_empty() {
         return Ok(Vec::new());
     }
 
-    let pool = &state.pool;
     let rows = db::search_global(pool, query)
         .await
         .map_err(|_| ApiError::Db)?;
@@ -423,14 +429,8 @@ pub async fn institutions_create(
     state: State<'_, AppState>,
     input: InstitutionUpsertInput,
 ) -> Result<CreatedIdDto, ApiError> {
-    let pool = &state.pool;
-    let validated = validate_institution_upsert(pool, &input, None).await?;
-
-    let created = db::institution_create(pool, &validated.name)
-        .await
-        .map_err(map_institution_write_error)?;
-
-    Ok(CreatedIdDto { id: created.id })
+    let id = save_institution(&state.pool, &input, None).await?;
+    Ok(CreatedIdDto { id })
 }
 
 #[tauri::command]
@@ -440,18 +440,36 @@ pub async fn institutions_update(
     institution_id: i64,
     input: InstitutionUpsertInput,
 ) -> Result<(), ApiError> {
-    let pool = &state.pool;
-    let validated = validate_institution_upsert(pool, &input, Some(institution_id)).await?;
-
-    let updated = db::institution_update(pool, institution_id, &validated.name)
-        .await
-        .map_err(map_institution_write_error)?;
-
-    if updated.is_none() {
-        return Err(ApiError::NotFound);
-    }
-
+    save_institution(&state.pool, &input, Some(institution_id)).await?;
     Ok(())
+}
+
+async fn save_institution(
+    pool: &SqlitePool,
+    input: &InstitutionUpsertInput,
+    institution_id: Option<i64>,
+) -> Result<i64, ApiError> {
+    let validated = validate_institution_upsert(pool, input, institution_id).await?;
+    let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
+    let id = match institution_id {
+        Some(id) => {
+            if !db::institution_update_tx(&mut tx, id, &validated.name)
+                .await
+                .map_err(map_institution_write_error)?
+            {
+                return Err(ApiError::NotFound);
+            }
+            id
+        }
+        None => db::institution_create_tx(&mut tx, &validated.name)
+            .await
+            .map_err(map_institution_write_error)?,
+    };
+    db::institution_identifiers::replace_tx(&mut tx, id, &validated.identifiers)
+        .await
+        .map_err(|_| ApiError::Db)?;
+    tx.commit().await.map_err(|_| ApiError::Db)?;
+    Ok(id)
 }
 
 #[tauri::command]
@@ -645,9 +663,15 @@ async fn save_account(
     let mut tx = pool.begin().await.map_err(|_| ApiError::Db)?;
     let institution_id = match &validated.institution {
         ValidatedInstitutionRef::Existing { id } => *id,
-        ValidatedInstitutionRef::New { name } => db::institution_create_tx(&mut tx, name)
-            .await
-            .map_err(map_institution_write_error)?,
+        ValidatedInstitutionRef::New { input } => {
+            let id = db::institution_create_tx(&mut tx, &input.name)
+                .await
+                .map_err(map_institution_write_error)?;
+            db::institution_identifiers::replace_tx(&mut tx, id, &input.identifiers)
+                .await
+                .map_err(|_| ApiError::Db)?;
+            id
+        }
     };
     let mutation = db::AccountMutationInput {
         institution_id,
@@ -1296,12 +1320,13 @@ async fn dashboard_balance_over_time_with_today(
 #[derive(Debug, Clone)]
 struct ValidatedInstitutionUpsert {
     name: String,
+    identifiers: Vec<IdentifierInput>,
 }
 
 #[derive(Debug, Clone)]
 enum ValidatedInstitutionRef {
     Existing { id: i64 },
-    New { name: String },
+    New { input: InstitutionUpsertInput },
 }
 
 #[derive(Debug, Clone)]
@@ -1315,7 +1340,7 @@ struct ValidatedAccountUpsert {
     opened_date: Option<NaiveDate>,
     closed_date: Option<NaiveDate>,
     labels: Vec<LabelRef>,
-    identifiers: Vec<AccountIdentifierInput>,
+    identifiers: Vec<IdentifierInput>,
 }
 
 fn app_settings_dto_from_row(row: db::rows::AppSettingsRow) -> Result<AppSettingsDto, ApiError> {
@@ -1346,9 +1371,19 @@ async fn institution_detail_by_id(
         .map_err(|_| ApiError::Db)?;
     let account_dtos = build_account_dtos(pool, accounts).await?;
 
+    let identifiers = db::institution_identifiers::list(pool, institution_id)
+        .await
+        .map_err(|_| ApiError::Db)?
+        .into_iter()
+        .map(|row| IdentifierInput {
+            label: row.label,
+            value: row.value,
+        })
+        .collect();
     Ok(InstitutionDetailDto {
         id: institution.id,
         name: institution.name,
+        identifiers,
         accounts: account_dtos,
     })
 }
@@ -1362,7 +1397,7 @@ async fn account_detail_by_id(
         .await
         .map_err(|_| ApiError::Db)?
         .into_iter()
-        .map(|row| AccountIdentifierInput {
+        .map(|row| IdentifierInput {
             label: row.label,
             value: row.value,
         })
@@ -1411,6 +1446,7 @@ async fn validate_institution_upsert(
 
     Ok(ValidatedInstitutionUpsert {
         name: normalized.name,
+        identifiers: normalized.identifiers,
     })
 }
 
@@ -1457,7 +1493,7 @@ async fn validate_account_upsert(
             }
 
             ValidatedInstitutionRef::New {
-                name: input.name.clone(),
+                input: input.clone(),
             }
         }
     };
@@ -1693,6 +1729,7 @@ fn garde_path_to_field(path: &garde::error::Path) -> String {
 
 fn normalize_institution_upsert(input: &InstitutionUpsertInput) -> InstitutionUpsertInput {
     InstitutionUpsertInput {
+        identifiers: normalize_identifiers(&input.identifiers),
         name: input.name.trim().to_string(),
     }
 }
@@ -1711,15 +1748,7 @@ fn normalize_label_upsert(input: &LabelUpsertInput) -> LabelUpsertInput {
 
 fn normalize_account_upsert(input: &AccountUpsertInput) -> AccountUpsertInput {
     AccountUpsertInput {
-        identifiers: input
-            .identifiers
-            .iter()
-            .map(|identifier| AccountIdentifierInput {
-                label: identifier.label.trim().to_owned(),
-                value: identifier.value.trim().to_owned(),
-            })
-            .filter(|identifier| !identifier.label.is_empty() || !identifier.value.is_empty())
-            .collect(),
+        identifiers: normalize_identifiers(&input.identifiers),
         institution: match &input.institution {
             InstitutionRef::Existing { id } => InstitutionRef::Existing { id: *id },
             InstitutionRef::New { input } => InstitutionRef::New {
@@ -2080,6 +2109,9 @@ mod labels_tests;
 
 #[cfg(test)]
 mod account_identifiers_tests;
+
+#[cfg(test)]
+mod institution_identifiers_tests;
 
 #[cfg(test)]
 mod tests {

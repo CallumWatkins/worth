@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pe-2 overflow-hidden scrollbar-gutter-stable">
       <CollapsibleTrigger as-child>
         <UButton
-          label="Account details"
+          :label="title"
           icon="i-lucide-chevron-right"
           :ui="{ leadingIcon: ['transition-transform duration-200 ease-out motion-reduce:transition-none', open && 'rotate-90'] }"
           color="neutral"
@@ -18,10 +18,10 @@
         leave-to-class="opacity-0"
       >
         <div v-show="open" :inert="!open" class="ms-auto flex shrink-0 items-center gap-1">
-          <UTooltip text="Edit account details">
-            <UButton icon="i-lucide-pencil" aria-label="Edit account details" color="neutral" variant="ghost" size="sm" :to="settingsLink" />
+          <UTooltip :text="`Edit ${title.toLowerCase()}`">
+            <UButton icon="i-lucide-pencil" :aria-label="`Edit ${title.toLowerCase()}`" color="neutral" variant="ghost" size="sm" :to="settingsLink" />
           </UTooltip>
-          <UTooltip v-if="identifiers.length > 1" :text="allRevealed ? 'Hide all' : 'Show all'">
+          <UTooltip v-if="identifiers.length > 1" :text="allRevealed ? 'Hide all identifiers' : 'Show all identifiers'">
             <UButton
               :icon="allRevealed ? 'i-lucide-eye-off' : 'i-lucide-eye'"
               :aria-label="allRevealed ? 'Hide all identifiers' : 'Show all identifiers'"
@@ -32,7 +32,7 @@
               @click="revealed = new Set(allRevealed ? [] : identifiers.map((_, index) => index))"
             />
           </UTooltip>
-          <UTooltip v-if="identifiers.length > 1" text="Copy all">
+          <UTooltip v-if="identifiers.length > 1" text="Copy all identifiers">
             <UButton
               :icon="copiedAll ? 'i-lucide-check' : 'i-lucide-copy'"
               aria-label="Copy all identifiers"
@@ -52,7 +52,7 @@
         class="max-h-[min(24rem,50vh)] overscroll-y-contain pt-3 pe-2 ms-6.5 scrollbar-gutter-stable"
         tabindex="0"
         role="region"
-        aria-label="Account identifiers"
+        aria-label="Identifiers"
       >
         <template #default="{ item: identifier, index }">
           <dl
@@ -94,18 +94,18 @@
           </dl>
         </template>
       </UScrollArea>
-      <span class="sr-only" role="status">{{ copiedAll ? 'Account details copied' : copiedIndex == null ? '' : 'Copied' }}</span>
+      <span class="sr-only" role="status">{{ copiedAll ? 'Identifiers copied' : copiedIndex == null ? '' : 'Identifier copied' }}</span>
     </CollapsibleContent>
   </CollapsibleRoot>
-  <UButton v-else label="Add account details" icon="i-lucide-plus" color="neutral" variant="link" :to="settingsLink" class="px-0" />
+  <UButton v-else :label="`Add ${title.toLowerCase()}`" icon="i-lucide-plus" color="neutral" variant="link" :to="settingsLink" class="px-0" />
 </template>
 
 <script setup lang="ts">
-import type { AccountIdentifierInput } from "~/generated/bindings";
+import type { RouteLocationRaw } from "vue-router";
+import type { IdentifierInput } from "~/generated/bindings";
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from "reka-ui";
 
-const props = defineProps<{ accountId: number, identifiers: AccountIdentifierInput[] }>();
-const settingsLink = computed(() => ({ name: "accounts-id-settings" as const, params: { id: props.accountId }, hash: "#account-details" }));
+const props = defineProps<{ title: string, settingsLink: RouteLocationRaw, identifiers: IdentifierInput[] }>();
 const open = ref(false);
 const revealed = ref(new Set<number>());
 const allRevealed = computed(() => props.identifiers.every((_, index) => revealed.value.has(index)));
@@ -131,7 +131,7 @@ async function copyValue(index: number, value: string) {
     copiedAll.value = false;
     start();
   } catch {
-    toast.add({ title: "Could not copy account detail", color: "error" });
+    toast.add({ title: "Could not copy identifier", color: "error" });
   }
 }
 
@@ -167,7 +167,7 @@ async function copyAll() {
     copiedAll.value = true;
     start();
   } catch {
-    toast.add({ title: "Could not copy account details", color: "error" });
+    toast.add({ title: "Could not copy identifiers", color: "error" });
   }
 }
 </script>

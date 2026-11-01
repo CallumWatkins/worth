@@ -50,6 +50,7 @@ fn account_input(
 fn new_institution() -> InstitutionRef {
     InstitutionRef::New {
         input: InstitutionUpsertInput {
+            identifiers: Vec::new(),
             name: "Test Bank".to_owned(),
         },
     }
@@ -377,6 +378,7 @@ async fn failed_account_update_preserves_account_labels_and_search() {
     input.name = "Changed".to_owned();
     input.institution = InstitutionRef::New {
         input: InstitutionUpsertInput {
+            identifiers: Vec::new(),
             name: "Pending bank".to_owned(),
         },
     };

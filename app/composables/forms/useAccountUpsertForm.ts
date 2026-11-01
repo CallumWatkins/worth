@@ -100,7 +100,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
 
     state.institution = {
       kind: "new",
-      input: { name: trimmedName }
+      input: { name: trimmedName, identifiers: [] }
     };
   }
 

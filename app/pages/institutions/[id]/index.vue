@@ -35,6 +35,13 @@
 
     <UPageBody class="space-y-8">
       <template v-if="institutionQuery.isSuccess">
+        <IdentifiersDetails
+          :key="institutionQuery.data.id"
+          title="Institution details"
+          :settings-link="{ name: 'institutions-id-settings', params: { id: institutionQuery.data.id }, hash: '#institution-details' }"
+          :identifiers="institutionQuery.data.identifiers"
+        />
+
         <EmptyPageState
           v-if="institutionQuery.data.accounts.length === 0"
           icon="i-lucide-wallet"

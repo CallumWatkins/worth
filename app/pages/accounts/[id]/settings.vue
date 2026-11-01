@@ -214,9 +214,12 @@
             </UFormField>
 
             <UFormField id="account-details" name="identifiers" class="scroll-mt-6">
-              <AccountsIdentifierEditor
+              <IdentifiersEditor
                 :key="accountQuery.data.id"
                 v-model="state.identifiers"
+                title="Account details"
+                :suggestions="ACCOUNT_IDENTIFIER_SUGGESTIONS"
+                placeholder="e.g. account number"
                 :expanded="!!state.identifiers?.length || route.hash === '#account-details'"
                 @remove="form?.clear(/^identifiers(\.|$)/)"
                 @reorder="form?.clear(/^identifiers(\.|$)/)"

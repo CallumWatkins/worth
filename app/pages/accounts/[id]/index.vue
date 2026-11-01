@@ -141,9 +141,10 @@
           </UPageCard>
         </div>
 
-        <AccountsDetails
+        <IdentifiersDetails
           :key="accountQuery.data.id"
-          :account-id="accountQuery.data.id"
+          title="Account details"
+          :settings-link="{ name: 'accounts-id-settings', params: { id: accountQuery.data.id }, hash: '#account-details' }"
           :identifiers="accountQuery.data.identifiers"
         />
 

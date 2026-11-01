@@ -192,7 +192,14 @@ VALUES
     NULL
   );
 
--- Synthetic account details for UI/search examples; these are not payment instructions.
+-- Synthetic account and institution details for UI/search examples; these are not payment instructions.
+INSERT INTO
+  institution_identifiers (institution_id, position, label, value, search_value)
+VALUES
+  (1, 0, 'Customer number', '0012 3456 78', '0012345678'),
+  (1, 1, 'Client reference', 'CLIENT/001', 'client/001'),
+  (2, 0, 'Membership number', 'M-009876', 'm009876');
+
 INSERT INTO
   account_identifiers (account_id, position, label, value, search_value)
 VALUES

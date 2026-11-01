@@ -14,6 +14,7 @@
         :validate-on-input-delay="0"
         class="space-y-4"
         @submit="onSubmit"
+        @submit.capture="discardEmptyIdentifiers"
       >
         <UAlert
           v-if="submitError"
@@ -30,6 +31,17 @@
             placeholder="e.g. Barclays"
             class="w-full"
             autofocus
+          />
+        </UFormField>
+
+        <UFormField name="identifiers">
+          <IdentifiersEditor
+            v-model="state.identifiers"
+            title="Institution details"
+            :suggestions="INSTITUTION_IDENTIFIER_SUGGESTIONS"
+            placeholder="e.g. customer number"
+            @remove="form?.clear(/^identifiers(\.|$)/)"
+            @reorder="form?.clear(/^identifiers(\.|$)/)"
           />
         </UFormField>
 
@@ -65,7 +77,7 @@ const form = useTemplateRef<ComponentExposed<typeof UForm<typeof institutionForm
 const setBackendValidationErrors = useBackendValidationErrors(form);
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const { captureAnalyticsEvent } = useAnalytics();
-const { state, reset } = useInstitutionUpsertForm();
+const { state, reset, discardEmptyIdentifiers } = useInstitutionUpsertForm();
 
 const { createInstitution } = useInstitutionMutations();
 
@@ -94,7 +106,8 @@ async function onSubmit(event: FormSubmitEvent<InstitutionFormValues>) {
 
   try {
     const { id } = await createInstitution.mutateAsync({
-      name: event.data.name
+      name: event.data.name,
+      identifiers: event.data.identifiers
     });
     captureAnalyticsEvent("institutions:institution_create", {}, {
       operationStartedAt: startedAt

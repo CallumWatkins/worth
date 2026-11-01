@@ -1,6 +1,6 @@
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
-use crate::contracts::{AccountIdentifierInput, canonicalize_account_identifier};
+use crate::contracts::{IdentifierInput, canonicalize_identifier};
 
 pub async fn list(
     pool: &SqlitePool,
@@ -15,7 +15,7 @@ pub async fn list(
 pub async fn replace_tx(
     tx: &mut sqlx::Transaction<'_, Sqlite>,
     account_id: i64,
-    identifiers: &[AccountIdentifierInput],
+    identifiers: &[IdentifierInput],
 ) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM account_identifiers WHERE account_id = ?")
         .bind(account_id)
@@ -34,7 +34,7 @@ pub async fn replace_tx(
                 .push_bind(position as i64)
                 .push_bind(&identifier.label)
                 .push_bind(&identifier.value)
-                .push_bind(canonicalize_account_identifier(&identifier.value));
+                .push_bind(canonicalize_identifier(&identifier.value));
         },
     );
     insert.build().execute(&mut **tx).await?;

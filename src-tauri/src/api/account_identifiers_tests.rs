@@ -15,8 +15,8 @@ async fn test_pool() -> SqlitePool {
     pool
 }
 
-fn identifier(label: &str, value: &str) -> AccountIdentifierInput {
-    AccountIdentifierInput {
+fn identifier(label: &str, value: &str) -> IdentifierInput {
+    IdentifierInput {
         label: label.to_owned(),
         value: value.to_owned(),
     }
@@ -26,6 +26,7 @@ fn input() -> AccountUpsertInput {
     AccountUpsertInput {
         institution: InstitutionRef::New {
             input: InstitutionUpsertInput {
+                identifiers: Vec::new(),
                 name: "Test Bank".to_owned(),
             },
         },
@@ -257,6 +258,7 @@ async fn identifier_write_failures_roll_back_the_entire_account_save() {
     input.name = "Renamed".to_owned();
     input.institution = InstitutionRef::New {
         input: InstitutionUpsertInput {
+            identifiers: Vec::new(),
             name: "Another bank".to_owned(),
         },
     };

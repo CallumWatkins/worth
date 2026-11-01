@@ -1,7 +1,7 @@
 <template>
   <UCollapsible v-model:open="open" :unmount-on-hide="false" class="space-y-3">
     <UButton
-      label="Account details"
+      :label="title"
       color="neutral"
       variant="ghost"
       class="-ms-2.5"
@@ -52,7 +52,7 @@
                   mode="autocomplete"
                   open-on-focus
                   aria-label="Identifier"
-                  placeholder="e.g. account number"
+                  :placeholder="placeholder"
                   autocomplete="off"
                   :spellcheck="false"
                   class="w-full"
@@ -102,13 +102,13 @@
 </template>
 
 <script setup lang="ts">
-import type { AccountIdentifierInput } from "~/generated/bindings";
+import type { IdentifierInput } from "~/generated/bindings";
 import { formErrorsInjectionKey, useFormField } from "@nuxt/ui/composables/useFormField";
 import { useSortable } from "@vueuse/integrations/useSortable";
 
-const props = defineProps<{ expanded?: boolean }>();
+const props = defineProps<{ title: string, suggestions: string[], placeholder: string, expanded?: boolean }>();
 const emit = defineEmits<{ remove: [], reorder: [] }>();
-const model = defineModel<AccountIdentifierInput[]>({ default: () => [] });
+const model = defineModel<IdentifierInput[]>({ default: () => [] });
 const { disabled, emitFormInput, emitFormChange } = useFormField({});
 const errors = inject(formErrorsInjectionKey, ref([]));
 const open = ref(props.expanded || model.value.length > 0);
@@ -156,29 +156,6 @@ const { option } = useSortable(rowsElement, rows, {
 watch(disabled, (value) => option("disabled", !!value));
 watch(reducedMotion, (value) => option("animation", value === "reduce" ? 0 : 180));
 
-// Suggestions are labels, not a closed catalogue of formats or countries.
-const suggestions = [
-  "Account number",
-  "Sort code",
-  "IBAN",
-  "SWIFT/BIC",
-  "Routing number",
-  "BSB",
-  "Transit number",
-  "Institution number",
-  "Branch code",
-  "Bank code",
-  "IFSC",
-  "CLABE",
-  "Account holder",
-  "Roll number",
-  "Customer number",
-  "Member number",
-  "Policy number",
-  "Plan number",
-  "Reference"
-];
-
 watch(() => model.value.length, (length) => {
   rowKeys.value = Array.from({ length }, (_, index) => rowKeys.value[index] ?? nextRowKey++);
 }, { immediate: true });
@@ -191,7 +168,7 @@ watch(errors, (issues) => {
   }
 });
 
-function update(index: number, field: keyof AccountIdentifierInput, value: string) {
+function update(index: number, field: keyof IdentifierInput, value: string) {
   model.value = model.value.map((identifier, current) => current === index ? { ...identifier, [field]: value } : identifier);
 }
 

@@ -37,7 +37,7 @@
     "identifiers": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/AccountIdentifierInput"
+        "$ref": "#/$defs/IdentifierInput"
       }
     },
     "include_in_dashboard": {
@@ -95,7 +95,25 @@
         "liability"
       ]
     },
-    "AccountIdentifierInput": {
+    "AccountTypeName": {
+      "type": "string",
+      "enum": [
+        "current",
+        "savings",
+        "credit_card",
+        "investment",
+        "pension",
+        "cash",
+        "loan"
+      ]
+    },
+    "CurrencyCode": {
+      "type": "string",
+      "enum": [
+        "GBP"
+      ]
+    },
+    "IdentifierInput": {
       "type": "object",
       "properties": {
         "label": {
@@ -124,24 +142,6 @@
       "required": [
         "label",
         "value"
-      ]
-    },
-    "AccountTypeName": {
-      "type": "string",
-      "enum": [
-        "current",
-        "savings",
-        "credit_card",
-        "investment",
-        "pension",
-        "cash",
-        "loan"
-      ]
-    },
-    "CurrencyCode": {
-      "type": "string",
-      "enum": [
-        "GBP"
       ]
     },
     "InstitutionRef": {
@@ -193,6 +193,12 @@
     "InstitutionUpsertInput": {
       "type": "object",
       "properties": {
+        "identifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IdentifierInput"
+          }
+        },
         "name": {
           "type": "string",
           "maxLength": 80,
@@ -207,7 +213,8 @@
         }
       },
       "required": [
-        "name"
+        "name",
+        "identifiers"
       ]
     },
     "LabelRef": {
