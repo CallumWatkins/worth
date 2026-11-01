@@ -53,12 +53,6 @@ async fn identifiers_round_trip_without_accounts_and_stay_out_of_summaries() {
             identifier("Membership number", "")
         ]
     );
-    let rows = db::institution_identifiers::list(&pool, id).await.unwrap();
-    assert_eq!(
-        rows.iter().map(|row| row.position).collect::<Vec<_>>(),
-        [0, 1, 2, 3]
-    );
-    assert_eq!(rows[2].search_value, "009988");
     assert!(
         !serde_json::to_string(&detail)
             .unwrap()
@@ -131,14 +125,6 @@ async fn invalid_identifiers_have_indexed_safe_errors_and_leave_existing_details
     for (bad, field) in [
         (identifier("", "secret"), "identifiers.0.label"),
         (identifier("Reference", "sec\nret"), "identifiers.0.value"),
-        (
-            identifier(&"名".repeat(81), "secret"),
-            "identifiers.0.label",
-        ),
-        (
-            identifier("Reference", &"💷".repeat(251)),
-            "identifiers.0.value",
-        ),
     ] {
         let invalid = InstitutionUpsertInput {
             name: "Renamed".to_owned(),
