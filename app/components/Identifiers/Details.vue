@@ -21,7 +21,7 @@
           <UTooltip :text="`Edit ${title.toLowerCase()}`">
             <UButton icon="i-lucide-pencil" :aria-label="`Edit ${title.toLowerCase()}`" color="neutral" variant="ghost" size="sm" :to="settingsLink" />
           </UTooltip>
-          <UTooltip v-if="identifiers.length > 1" :text="allRevealed ? 'Hide all' : 'Show all'">
+          <UTooltip v-if="identifiers.length > 1" :text="allRevealed ? 'Hide all identifiers' : 'Show all identifiers'">
             <UButton
               :icon="allRevealed ? 'i-lucide-eye-off' : 'i-lucide-eye'"
               :aria-label="allRevealed ? 'Hide all identifiers' : 'Show all identifiers'"
@@ -32,7 +32,7 @@
               @click="revealed = new Set(allRevealed ? [] : identifiers.map((_, index) => index))"
             />
           </UTooltip>
-          <UTooltip v-if="identifiers.length > 1" text="Copy all">
+          <UTooltip v-if="identifiers.length > 1" text="Copy all identifiers">
             <UButton
               :icon="copiedAll ? 'i-lucide-check' : 'i-lucide-copy'"
               aria-label="Copy all identifiers"
@@ -52,7 +52,7 @@
         class="max-h-[min(24rem,50vh)] overscroll-y-contain pt-3 pe-2 ms-6.5 scrollbar-gutter-stable"
         tabindex="0"
         role="region"
-        :aria-label="title"
+        aria-label="Identifiers"
       >
         <template #default="{ item: identifier, index }">
           <dl
@@ -94,7 +94,7 @@
           </dl>
         </template>
       </UScrollArea>
-      <span class="sr-only" role="status">{{ copiedAll ? `${title} copied` : copiedIndex == null ? '' : 'Copied' }}</span>
+      <span class="sr-only" role="status">{{ copiedAll ? 'Identifiers copied' : copiedIndex == null ? '' : 'Identifier copied' }}</span>
     </CollapsibleContent>
   </CollapsibleRoot>
   <UButton v-else :label="`Add ${title.toLowerCase()}`" icon="i-lucide-plus" color="neutral" variant="link" :to="settingsLink" class="px-0" />
@@ -131,7 +131,7 @@ async function copyValue(index: number, value: string) {
     copiedAll.value = false;
     start();
   } catch {
-    toast.add({ title: "Could not copy detail", color: "error" });
+    toast.add({ title: "Could not copy identifier", color: "error" });
   }
 }
 
@@ -167,7 +167,7 @@ async function copyAll() {
     copiedAll.value = true;
     start();
   } catch {
-    toast.add({ title: "Could not copy details", color: "error" });
+    toast.add({ title: "Could not copy identifiers", color: "error" });
   }
 }
 </script>
