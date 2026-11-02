@@ -212,6 +212,36 @@ pub async fn label_get_or_create_tx(
         .await
 }
 
+/// Set one assignment without replacing other labels or account details.
+/// Adding relies on foreign keys; removing an absent assignment is a no-op.
+pub async fn account_set_label(
+    pool: &SqlitePool,
+    account_id: i64,
+    label_id: i64,
+    assigned: bool,
+) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let result = sqlx::query(if assigned {
+        "INSERT INTO account_labels (account_id, label_id) VALUES (?, ?)
+         ON CONFLICT(account_id, label_id) DO NOTHING"
+    } else {
+        "DELETE FROM account_labels WHERE account_id = ? AND label_id = ?"
+    })
+    .bind(account_id)
+    .bind(label_id)
+    .execute(&mut *tx)
+    .await?;
+    if result.rows_affected() > 0 {
+        sqlx::query(
+            "UPDATE accounts SET updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
+        )
+        .bind(account_id)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await
+}
+
 pub async fn account_labels_replace_tx(
     tx: &mut sqlx::Transaction<'_, Sqlite>,
     account_id: i64,
