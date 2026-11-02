@@ -15,7 +15,7 @@
     />
 
     <UPageBody class="space-y-6">
-      <template v-if="accountQuery.isSuccess">
+      <template v-if="accountQuery.isSuccess && hasHydrated">
         <UPageCard title="General" description="Update account details and institution">
           <UForm
             ref="form"
@@ -288,7 +288,7 @@ const closedDatePickerOpen = ref(false);
 const route = useRoute("accounts-id-settings");
 const api = useApi();
 const accountBreadcrumbContext = useState<AccountBreadcrumbContext | null>("accountBreadcrumbContext", () => null);
-const { updateAccount } = useAccountMutations();
+const { updateAccount, pendingLabelWrites } = useAccountMutations();
 const { formatCurrencyMinor, formatShortDate } = useLocaleFormatters();
 const { hasErrorDetailsSurvey, getErrorDetailsSurveyAction } = useErrorDetailsSurvey();
 const { captureAnalyticsEvent } = useAnalytics();
@@ -300,6 +300,7 @@ const accountId = useRouteParamInt(route, "id");
 const accountQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.get(accountId.value!)),
   enabled: computed(() => accountId.value !== null),
+  refetchOnMount: "always",
   queryFn: async () => api.accountsGet(accountId.value!)
 }));
 
@@ -346,14 +347,15 @@ const {
   institutions: computed(() => institutionsQuery.data)
 });
 
-watch(() => accountQuery.data, (account) => {
-  if (!account || hasHydrated.value) return;
+watchEffect(() => {
+  if (hasHydrated.value || pendingLabelWrites.value || !accountQuery.isSuccess || accountQuery.isFetching) return;
+  const account = accountQuery.data;
   hydrateFromAccount(account);
   initialOpenedDate.value = account.opened_date ?? undefined;
   initialClosedDate.value = account.closed_date ?? undefined;
   hasHydrated.value = true;
   form.value?.clear();
-}, { immediate: true });
+});
 
 watch(accountId, () => {
   hasHydrated.value = false;
