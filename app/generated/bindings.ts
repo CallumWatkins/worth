@@ -20,6 +20,7 @@ export const commands = {
 	accountsCreate: (input: AccountUpsertInput) => typedError<CreatedIdDto, ApiError>(__TAURI_INVOKE("accounts_create", { input })),
 	accountsUpdate: (accountId: number, input: AccountUpsertInput) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_update", { accountId, input })),
 	accountsSetDashboardInclusion: (accountId: number, includeInDashboard: boolean) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_set_dashboard_inclusion", { accountId, includeInDashboard })),
+	accountsSetLabel: (accountId: number, labelId: number, assigned: boolean) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_set_label", { accountId, labelId, assigned })),
 	accountsDeletePreview: (accountId: number) => typedError<AccountDeletePreviewDto, ApiError>(__TAURI_INVOKE("accounts_delete_preview", { accountId })),
 	accountsDelete: (accountId: number) => typedError<null, ApiError>(__TAURI_INVOKE("accounts_delete", { accountId })),
 	institutionsList: () => typedError<InstitutionSummaryDto[], ApiError>(__TAURI_INVOKE("institutions_list")),

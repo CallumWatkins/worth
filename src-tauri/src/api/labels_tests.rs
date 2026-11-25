@@ -552,3 +552,87 @@ async fn assignment_failure_rolls_back_the_entire_account_save() {
         1
     );
 }
+
+#[tokio::test]
+async fn setting_one_label_is_idempotent_and_preserves_other_labels_and_identifiers() {
+    let pool = test_pool().await;
+    let isa = save_label(&pool, &label_input("ISA"), None).await.unwrap();
+    let mut input = account_input("Savings", new_institution(), vec![new_label("Emergency")]);
+    input.identifiers = vec![IdentifierInput {
+        label: "Account number".to_owned(),
+        value: "0012 3456".to_owned(),
+    }];
+    let account_id = save_account(&pool, &input, None).await.unwrap();
+    let before = account_detail_by_id(&pool, account_id).await.unwrap();
+
+    db::account_set_label(&pool, account_id, isa, true)
+        .await
+        .unwrap();
+    db::account_set_label(&pool, account_id, isa, true)
+        .await
+        .unwrap();
+    let added = account_detail_by_id(&pool, account_id).await.unwrap();
+    assert_eq!(added.account.labels.len(), 2);
+    assert_eq!(added.identifiers, before.identifiers);
+    assert!(matches!(
+        db::search_global(&pool, "ISA Savings").await.unwrap().as_slice(),
+        [db::GlobalSearchRow::Account { id, .. }] if *id == account_id
+    ));
+    db::account_set_label(&pool, account_id, isa, false)
+        .await
+        .unwrap();
+    db::account_set_label(&pool, account_id, isa, false)
+        .await
+        .unwrap();
+    let removed = account_detail_by_id(&pool, account_id).await.unwrap();
+    assert_eq!(removed.account.labels.len(), 1);
+    assert_eq!(removed.account.labels[0].id, before.account.labels[0].id);
+    assert_eq!(removed.identifiers, before.identifiers);
+    assert!(
+        db::search_global(&pool, "ISA Savings")
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn label_assignment_uses_foreign_keys_and_rolls_back_failed_writes() {
+    let pool = test_pool().await;
+    let account_id = save_account(
+        &pool,
+        &account_input("Savings", new_institution(), vec![new_label("ISA")]),
+        None,
+    )
+    .await
+    .unwrap();
+    let isa = account_dto_by_id(&pool, account_id).await.unwrap().labels[0].id;
+    let error = db::account_set_label(&pool, 999, isa, true)
+        .await
+        .unwrap_err();
+    assert!(
+        error
+            .as_database_error()
+            .is_some_and(|error| error.is_foreign_key_violation())
+    );
+    db::account_set_label(&pool, 999, isa, false).await.unwrap();
+    db::account_set_label(&pool, account_id, 999, false)
+        .await
+        .unwrap();
+    // Fail after the assignment delete, ensuring the transaction restores search as well.
+    sqlx::raw_sql("CREATE TRIGGER fail_account_update BEFORE UPDATE ON accounts BEGIN SELECT RAISE(ABORT, 'test failure'); END;")
+        .execute(&pool).await.unwrap();
+    assert!(
+        db::account_set_label(&pool, account_id, isa, false)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        account_dto_by_id(&pool, account_id).await.unwrap().labels[0].id,
+        isa
+    );
+    assert_eq!(
+        db::search_global(&pool, "ISA Savings").await.unwrap().len(),
+        1
+    );
+}

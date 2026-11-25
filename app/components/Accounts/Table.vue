@@ -132,6 +132,15 @@
       </span>
     </template>
 
+    <template #actions-cell="{ row }">
+      <AccountsActionsMenu
+        v-if="!row.getIsGrouped()"
+        :key="row.original.id"
+        :account="row.original"
+        @delete="deleteAccountId = row.original.id; deleteOpen = true"
+      />
+    </template>
+
     <template #body-bottom>
       <tr v-if="hiddenCount > 0">
         <td colspan="100" class="p-4 text-sm text-muted">
@@ -185,8 +194,6 @@ const emit = defineEmits<{
   showAll: []
 }>();
 
-const endPopupContent = useAppPopupContent({ align: "end" });
-
 const sorting = defineModel<SortingState>("sorting", { required: true });
 const expanded = defineModel<ExpandedState>("expanded", { required: true });
 
@@ -195,7 +202,6 @@ const isLargeScreen = useBreakpoints(breakpointsTailwind).greaterOrEqual("lg");
 const colorMode = useColorMode();
 
 const UButton = resolveComponent("UButton");
-const UDropdownMenu = resolveComponent("UDropdownMenu");
 
 const deleteOpen = ref(false);
 const deleteAccountId = ref<number | null>(null);
@@ -450,33 +456,6 @@ function sortableHeader(column: Column<Account, unknown>, label: string) {
   });
 }
 
-function accountRowActions(account: Account) {
-  return [
-    {
-      type: "label" as const,
-      label: "Actions"
-    },
-    {
-      label: "Settings",
-      icon: "i-lucide-settings",
-      onSelect: async () => {
-        await navigateTo({ name: "accounts-id-settings", params: { id: account.id } });
-      }
-    },
-    {
-      label: "Delete account",
-      icon: "i-lucide-trash-2",
-      color: "error" as const,
-      onSelect: () => openAccountDeleteDialog(account.id)
-    }
-  ];
-}
-
-function openAccountDeleteDialog(accountId: number) {
-  deleteAccountId.value = accountId;
-  deleteOpen.value = true;
-}
-
 const columns = computed<TableColumn<Account>[]>(() => {
   const out: TableColumn<Account>[] = [];
 
@@ -577,20 +556,6 @@ const columns = computed<TableColumn<Account>[]>(() => {
       id: "actions",
       enableSorting: false,
       header: "",
-      cell: ({ row }) => {
-        if (row.getIsGrouped()) return null;
-
-        return h(UDropdownMenu, {
-          items: accountRowActions(row.original),
-          content: endPopupContent.value,
-          "aria-label": "Account actions"
-        }, () => h(UButton, {
-          icon: "i-lucide-ellipsis-vertical",
-          color: "neutral",
-          variant: "ghost",
-          "aria-label": `Actions for ${row.original.name}`
-        }));
-      },
       meta: {
         class: {
           td: "text-right"

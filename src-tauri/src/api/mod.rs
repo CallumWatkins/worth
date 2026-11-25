@@ -538,6 +538,29 @@ pub async fn accounts_set_dashboard_inclusion(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn accounts_set_label(
+    state: State<'_, AppState>,
+    account_id: i64,
+    label_id: i64,
+    assigned: bool,
+) -> Result<(), ApiError> {
+    db::account_set_label(&state.pool, account_id, label_id, assigned)
+        .await
+        .map_err(|error| {
+            if assigned
+                && error
+                    .as_database_error()
+                    .is_some_and(|error| error.is_foreign_key_violation())
+            {
+                ApiError::NotFound
+            } else {
+                ApiError::Db
+            }
+        })
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn labels_list(state: State<'_, AppState>) -> Result<Vec<LabelSummaryDto>, ApiError> {
     db::labels_list(&state.pool)
         .await
@@ -2059,6 +2082,7 @@ pub(crate) fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             accounts_create,
             accounts_update,
             accounts_set_dashboard_inclusion,
+            accounts_set_label,
             accounts_delete_preview,
             accounts_delete,
             institutions_list,
