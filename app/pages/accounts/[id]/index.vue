@@ -258,7 +258,7 @@
             :ui="{ body: 'w-full' }"
           >
             <template #body>
-              <div class="flex flex-row items-center justify-between">
+              <div class="relative flex flex-row items-center justify-between focus-within:z-2">
                 <div>
                   <div class="text-base font-semibold text-highlighted">
                     Balances
