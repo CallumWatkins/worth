@@ -534,7 +534,7 @@ const balanceOverTimePeriod = ref<BalanceOverTimePeriod>("6M");
 const balanceOverTimeQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.accounts.balanceOverTime(accountId.value!, balanceOverTimePeriod.value)),
   enabled: computed(() => accountQuery.isSuccess),
-  queryFn: async () => api.accountBalanceOverTime(accountId.value!, balanceOverTimePeriod.value)
+  queryFn: async ({ queryKey: [, queryAccountId, , period] }) => api.accountBalanceOverTime(queryAccountId.value, period.value)
 }));
 
 useContextualKeyboardShortcuts([
@@ -553,15 +553,12 @@ useContextualKeyboardShortcuts([
 const balanceOverTimeChartFrame = ref<HTMLElement | null>(null);
 const { width: balanceOverTimeChartFrameWidth } = useElementSize(balanceOverTimeChartFrame);
 
-const balanceOverTimePeriodItems = computed<TabsItem[]>(() => {
-  const disabled = balanceOverTimeQuery.isFetching;
-  return [
-    { label: "1M", value: "1M", disabled },
-    { label: "6M", value: "6M", disabled },
-    { label: "1Y", value: "1Y", disabled },
-    { label: "MAX", value: "MAX", disabled }
-  ];
-});
+const balanceOverTimePeriodItems: TabsItem[] = [
+  { label: "1M", value: "1M" },
+  { label: "6M", value: "6M" },
+  { label: "1Y", value: "1Y" },
+  { label: "MAX", value: "MAX" }
+];
 
 const addSnapshotsMenuItems = computed(() => [
   {
