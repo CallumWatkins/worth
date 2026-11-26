@@ -1,6 +1,6 @@
 <template>
-  <CollapsibleRoot v-if="identifiers.length" v-model:open="open" class="w-full max-w-xl">
-    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pe-2 overflow-hidden scrollbar-gutter-stable">
+  <CollapsibleRoot v-if="identifiers.length" v-model:open="open" class="flow-root w-full max-w-xl">
+    <div class="-my-0.75 -ms-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 overflow-hidden py-0.75 ps-1 pe-2 scrollbar-gutter-stable">
       <CollapsibleTrigger as-child>
         <UButton
           :label="title"
