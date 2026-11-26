@@ -50,7 +50,6 @@
         :items="identifiers"
         :virtualize="{ estimateSize: 56, overscan: 8 }"
         class="max-h-[min(24rem,50vh)] overscroll-y-contain pt-3 pe-2 ms-6.5 scrollbar-gutter-stable"
-        tabindex="0"
         role="region"
         aria-label="Identifiers"
       >
