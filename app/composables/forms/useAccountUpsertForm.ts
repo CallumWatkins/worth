@@ -6,23 +6,6 @@ interface UseAccountUpsertFormParams {
   getDefaultInstitutionId?: () => number | null | undefined
 }
 
-function defaultInstitutionFallback(
-  institutionItems: { value: { label: string, value: number | string }[] },
-  getDefaultInstitutionId?: () => number | null | undefined
-) {
-  const defaultInstitutionId = getDefaultInstitutionId?.();
-  if (typeof defaultInstitutionId === "number") return defaultInstitutionId;
-
-  const firstInstitutionValue = institutionItems.value.find((institution) => (
-    typeof institution.value === "number"
-  ))?.value;
-  const firstInstitutionId = typeof firstInstitutionValue === "number"
-    ? firstInstitutionValue
-    : undefined;
-
-  return firstInstitutionId;
-}
-
 function normalizeInstitutionName(name: string) {
   return name.trim().toLowerCase();
 }
@@ -30,10 +13,11 @@ function normalizeInstitutionName(name: string) {
 export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
   const settings = useSettings();
   const defaults = (): RequiredOrUndefined<AccountFormInputValues> => {
+    const defaultInstitutionId = params.getDefaultInstitutionId?.();
     return {
       account_type: "current",
       currency_code: settings.value.default_display_currency_code,
-      institution: undefined,
+      institution: defaultInstitutionId == null ? undefined : { kind: "existing", id: defaultInstitutionId },
       name: undefined,
       account_classification: "asset",
       include_in_dashboard: true,
@@ -164,7 +148,6 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
 
   function reset() {
     Object.assign(state, defaults());
-    setExistingInstitution(defaultInstitutionFallback(institutionItems, params.getDefaultInstitutionId));
     institutionSearchTerm.value = "";
   }
 
@@ -191,21 +174,14 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.account_classification = type === "credit_card" || type === "loan" ? "liability" : "asset";
   }, { flush: "sync" });
 
-  watch(institutionItems, (items) => {
-    if (state.institution?.kind === "new") {
-      const createdInstitutionId = findExistingInstitutionId(state.institution.input.name);
-      if (createdInstitutionId != null) {
-        setExistingInstitution(createdInstitutionId);
-      }
-      return;
-    }
+  watch(institutionItems, () => {
+    if (state.institution?.kind !== "new") return;
 
-    if (state.institution?.kind === "existing" && state.institution.id != null) return;
-    const firstInstitutionId = items.find((institution) => (
-      typeof institution.value === "number"
-    ))?.value;
-    setExistingInstitution(typeof firstInstitutionId === "number" ? firstInstitutionId : undefined);
-  }, { immediate: true });
+    const createdInstitutionId = findExistingInstitutionId(state.institution.input.name);
+    if (createdInstitutionId != null) {
+      setExistingInstitution(createdInstitutionId);
+    }
+  });
 
   return {
     state,
