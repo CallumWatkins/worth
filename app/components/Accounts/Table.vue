@@ -16,6 +16,7 @@
     }"
     class="flex-1"
     @select="onSelect"
+    @keydown.enter.space="onRowKeydown"
   >
     <template #name-cell="{ row }">
       <div class="flex items-center gap-2">
@@ -566,6 +567,14 @@ const columns = computed<TableColumn<Account>[]>(() => {
 
   return out;
 });
+
+function onRowKeydown(event: KeyboardEvent) {
+  const row = event.target;
+  if (!(row instanceof HTMLTableRowElement) || row.tabIndex !== 0) return;
+
+  event.preventDefault();
+  if (!event.repeat) row.click();
+}
 
 async function onSelect(_e: Event, row: TableRow<Account>) {
   if (row.getIsGrouped()) {
