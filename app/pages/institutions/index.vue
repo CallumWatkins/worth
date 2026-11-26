@@ -66,11 +66,10 @@
           :data="filteredInstitutions"
           :columns="columns"
           empty="No institutions match your filters."
-          :ui="{
-            tr: 'data-[selectable=true]:cursor-pointer'
-          }"
+          :ui="selectableTableUi"
           class="flex-1"
           @select="onSelect"
+          @keydown.enter.space="onTableRowKeydown"
         >
           <template #name-cell="{ row }">
             <span class="text-highlighted">
@@ -144,6 +143,7 @@ import type { Column, SortingState } from "@tanstack/vue-table";
 import type { InstitutionSummaryDto } from "~/generated/bindings";
 import { useQuery } from "@tanstack/vue-query";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
+import { onTableRowKeydown, selectableTableUi } from "~/utils/selectable-table";
 
 type Institution = InstitutionSummaryDto;
 

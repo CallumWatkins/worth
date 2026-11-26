@@ -10,13 +10,10 @@
     :expanded-options="{ autoResetExpanded: false }"
     :get-row-id="(account) => resolvedGroupBy === 'label' ? `${account.id}:label:${account.labelGroup?.id ?? 'none'}` : String(account.id)"
     empty="No accounts match these filters."
-    :ui="{
-      td: 'empty:p-0',
-      tr: 'data-[selectable=true]:cursor-pointer'
-    }"
+    :ui="{ ...selectableTableUi, td: 'empty:p-0' }"
     class="flex-1"
     @select="onSelect"
-    @keydown.enter.space="onRowKeydown"
+    @keydown.enter.space="onTableRowKeydown"
   >
     <template #name-cell="{ row }">
       <div class="flex items-center gap-2">
@@ -176,6 +173,7 @@ import type { AccountDto, AccountTypeName, ActivityPeriod, LabelDto } from "~/ge
 import { getGroupedRowModel } from "@tanstack/vue-table";
 import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
+import { onTableRowKeydown, selectableTableUi } from "~/utils/selectable-table";
 
 type Account = AccountDto & { labelGroup?: LabelDto | null };
 type HideColumn = "institution";
@@ -567,14 +565,6 @@ const columns = computed<TableColumn<Account>[]>(() => {
 
   return out;
 });
-
-function onRowKeydown(event: KeyboardEvent) {
-  const row = event.target;
-  if (!(row instanceof HTMLTableRowElement) || row.tabIndex !== 0) return;
-
-  event.preventDefault();
-  if (!event.repeat) row.click();
-}
 
 async function onSelect(_e: Event, row: TableRow<Account>) {
   if (row.getIsGrouped()) {
