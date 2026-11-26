@@ -55,10 +55,6 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     ];
   });
 
-  function setExistingInstitution(id: number | undefined) {
-    state.institution = id == null ? undefined : { kind: "existing", id };
-  }
-
   function findExistingInstitution(name: string) {
     const normalized = normalizeInstitutionName(name);
     if (!normalized) return undefined;
@@ -68,17 +64,13 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     ));
   }
 
-  function findExistingInstitutionId(name: string) {
-    return findExistingInstitution(name)?.id;
-  }
-
   function onInstitutionCreate(name: string) {
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
-    const existingInstitutionId = findExistingInstitutionId(trimmedName);
-    if (existingInstitutionId != null) {
-      setExistingInstitution(existingInstitutionId);
+    const existingInstitution = findExistingInstitution(trimmedName);
+    if (existingInstitution != null) {
+      state.institution = { kind: "existing", id: existingInstitution.id };
       return;
     }
 
@@ -104,7 +96,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     },
     set: (value) => {
       if (typeof value === "number") {
-        setExistingInstitution(value);
+        state.institution = { kind: "existing", id: value };
         return;
       }
 
@@ -177,9 +169,9 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
   watch(institutionItems, () => {
     if (state.institution?.kind !== "new") return;
 
-    const createdInstitutionId = findExistingInstitutionId(state.institution.input.name);
-    if (createdInstitutionId != null) {
-      setExistingInstitution(createdInstitutionId);
+    const createdInstitution = findExistingInstitution(state.institution.input.name);
+    if (createdInstitution != null) {
+      state.institution = { kind: "existing", id: createdInstitution.id };
     }
   });
 
