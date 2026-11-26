@@ -6,23 +6,6 @@ interface UseAccountUpsertFormParams {
   getDefaultInstitutionId?: () => number | null | undefined
 }
 
-function defaultInstitutionFallback(
-  institutionItems: { value: { label: string, value: number | string }[] },
-  getDefaultInstitutionId?: () => number | null | undefined
-) {
-  const defaultInstitutionId = getDefaultInstitutionId?.();
-  if (typeof defaultInstitutionId === "number") return defaultInstitutionId;
-
-  const firstInstitutionValue = institutionItems.value.find((institution) => (
-    typeof institution.value === "number"
-  ))?.value;
-  const firstInstitutionId = typeof firstInstitutionValue === "number"
-    ? firstInstitutionValue
-    : undefined;
-
-  return firstInstitutionId;
-}
-
 function normalizeInstitutionName(name: string) {
   return name.trim().toLowerCase();
 }
@@ -30,10 +13,11 @@ function normalizeInstitutionName(name: string) {
 export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
   const settings = useSettings();
   const defaults = (): RequiredOrUndefined<AccountFormInputValues> => {
+    const defaultInstitutionId = params.getDefaultInstitutionId?.();
     return {
       account_type: "current",
       currency_code: settings.value.default_display_currency_code,
-      institution: undefined,
+      institution: defaultInstitutionId == null ? undefined : { kind: "existing", id: defaultInstitutionId },
       name: undefined,
       account_classification: "asset",
       include_in_dashboard: true,
@@ -71,10 +55,6 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     ];
   });
 
-  function setExistingInstitution(id: number | undefined) {
-    state.institution = id == null ? undefined : { kind: "existing", id };
-  }
-
   function findExistingInstitution(name: string) {
     const normalized = normalizeInstitutionName(name);
     if (!normalized) return undefined;
@@ -84,17 +64,13 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     ));
   }
 
-  function findExistingInstitutionId(name: string) {
-    return findExistingInstitution(name)?.id;
-  }
-
   function onInstitutionCreate(name: string) {
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
-    const existingInstitutionId = findExistingInstitutionId(trimmedName);
-    if (existingInstitutionId != null) {
-      setExistingInstitution(existingInstitutionId);
+    const existingInstitution = findExistingInstitution(trimmedName);
+    if (existingInstitution != null) {
+      state.institution = { kind: "existing", id: existingInstitution.id };
       return;
     }
 
@@ -120,7 +96,7 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     },
     set: (value) => {
       if (typeof value === "number") {
-        setExistingInstitution(value);
+        state.institution = { kind: "existing", id: value };
         return;
       }
 
@@ -164,7 +140,6 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
 
   function reset() {
     Object.assign(state, defaults());
-    setExistingInstitution(defaultInstitutionFallback(institutionItems, params.getDefaultInstitutionId));
     institutionSearchTerm.value = "";
   }
 
@@ -191,21 +166,14 @@ export function useAccountUpsertForm(params: UseAccountUpsertFormParams) {
     state.account_classification = type === "credit_card" || type === "loan" ? "liability" : "asset";
   }, { flush: "sync" });
 
-  watch(institutionItems, (items) => {
-    if (state.institution?.kind === "new") {
-      const createdInstitutionId = findExistingInstitutionId(state.institution.input.name);
-      if (createdInstitutionId != null) {
-        setExistingInstitution(createdInstitutionId);
-      }
-      return;
-    }
+  watch(institutionItems, () => {
+    if (state.institution?.kind !== "new") return;
 
-    if (state.institution?.kind === "existing" && state.institution.id != null) return;
-    const firstInstitutionId = items.find((institution) => (
-      typeof institution.value === "number"
-    ))?.value;
-    setExistingInstitution(typeof firstInstitutionId === "number" ? firstInstitutionId : undefined);
-  }, { immediate: true });
+    const createdInstitution = findExistingInstitution(state.institution.input.name);
+    if (createdInstitution != null) {
+      state.institution = { kind: "existing", id: createdInstitution.id };
+    }
+  });
 
   return {
     state,
