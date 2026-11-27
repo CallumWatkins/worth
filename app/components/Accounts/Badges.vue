@@ -9,7 +9,7 @@
       :variant="badge.closed ? 'subtle' : 'soft'"
       :class="[
         limit === undefined ? 'max-w-full' : 'shrink-0',
-        clickable && badge.id !== null ? 'cursor-pointer transition-colors hover:bg-accented focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' : undefined
+        clickable && badge.id !== null ? 'cursor-pointer transition-colors hover:bg-accented focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-inverted/25' : undefined
       ]"
       :title="badge.description ?? undefined"
     >

@@ -19,6 +19,25 @@ export default defineAppConfig({
     pageBody: {
       base: "pb-12"
     },
+    pageCard: {
+      variants: {
+        to: {
+          true: {
+            root: "outline-inverted/25"
+          }
+        }
+      },
+      compoundVariants: [
+        {
+          variant: ["outline", "subtle"],
+          to: true,
+          highlight: false,
+          class: {
+            root: "has-[>a:focus-visible]:ring-inverted/25"
+          }
+        }
+      ]
+    },
     main: {
       base: "flex-1 min-h-0"
     },

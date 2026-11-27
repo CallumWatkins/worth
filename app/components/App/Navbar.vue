@@ -11,6 +11,7 @@
       <NuxtLink
         :to="{ name: 'index' }"
         aria-label="Go to dashboard"
+        tabindex="-1"
       >
         <img
           :src="colorMode.value === 'dark' ? logoDarkTheme : logoLightTheme"
@@ -27,7 +28,12 @@
         list: 'h-full gap-x-3',
         root: 'h-full [&>div]:h-full',
         item: 'h-full py-0',
-        link: 'h-full py-0 after:bottom-0 before:rounded-none after:inset-x-px',
+        link: [
+          'h-full py-0 after:bottom-0 before:rounded-none after:inset-x-px',
+          'focus-visible:before:bg-elevated/50 focus-visible:not-data-active:text-highlighted',
+          'not-forced-colors:focus-visible:before:outline-none'
+        ],
+        linkLeadingIcon: 'group-[&:not([data-active]):focus-visible]:text-default',
         viewportWrapper: 'hidden'
       }"
     />

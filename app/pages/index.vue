@@ -305,7 +305,7 @@ const dashboardQuery = proxyRefs(useQuery({
 
 const balanceOverTimeQuery = proxyRefs(useQuery({
   queryKey: computed(() => queryKeys.dashboard.balanceOverTime(balanceOverTimePeriod.value)),
-  queryFn: async () => api.dashboardBalanceOverTime(balanceOverTimePeriod.value)
+  queryFn: async ({ queryKey: [, , period] }) => api.dashboardBalanceOverTime(period.value)
 }));
 
 const animatedTotalBalance = ref(0);
@@ -335,15 +335,12 @@ const targetMonthlyYield = computed(() => {
   return monthlyYieldMinor == null ? null : convertCurrencyMinorUnitsToMajorAmount(monthlyYieldMinor);
 });
 
-const balanceOverTimePeriodItems = computed(() => {
-  const disabled = balanceOverTimeQuery.isFetching;
-  return [
-    { label: "1M", value: "1M", disabled },
-    { label: "6M", value: "6M", disabled },
-    { label: "1Y", value: "1Y", disabled },
-    { label: "MAX", value: "MAX", disabled }
-  ];
-});
+const balanceOverTimePeriodItems = [
+  { label: "1M", value: "1M" },
+  { label: "6M", value: "6M" },
+  { label: "1Y", value: "1Y" },
+  { label: "MAX", value: "MAX" }
+];
 
 const changeClass = computed(() => {
   if (dashboardQuery.data?.change_vs_last_month_pct == null) return "text-muted";

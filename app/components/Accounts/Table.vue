@@ -10,12 +10,10 @@
     :expanded-options="{ autoResetExpanded: false }"
     :get-row-id="(account) => resolvedGroupBy === 'label' ? `${account.id}:label:${account.labelGroup?.id ?? 'none'}` : String(account.id)"
     empty="No accounts match these filters."
-    :ui="{
-      td: 'empty:p-0',
-      tr: 'data-[selectable=true]:cursor-pointer'
-    }"
+    :ui="{ ...selectableTableUi, td: 'empty:p-0' }"
     class="flex-1"
     @select="onSelect"
+    @keydown.enter.space="onTableRowKeydown"
   >
     <template #name-cell="{ row }">
       <div class="flex items-center gap-2">
@@ -175,6 +173,7 @@ import type { AccountDto, AccountTypeName, ActivityPeriod, LabelDto } from "~/ge
 import { getGroupedRowModel } from "@tanstack/vue-table";
 import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { useLocaleFormatters } from "~/composables/useLocaleFormatters";
+import { onTableRowKeydown, selectableTableUi } from "~/utils/selectable-table";
 
 type Account = AccountDto & { labelGroup?: LabelDto | null };
 type HideColumn = "institution";
